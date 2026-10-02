@@ -1,4 +1,5 @@
-import postgres from "postgres";
+import { attachDatabasePool } from "@vercel/functions";
+import { Pool, type PoolClient } from "pg";
 
 /**
  * Stratul de acces la baza de date (Supabase Postgres).
@@ -7,6 +8,11 @@ import postgres from "postgres";
  * restul aplicației (rute, analytics, seed) a fost scris pe acest model, iar
  * păstrarea lui — doar devenit async — face portarea minimă și ușor de verificat.
  * Parametrii rămân scriși cu `?` și sunt traduși aici în `$1, $2…` pentru Postgres.
+ *
+ * De ce `pg` + `attachDatabasePool`: pe Vercel funcția e „înghețată” între cereri. Conexiunile
+ * lăsate deschise sunt tăiate între timp de pooler-ul Supabase, iar la trezire driverul folosea
+ * un socket mort și cererea atârna zeci de secunde. `attachDatabasePool` (recomandarea Vercel)
+ * ține instanța vie cât să închidă curat conexiunile inactive înainte de înghețare.
  */
 
 export type RunResult = { lastInsertRowid: number; changes: number };
@@ -25,11 +31,11 @@ export type DbInterface = {
   transaction<T>(fn: (tx: DbInterface) => Promise<T>): Promise<T>;
 };
 
-type Sql = postgres.Sql | postgres.TransactionSql;
+type Queryable = Pool | PoolClient;
 
 declare global {
   // eslint-disable-next-line no-var
-  var __pg: postgres.Sql | undefined;
+  var __pgPool: Pool | undefined;
   // eslint-disable-next-line no-var
   var __dbInit: Promise<void> | undefined;
 }
@@ -46,23 +52,46 @@ function alternatePoolerUrl(url: string): string | null {
   return url.replace(`@aws-${m[1]}-${m[2]}.pooler`, `@aws-${other}-${m[2]}.pooler`);
 }
 
-function client(): postgres.Sql {
-  if (!global.__pg) {
+function pool(): Pool {
+  if (!global.__pgPool) {
     const url = activeUrl ?? process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL lipsește din variabilele de mediu.");
     activeUrl = url;
-    global.__pg = postgres(url, {
-      // Pooler-ul Supabase în mod „transaction” nu suportă prepared statements persistente.
-      prepare: false,
+    const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
+    const p = new Pool({
+      connectionString: url,
       // SSL obligatoriu spre Supabase; dezactivat doar pentru un Postgres local de test.
-      ssl: /@(localhost|127\.0\.0\.1)[:/]/.test(url) ? false : "require",
-      // Pe Vercel fiecare instanță de funcție are nevoie de foarte puține conexiuni.
+      ssl: local ? false : { rejectUnauthorized: false },
       max: 3,
-      idle_timeout: 20,
-      connect_timeout: 15,
+      // Conexiunile inactive se închid repede (recomandarea Vercel pentru Fluid compute).
+      idleTimeoutMillis: 5_000,
+      // Nicio cerere nu mai poate atârna: conectarea și interogarea au limite stricte.
+      connectionTimeoutMillis: 5_000,
+      query_timeout: 15_000,
     });
+    // O conexiune moartă din pool nu trebuie să dărâme procesul.
+    p.on("error", () => undefined);
+    attachDatabasePool(p);
+    global.__pgPool = p;
   }
-  return global.__pg;
+  return global.__pgPool;
+}
+
+/** Aruncă pool-ul curent (ex. după o eroare de conexiune), ca următoarea cerere să pornească curat. */
+async function resetPool() {
+  const p = global.__pgPool;
+  global.__pgPool = undefined;
+  await p?.end().catch(() => undefined);
+}
+
+/** Erori de rețea/conexiune după care merită o singură reîncercare pe o conexiune nouă. */
+function isConnectionError(e: unknown): boolean {
+  const msg = String((e as Error)?.message ?? e);
+  const code = (e as { code?: string })?.code ?? "";
+  return (
+    ["ECONNRESET", "EPIPE", "ETIMEDOUT", "ECONNREFUSED", "57P01", "08006", "08003", "08001"].includes(code) ||
+    /timeout|terminated|Connection terminated|socket|ECONNRESET|closed/i.test(msg)
+  );
 }
 
 /** `?` → `$n`. Interogările aplicației nu conțin `?` în literali, deci înlocuirea simplă e sigură. */
@@ -71,38 +100,59 @@ function toPg(query: string): string {
   return query.replace(/\?/g, () => `$${++i}`);
 }
 
-function normalize(params: unknown[]): postgres.ParameterOrJSON<never>[] {
-  return params.map((p) => (p === undefined ? null : typeof p === "boolean" ? (p ? 1 : 0) : p)) as never[];
+function normalize(params: unknown[]): unknown[] {
+  return params.map((p) => (p === undefined ? null : typeof p === "boolean" ? (p ? 1 : 0) : p));
 }
 
-function wrap(sql: Sql): DbInterface {
-  const exec = (q: string, params: unknown[]) => sql.unsafe(toPg(q), normalize(params));
+async function run(target: Queryable | null, q: string, params: unknown[]) {
+  const text = toPg(q);
+  const values = normalize(params);
+  if (target) return target.query(text, values); // în tranzacție: fără reîncercare (ar fi nesigur)
+  try {
+    return await pool().query(text, values);
+  } catch (e) {
+    if (!isConnectionError(e)) throw e;
+    await resetPool();
+    return pool().query(text, values); // o singură reîncercare, pe o conexiune proaspătă
+  }
+}
 
+function wrap(target: PoolClient | null): DbInterface {
   return {
     prepare(q: string): Statement {
       const isInsert = /^\s*insert\s/i.test(q) && !/\breturning\b/i.test(q);
       return {
         async run(...params) {
           // La INSERT cerem rândul înapoi ca să putem expune id-ul, la fel ca lastInsertRowid din SQLite.
-          const res = await exec(isInsert ? `${q} RETURNING *` : q, params);
-          const first = res[0] as { id?: number } | undefined;
-          return { lastInsertRowid: Number(first?.id ?? 0), changes: res.count ?? res.length };
+          const res = await run(target, isInsert ? `${q} RETURNING *` : q, params);
+          const first = res.rows[0] as { id?: number } | undefined;
+          return { lastInsertRowid: Number(first?.id ?? 0), changes: res.rowCount ?? res.rows.length };
         },
         async all<T>(...params: unknown[]) {
-          return (await exec(q, params)) as unknown as T[];
+          return (await run(target, q, params)).rows as T[];
         },
         async get<T>(...params: unknown[]) {
-          const rows = await exec(q, params);
-          return rows[0] as T | undefined;
+          return (await run(target, q, params)).rows[0] as T | undefined;
         },
       };
     },
     async exec(q: string) {
-      await sql.unsafe(q);
+      await run(target, q, []);
     },
     async transaction<T>(fn: (tx: DbInterface) => Promise<T>): Promise<T> {
-      if ("savepoint" in sql) return fn(wrap(sql)); // deja într-o tranzacție
-      return (await (sql as postgres.Sql).begin((tx) => fn(wrap(tx)))) as T;
+      if (target) return fn(wrap(target)); // deja într-o tranzacție
+      const client = await pool().connect();
+      try {
+        await client.query("BEGIN");
+        const res = await fn(wrap(client));
+        await client.query("COMMIT");
+        return res;
+      } catch (e) {
+        await client.query("ROLLBACK").catch(() => undefined);
+        throw e;
+      } finally {
+        client.release();
+      }
     },
   };
 }
@@ -144,7 +194,7 @@ async function init(db: DbInterface) {
   // Un singur round-trip: categoriile lipsă (după nume normalizat) + setările lipsă.
   const values = defaultsCats.map((_, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`).join(",");
   // Cele două INSERT-uri rulează în paralel: la pornirea la rece a unei funcții contează fiecare round-trip.
-  const cats = client().unsafe(
+  const cats = pool().query(
     `INSERT INTO categories (name, kind, bucket, color)
      SELECT v.name, v.kind, v.bucket, v.color FROM (VALUES ${values}) AS v(name, kind, bucket, color)
      WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE lower(trim(c.name)) = lower(trim(v.name)))
@@ -152,7 +202,7 @@ async function init(db: DbInterface) {
     defaultsCats.flat(),
   );
   const keys = Object.keys(defaults);
-  const sets = client().unsafe(
+  const sets = pool().query(
     `INSERT INTO settings (key, value) VALUES ${keys.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`).join(",")}
      ON CONFLICT (key) DO NOTHING`,
     keys.flatMap((k) => [k, defaults[k]]),
@@ -163,16 +213,14 @@ async function init(db: DbInterface) {
 
 /** Returnează conexiunea; la prima utilizare pe instanță asigură datele implicite. */
 export async function getDb(): Promise<DbInterface> {
-  client();
   if (!global.__dbInit) {
-    global.__dbInit = init(wrap(client())).catch(async (e) => {
+    global.__dbInit = init(wrap(null)).catch(async (e) => {
       const alt = activeUrl && /tenant or user not found/i.test(String(e?.message)) ? alternatePoolerUrl(activeUrl) : null;
       if (alt) {
-        await global.__pg?.end({ timeout: 1 }).catch(() => undefined);
-        global.__pg = undefined;
+        await resetPool();
         activeUrl = alt;
         try {
-          await init(wrap(client()));
+          await init(wrap(null));
           return;
         } catch (e2) {
           global.__dbInit = undefined;
@@ -184,7 +232,7 @@ export async function getDb(): Promise<DbInterface> {
     });
   }
   await global.__dbInit;
-  return wrap(client()); // după init, clientul activ poate fi cel de pe clusterul alternativ
+  return wrap(null);
 }
 
 export async function getSettings(): Promise<Record<string, string>> {

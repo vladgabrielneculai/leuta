@@ -13,9 +13,10 @@
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.1.0",
     "@fontsource/ibm-plex-sans": "^5.1.0",
+    "@vercel/functions": "^3.9.9",
     "next": "^16.3.5",
     "pdf-parse": "1.1.1",
-    "postgres": "^3.4.9",
+    "pg": "^8.23.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "recharts": "^2.15.0",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.17.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
