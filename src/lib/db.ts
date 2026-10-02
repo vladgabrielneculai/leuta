@@ -34,10 +34,23 @@ declare global {
   var __dbInit: Promise<void> | undefined;
 }
 
+// Supabase are pentru aceeași regiune două clustere de pooler (aws-0-… și aws-1-…), iar
+// proiectul e doar pe unul din ele. Dacă primim „Tenant or user not found”, încercăm automat
+// celălalt cluster, ca un DATABASE_URL cu prefixul greșit să nu blocheze aplicația.
+let activeUrl: string | undefined;
+
+function alternatePoolerUrl(url: string): string | null {
+  const m = /@aws-(\d)-([a-z0-9-]+)\.pooler\.supabase\.com/.exec(url);
+  if (!m) return null;
+  const other = m[1] === "0" ? "1" : "0";
+  return url.replace(`@aws-${m[1]}-${m[2]}.pooler`, `@aws-${other}-${m[2]}.pooler`);
+}
+
 function client(): postgres.Sql {
   if (!global.__pg) {
-    const url = process.env.DATABASE_URL;
+    const url = activeUrl ?? process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL lipsește din variabilele de mediu.");
+    activeUrl = url;
     global.__pg = postgres(url, {
       // Pooler-ul Supabase în mod „transaction” nu suportă prepared statements persistente.
       prepare: false,
@@ -148,15 +161,28 @@ async function init(db: DbInterface) {
 
 /** Returnează conexiunea; la prima utilizare pe instanță asigură datele implicite. */
 export async function getDb(): Promise<DbInterface> {
-  const db = wrap(client());
+  client();
   if (!global.__dbInit) {
-    global.__dbInit = init(db).catch((e) => {
+    global.__dbInit = init(wrap(client())).catch(async (e) => {
+      const alt = activeUrl && /tenant or user not found/i.test(String(e?.message)) ? alternatePoolerUrl(activeUrl) : null;
+      if (alt) {
+        await global.__pg?.end({ timeout: 1 }).catch(() => undefined);
+        global.__pg = undefined;
+        activeUrl = alt;
+        try {
+          await init(wrap(client()));
+          return;
+        } catch (e2) {
+          global.__dbInit = undefined;
+          throw e2;
+        }
+      }
       global.__dbInit = undefined; // reîncearcă la următoarea cerere
       throw e;
     });
   }
   await global.__dbInit;
-  return db;
+  return wrap(client()); // după init, clientul activ poate fi cel de pe clusterul alternativ
 }
 
 export async function getSettings(): Promise<Record<string, string>> {

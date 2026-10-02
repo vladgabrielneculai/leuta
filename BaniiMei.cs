@@ -2,22 +2,32 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Net;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
+// Banii mei — fereastră desktop pentru versiunea ONLINE a aplicației.
+//
+// Înainte, executabilul pornea local un server Node.js (npm run start) și cerea Node instalat.
+// Acum aplicația rulează pe Vercel + Supabase, așa că fereastra doar deschide adresa online:
+// nu mai e nevoie de Node, npm install sau npm run dev. Adresa se citește din
+// „BaniiMei.url.txt” (lângă exe), ca să poată fi schimbată fără recompilare.
+// Cod compatibil C# 5, ca să se poată compila și cu csc.exe din .NET Framework (build-exe.ps1).
+
 namespace BaniiMei
 {
     static class Program
     {
+        public const string DefaultUrl = "https://buget-personal.vercel.app";
+        public const string WindowTitle = "Banii mei - Aplicație financiară";
+
         private static Mutex singleInstanceMutex = null;
-        private static Process serverProcess = null;
         private static NotifyIcon trayIcon = null;
-        private static string baseDir = "";
         private static MainWindow mainWindow = null;
+        public static string BaseDir = "";
+        public static string AppUrl = DefaultUrl;
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -29,7 +39,6 @@ namespace BaniiMei
         private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
 
         private const int SW_RESTORE = 9;
-        public const string WindowTitle = "Banii mei - Aplicație financiară";
 
         [STAThread]
         static void Main()
@@ -39,7 +48,7 @@ namespace BaniiMei
 
             bool createdNew;
             singleInstanceMutex = new Mutex(true, "BaniiMeiDesktopAppMutex", out createdNew);
-            baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            BaseDir = AppDomain.CurrentDomain.BaseDirectory;
 
             if (!createdNew)
             {
@@ -53,60 +62,30 @@ namespace BaniiMei
                 return;
             }
 
-            // Asigură oprirea serverului la ieșire
-            AppDomain.CurrentDomain.ProcessExit += (s, e) => StopServer();
-            Application.ApplicationExit += (s, e) => StopServer();
-
-            // Inițializare System Tray
+            AppUrl = ReadUrl();
             SetupTray();
-
-            // Pornire server dacă este necesar
-            if (!IsServerRunning())
-            {
-                StartServer();
-            }
-
-            // Lansare fereastră nativă principală
-            mainWindow = new MainWindow(baseDir);
+            mainWindow = new MainWindow(BaseDir);
+            Application.ApplicationExit += (s, e) => { if (trayIcon != null) trayIcon.Visible = false; };
             Application.Run(mainWindow);
         }
 
-        public static bool IsServerRunning()
+        /// Prima linie ne-goală din BaniiMei.url.txt, altfel adresa implicită.
+        private static string ReadUrl()
         {
             try
             {
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://localhost:3100/api/auth/status");
-                request.Timeout = 600;
-                request.Method = "GET";
-                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                string path = Path.Combine(BaseDir, "BaniiMei.url.txt");
+                if (File.Exists(path))
                 {
-                    return response.StatusCode == HttpStatusCode.OK;
+                    foreach (string line in File.ReadAllLines(path))
+                    {
+                        string t = line.Trim();
+                        if (t.StartsWith("http://") || t.StartsWith("https://")) return t.TrimEnd('/');
+                    }
                 }
             }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static void StartServer()
-        {
-            try
-            {
-                ProcessStartInfo psi = new ProcessStartInfo();
-                psi.FileName = "cmd.exe";
-                psi.Arguments = "/c npm run start";
-                psi.WorkingDirectory = baseDir;
-                psi.CreateNoWindow = true;
-                psi.WindowStyle = ProcessWindowStyle.Hidden;
-                psi.UseShellExecute = false;
-
-                serverProcess = Process.Start(psi);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Eroare la pornirea serverului local: " + ex.Message, "Banii mei", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            catch { }
+            return DefaultUrl;
         }
 
         private static void SetupTray()
@@ -114,7 +93,7 @@ namespace BaniiMei
             trayIcon = new NotifyIcon();
             trayIcon.Text = WindowTitle;
 
-            string icoPath = Path.Combine(baseDir, "app.ico");
+            string icoPath = Path.Combine(BaseDir, "app.ico");
             if (File.Exists(icoPath))
             {
                 try { trayIcon.Icon = new Icon(icoPath); } catch { trayIcon.Icon = SystemIcons.Application; }
@@ -125,61 +104,19 @@ namespace BaniiMei
             }
 
             ContextMenu menu = new ContextMenu();
-            menu.MenuItems.Add("Deschide aplicația", (s, e) =>
-            {
-                if (mainWindow != null)
-                {
-                    mainWindow.RestoreAndBringToFront();
-                }
-            });
-            menu.MenuItems.Add("Reîncarcă fereastra", (s, e) =>
-            {
-                if (mainWindow != null)
-                {
-                    mainWindow.ReloadPage();
-                }
-            });
-            menu.MenuItems.Add("Deschide folderul bazei de date", (s, e) =>
-            {
-                string dataDir = Path.Combine(baseDir, "data");
-                if (Directory.Exists(dataDir)) Process.Start("explorer.exe", dataDir);
-            });
+            menu.MenuItems.Add("Deschide aplicația", (s, e) => { if (mainWindow != null) mainWindow.RestoreAndBringToFront(); });
+            menu.MenuItems.Add("Reîncarcă fereastra", (s, e) => { if (mainWindow != null) mainWindow.ReloadPage(); });
+            menu.MenuItems.Add("Deschide în browser", (s, e) => { try { Process.Start(AppUrl); } catch { } });
             menu.MenuItems.Add("-");
             menu.MenuItems.Add("Ieșire", (s, e) =>
             {
-                StopServer();
                 trayIcon.Visible = false;
                 Application.Exit();
             });
 
             trayIcon.ContextMenu = menu;
-            trayIcon.DoubleClick += (s, e) =>
-            {
-                if (mainWindow != null)
-                {
-                    mainWindow.RestoreAndBringToFront();
-                }
-            };
+            trayIcon.DoubleClick += (s, e) => { if (mainWindow != null) mainWindow.RestoreAndBringToFront(); };
             trayIcon.Visible = true;
-        }
-
-        public static void StopServer()
-        {
-            if (serverProcess != null && !serverProcess.HasExited)
-            {
-                try
-                {
-                    ProcessStartInfo killPsi = new ProcessStartInfo();
-                    killPsi.FileName = "taskkill";
-                    killPsi.Arguments = string.Format("/F /T /PID {0}", serverProcess.Id);
-                    killPsi.CreateNoWindow = true;
-                    killPsi.WindowStyle = ProcessWindowStyle.Hidden;
-                    killPsi.UseShellExecute = false;
-                    Process killProc = Process.Start(killPsi);
-                    if (killProc != null) killProc.WaitForExit(3000);
-                }
-                catch { }
-            }
         }
     }
 
@@ -188,11 +125,8 @@ namespace BaniiMei
         private WebView2 webView;
         private string appBaseDir;
         private System.Windows.Forms.Timer fadeTimer;
-        private System.Windows.Forms.Timer serverCheckTimer;
+        private System.Windows.Forms.Timer splashTimer;
         private bool isAppLoaded = false;
-        private int serverAttempts = 0;
-        private DateTime splashStartTime;
-        private const double MinSplashSeconds = 3.8;
 
         public MainWindow(string baseDir)
         {
@@ -204,7 +138,7 @@ namespace BaniiMei
         {
             this.Text = Program.WindowTitle;
             this.Size = new Size(1380, 880);
-            this.MinimumSize = new Size(1000, 650);
+            this.MinimumSize = new Size(420, 650);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = ColorTranslator.FromHtml("#EDF1EE");
 
@@ -220,94 +154,69 @@ namespace BaniiMei
             fadeTimer.Interval = 15;
             fadeTimer.Tick += (s, e) =>
             {
-                if (this.Opacity < 1.0)
-                {
-                    this.Opacity += 0.07;
-                }
-                else
-                {
-                    this.Opacity = 1.0;
-                    fadeTimer.Stop();
-                }
+                if (this.Opacity < 1.0) this.Opacity += 0.07;
+                else { this.Opacity = 1.0; fadeTimer.Stop(); }
             };
 
-            // Inițializare control WebView2 nativ
             webView = new WebView2();
             webView.Dock = DockStyle.Fill;
             this.Controls.Add(webView);
 
             this.Load += MainWindow_Load;
-            this.FormClosing += MainWindow_FormClosing;
         }
 
         private async void MainWindow_Load(object sender, EventArgs e)
         {
-            splashStartTime = DateTime.Now;
             fadeTimer.Start();
-
             try
             {
-                string profileDir = Path.Combine(appBaseDir, "data", "webview-profile");
+                // Profilul WebView (cookie-ul de login „ține-mă minte”) rămâne în %LOCALAPPDATA%,
+                // ca să nu depindă de folderul în care stă exe-ul.
+                string profileDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BaniiMei", "webview-profile");
                 if (!Directory.Exists(profileDir)) Directory.CreateDirectory(profileDir);
 
                 CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(null, profileDir, null);
                 await webView.EnsureCoreWebView2Async(env);
 
-                // Setări native pentru o experiență de desktop curată
                 webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
-                webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
                 webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
                 webView.CoreWebView2.Settings.IsZoomControlEnabled = true;
 
-                // Dezactivează complet pop-up-urile implicite de browser (alert/confirm/prompt de Edge)
-                webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = false;
+                // Linkurile spre alte site-uri se deschid în browserul implicit, nu în fereastra aplicației.
+                webView.CoreWebView2.NewWindowRequested += (s, a) =>
+                {
+                    a.Handled = true;
+                    try { Process.Start(a.Uri); } catch { }
+                };
+                webView.CoreWebView2.NavigationCompleted += (s, a) =>
+                {
+                    if (!a.IsSuccess && isAppLoaded)
+                        webView.CoreWebView2.NavigateToString(GetOfflineHtml());
+                };
 
-                // Afișează ecranul nativ de pornire (Splash Screen animat)
                 webView.CoreWebView2.NavigateToString(GetSplashHtml());
 
-                // Timer pentru verificarea pornirii serverului local
-                serverCheckTimer = new System.Windows.Forms.Timer();
-                serverCheckTimer.Interval = 250;
-                serverCheckTimer.Tick += ServerCheckTimer_Tick;
-                serverCheckTimer.Start();
+                // Splash scurt, apoi aplicația online
+                splashTimer = new System.Windows.Forms.Timer();
+                splashTimer.Interval = 1800;
+                splashTimer.Tick += (s, a) =>
+                {
+                    splashTimer.Stop();
+                    isAppLoaded = true;
+                    webView.CoreWebView2.Navigate(Program.AppUrl);
+                };
+                splashTimer.Start();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Eroare la inițializarea componentei native: " + ex.Message, "Banii mei", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void ServerCheckTimer_Tick(object sender, EventArgs e)
-        {
-            serverAttempts++;
-            double elapsed = (DateTime.Now - splashStartTime).TotalSeconds;
-
-            // Asigură că animația durează cel puțin 3.8 secunde înainte de afișarea interfeței
-            if (elapsed >= MinSplashSeconds && Program.IsServerRunning())
-            {
-                serverCheckTimer.Stop();
-                if (!isAppLoaded)
-                {
-                    isAppLoaded = true;
-                    webView.CoreWebView2.Navigate("http://localhost:3100");
-                }
-                return;
-            }
-
-            // Dacă după 30 secunde nu răspunde, afișează eroare
-            if (serverAttempts > 120)
-            {
-                serverCheckTimer.Stop();
-                MessageBox.Show("Serverul local nu a răspuns la timp. Verifică instalarea Node.js.", "Banii mei", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Componenta WebView2 nu a putut porni: " + ex.Message + "\n\nAplicația se deschide în browser.", "Banii mei", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                try { Process.Start(Program.AppUrl); } catch { }
             }
         }
 
         public void RestoreAndBringToFront()
         {
-            if (this.WindowState == FormWindowState.Minimized)
-            {
-                this.WindowState = FormWindowState.Normal;
-            }
+            if (this.WindowState == FormWindowState.Minimized) this.WindowState = FormWindowState.Normal;
             this.Show();
             this.BringToFront();
             this.Activate();
@@ -317,14 +226,23 @@ namespace BaniiMei
         {
             if (webView != null && webView.CoreWebView2 != null)
             {
-                webView.CoreWebView2.Reload();
+                if (webView.CoreWebView2.Source == null || !webView.CoreWebView2.Source.StartsWith("http"))
+                    webView.CoreWebView2.Navigate(Program.AppUrl);
+                else
+                    webView.CoreWebView2.Reload();
             }
         }
 
-        private void MainWindow_FormClosing(object sender, FormClosingEventArgs e)
+        private string GetOfflineHtml()
         {
-            // Oprește complet serverul și eliberează resursele
-            Program.StopServer();
+            return @"<!DOCTYPE html><html lang=""ro""><head><meta charset=""UTF-8""><title>Banii mei</title>
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#EDF1EE;
+font-family:'Segoe UI',sans-serif;color:#1C2B30}.c{background:#fff;border:1px solid #D5DDD8;border-radius:20px;padding:40px 44px;
+max-width:440px;text-align:center;box-shadow:0 20px 50px -15px rgba(28,43,48,.15)}h1{font-size:22px;margin:0 0 8px}
+p{color:#556B73;font-size:14px;line-height:1.5}a{display:inline-block;margin-top:14px;background:#2E5C8A;color:#fff;
+padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600}</style></head><body><div class=""c"">
+<h1>Nu există conexiune</h1><p>Aplicația rulează online și are nevoie de internet. Verifică conexiunea și încearcă din nou.</p>
+<a href=""" + Program.AppUrl + @""">Reîncearcă</a></div></body></html>";
         }
 
         private string GetSplashHtml()
@@ -512,22 +430,22 @@ namespace BaniiMei
         </div>
 
         <div class=""footer-note"">
-            Ediție Windows Nativă • Date securizate local pe acest calculator
+            Ediție Windows • Datele tale, sincronizate online
         </div>
     </div>
 
     <script>
         (function() {
-            var totalDuration = 3800; // 3.8 secunde
+            var totalDuration = 1800; // 1.8 secunde
             var startTime = performance.now();
             var fill = document.getElementById('progress-fill');
             var percentText = document.getElementById('percent-text');
             var statusLabel = document.getElementById('status-label');
 
             var steps = [
-                { limit: 25, text: 'Inițializare subsistem Windows & securitate…' },
-                { limit: 55, text: 'Verificare bază de date SQLite & setări locale…' },
-                { limit: 85, text: 'Sincronizare curs valutar BNR & inflație România…' },
+                { limit: 30, text: 'Conectare la serverul aplicației…' },
+                { limit: 60, text: 'Încărcare date din cloud (Supabase)…' },
+                { limit: 90, text: 'Sincronizare curs valutar BNR & inflație România…' },
                 { limit: 100, text: 'Spațiul financiar este pregătit. Bun venit!' }
             ];
 

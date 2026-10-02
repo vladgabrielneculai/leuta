@@ -32,13 +32,7 @@ Copy-Item -Path (Join-Path $nativeDir "Microsoft.Web.WebView2.Core.dll") -Destin
 Copy-Item -Path (Join-Path $nativeDir "Microsoft.Web.WebView2.WinForms.dll") -Destination $PSScriptRoot -Force
 Copy-Item -Path (Join-Path $nativeDir "WebView2Loader.dll") -Destination $PSScriptRoot -Force
 
-# 3. Construire Next.js production bundle
-Write-Host "`n2. Construire Next.js production bundle..." -ForegroundColor Cyan
-npm run build
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Eroare la construire Next.js!" -ForegroundColor Red
-    exit $LASTEXITCODE
-}
+# 3. (Nu mai e nevoie de build Next.js: aplicatia ruleaza online, pe Vercel.)
 
 # 4. Compilare executabil Windows Native BaniiMei.exe
 Write-Host "`n3. Compilare executabil Windows Native BaniiMei.exe..." -ForegroundColor Cyan
@@ -52,7 +46,7 @@ $refArgs = "/reference:System.Windows.Forms.dll,System.Drawing.dll,System.dll,`"
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`n[SUCCES] Executabilul nativ BaniiMei.exe a fost generat cu succes!" -ForegroundColor Green
-    Write-Host "Aplicatia ruleaza acum 100% nativ in propria sa fereastra Windows (fara Microsoft Edge)." -ForegroundColor Green
+    Write-Host "Fereastra deschide versiunea online (adresa din BaniiMei.url.txt). Nu e nevoie de Node.js." -ForegroundColor Green
     Write-Host "Poti deschide BaniiMei.exe oricand sau poti rula 'npm run shortcut' pentru scurtatura pe Desktop." -ForegroundColor Yellow
 } else {
     Write-Host "Eroare la compilare csc.exe!" -ForegroundColor Red

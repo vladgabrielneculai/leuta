@@ -1,96 +1,68 @@
 # Banii mei
 
-Aplicație nativă de desktop pentru Windows (`.exe`) dedicată gestiunii bugetului personal: venituri, costuri fixe, cheltuieli variabile, economii, investiții și credite (cu scadențar de la bancă, recalculare automată și plăți anticipate).
+Aplicație personală de buget: venituri, costuri fixe, cheltuieli variabile, economii, investiții și credite (scadențar de la bancă, recalculare automată, plăți anticipate), cu curs BNR și inflație România preluate automat.
 
-- **100% Windows Native**: Rulează în propria fereastră nativă de Windows, cu animație elegantă de deschidere (Splash Screen), meniu în System Tray și iconiță dedicată (fără a deschide browserul extern Microsoft Edge).
-- **Rată Oficială a Inflației România în Timp Real**: Preluare automată de pe internet a ratei curente a inflației din România (INS / Eurostat IAPC) și integrare directă în proiecțiile financiare și în panoul de control.
-- **Date 100% locale**: Baza de date SQLite se află în `data/buget.db` pe propriul calculator.
+**Rulează online** — se deschide din orice browser, de pe calculator sau telefon. Nu mai e nevoie de `npm install` / `npm run dev`.
 
----
-
-## 🚀 Pornire rapidă pe Windows
-
-### Opțiunea 1: Direct ca aplicație Windows Native (.exe)
-Fără ferestre negre de terminal și fără tab-uri de browser. Dublu-clic pe:
-```
-BaniiMei.exe
-```
-> **Scurtătură pe Desktop:** Rulează scriptul `creeaza-scurtatura-desktop.ps1` (sau comanda `npm run shortcut`) pentru a crea o scurtătură direct pe Desktop cu iconița aplicației.
-
-La prima deschidere, aplicația te va întâmpina cu ecranul de **configurare inițială**:
-1. Alege-ți numele de utilizator și parola.
-2. Bifează opțiunea **„Încarcă date demonstrative”** pentru a avea preîncărcate exemple realiste (credit ipotecar cu scadențar și plăți anticipate, venituri, cheltuieli, investiții) înainte de a introduce datele tale.
-3. Clic pe „Creează contul și pornește aplicația”.
+| Componentă | Unde |
+|---|---|
+| Aplicația (Next.js 16) | Vercel, regiunea `fra1` (Frankfurt) |
+| Baza de date (Postgres) | Supabase, proiectul `buget-personal` (`eu-central-1`) |
+| Codul | GitHub `vladgabrielneculai/buget-personal` — orice push pe `main` se publică automat |
 
 ---
 
-### Opțiunea 2: Din linia de comandă (Node.js)
+## 📱 Pe telefon
 
-Ai nevoie de **Node.js 20 sau mai nou**.
+Deschide adresa aplicației în browser, apoi:
+- **iPhone (Safari):** Share → *Add to Home Screen*
+- **Android (Chrome):** meniul ⋮ → *Install app* / *Add to Home screen*
+
+Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna · Credite · Economii · Mai mult) și luna analizată mereu vizibilă sus.
+
+## 🖥️ Pe Windows
+
+`BaniiMei.exe` deschide versiunea online în propria fereastră (tray, splash, fără tab de browser). Nu mai pornește niciun server local și nu mai cere Node.js. Adresa se citește din `BaniiMei.url.txt`, lângă exe.
+
+---
+
+## 🔐 Securitate
+
+Aplicația e acum publică pe internet, deci:
+- fiecare pagină și fiecare `/api/...` trec prin `src/proxy.ts`, care verifică sesiunea pe server (fără sesiune → `/login` sau `401`);
+- cookie de sesiune `HttpOnly`, `Secure`, `SameSite=Lax`; sesiunile expirate se șterg automat;
+- după 8 parole greșite de pe același IP, login-ul se blochează 15 minute;
+- parole de minim 8 caractere; `/setup` funcționează doar cât timp nu există niciun cont;
+- în Supabase, toate tabelele au RLS activ și nicio permisiune pentru `anon`/`authenticated`: API-ul public Supabase nu vede nimic. Serverul se conectează cu rolul dedicat `bp_app`.
+
+## ⚙️ Configurare (Vercel → Settings → Environment Variables)
+
+| Variabilă | Valoare |
+|---|---|
+| `DATABASE_URL` | `postgres://bp_app.<project-ref>:<parola>@aws-1-eu-central-1.pooler.supabase.com:6543/postgres` |
+
+Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiectul e pe celălalt cluster (`aws-0`), aplicația comută singură.
+
+## 🗄️ Baza de date
+
+- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite).
+- Backup / restaurare: *Setări → Exportă JSON* / *Restaurează*.
+- Editare directă: Supabase Dashboard → Table Editor.
+
+## 🧪 Teste
+
+Teste end-to-end ale API-ului (autentificare, protecția rutelor, CRUD, copiere lună, categorii, backup):
 
 ```bash
-# Instalare dependențe
+BASE_URL=https://<adresa-aplicatiei> TEST_USER=<utilizator> TEST_PASS=<parola> npm test
+```
+
+Testele își creează propriile date (luna `1999-01`) și le șterg la final.
+
+## 💻 Dezvoltare locală (opțional)
+
+```bash
 npm install
-
-# Pornire în mod dezvoltare
-npm run dev
-
-# Sau construire și pornire producție
-npm run build
-npm run start
+# .env.local cu DATABASE_URL (vezi .env.example)
+npm run dev   # http://localhost:3100
 ```
-
-Deschide [http://localhost:3100](http://localhost:3100) în browser.
-
----
-
-## 🔑 Autentificare și Securitate Locală
-
-- **Configurare la prima lansare (`/setup`)**: Dacă nu există utilizator configurat, aplicația cere setarea unui utilizator și a unei parole.
-- **Ecran de Login (`/login`)**: Protejează accesul la datele tale financiare prin sesiune securizată (cookie HTTP-only).
-- **Deconectare (Logout)**: Buton rapid de ieșire direct în bara laterală.
-- **Schimbare credențiale**: Din pagina de **Setări → Securitate & Cont Local** poți schimba oricând utilizatorul și parola.
-
----
-
-## 💳 Credite, Scadențar & Recalculare Plată Anticipată
-
-- **Oricâte credite**: rate egale (anuități) sau descrescătoare, dobândă fixă, variabilă (marjă + IRCC) sau mixtă.
-- **Scadențar oficial (Schema de rambursare a băncii)**:
-  - Poți lipi direct tabelul din scadențarul primit de la bancă (copiat din Excel/PDF).
-  - Sau poți genera automat schema completă din parametrii contractului.
-- **Simulator & Recalculator avansat**:
-  - Alege luna și suma plății anticipate.
-  - **Scurtarea perioadei (păstrare rată)**: recalculează exact câte luni/ani se elimină din credit și dobânda totală economisită.
-  - **Scăderea ratei (păstrare perioadă)**: recalculează noua valoare redusă a ratei lunare.
-  - **Aplicare cu 1 clic**: Salvează plata direct în credit și o reflectă automat în bugetul lunar.
-  - **Export CSV**: Descarcă scadențarul complet într-un fișier compatibil Excel.
-
----
-
-## 🗄️ Baza de Date Locală (SQLite)
-
-- Fișierul bazei de date se află în `data/buget.db`.
-- **Deschidere în Windows Explorer**: În **Setări → Gestiune Bază de Date Locală**, apeși pe butonul *„Deschide în Windows Explorer”* pentru a merge direct la fișier.
-- **Inspector vizual de tabele**: Poți vizualiza și gestiona direct din Setări înregistrările din tabelele `loans`, `entries`, `goals`, `investments`, `loan_schedules` etc.
-- **Modificare externă**: Poți deschide și edita `data/buget.db` oricând cu [DB Browser for SQLite](https://sqlitebrowser.org/) sau DBeaver.
-- **Date demo & Reset**: Butoane pentru reîncărcare rapidă a datelor de test sau ștergere completă pentru un nou început.
-
----
-
-## 🇷🇴 Indicatori Oficiali în Timp Real (BNR & INSSE / Eurostat)
-
-- **Curs Valutar BNR**: Cursul oficial EUR/RON este actualizat automat de la Banca Națională a României.
-- **Rata Inflației din România**: Calculată pe baza indicelui armonizat al prețurilor de consum (IAPC / IPC), preluată oficial prin Eurostat Statistics API de la Institutul Național de Statistică (INSSE).
-- **Proiecții Reale**: Economiile și randamentele investițiilor sunt exprimate automat în „bani de azi” ținând cont de rata reală curentă a inflației din România.
-- **Panou dedicat în Setări**: Afișează valoarea curentă, luna de referință, sursa datelor și opțiuni de sincronizare sau personalizare.
-
----
-
-## 🛠️ Recompilare executabil Windows
-
-Dacă dorești să recompilezi executabilul după modificări în cod:
-```bash
-npm run build:exe
-```
-Scriptul construiește bundle-ul Next.js și compilează `BaniiMei.exe` folosind compilatorul C# nativ Windows (`csc.exe`) și biblioteca nativă `Microsoft.Web.WebView2`. Executabilul rezultat rulează ca aplicație nativă fără nicio dependență de Microsoft Edge.
