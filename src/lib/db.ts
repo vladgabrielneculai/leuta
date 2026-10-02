@@ -52,14 +52,45 @@ function alternatePoolerUrl(url: string): string | null {
   return url.replace(`@aws-${m[1]}-${m[2]}.pooler`, `@aws-${other}-${m[2]}.pooler`);
 }
 
+/**
+ * Curăță valoarea din DATABASE_URL: la copy-paste în Vercel se strecoară ușor spații, ghilimele
+ * sau chiar prefixul „DATABASE_URL=”. Driverul `pg` nu le tolerează (interpretează adresa ca
+ * relativă și încearcă să se conecteze la host-ul „base”), deci le eliminăm aici.
+ */
+function cleanUrl(raw: string): string {
+  let u = raw.trim().replace(/^DATABASE_URL\s*=\s*/i, "").trim();
+  if ((u.startsWith('"') && u.endsWith('"')) || (u.startsWith("'") && u.endsWith("'"))) u = u.slice(1, -1).trim();
+  return u.replace(/\s+/g, "");
+}
+
+/** Parsează adresa explicit (host, port, user, parolă, bază) în loc să lăsăm driverul s-o ghicească. */
+function parseUrl(url: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("DATABASE_URL nu este o adresă Postgres validă (verifică valoarea din Vercel → Settings → Environment Variables).");
+  }
+  if (!/^postgres(ql)?:$/.test(parsed.protocol)) throw new Error("DATABASE_URL trebuie să înceapă cu postgres://");
+  return {
+    host: parsed.hostname,
+    port: Number(parsed.port || 5432),
+    user: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    database: decodeURIComponent(parsed.pathname.replace(/^\//, "")) || "postgres",
+  };
+}
+
 function pool(): Pool {
   if (!global.__pgPool) {
-    const url = activeUrl ?? process.env.DATABASE_URL;
-    if (!url) throw new Error("DATABASE_URL lipsește din variabilele de mediu.");
+    const raw = activeUrl ?? process.env.DATABASE_URL;
+    if (!raw) throw new Error("DATABASE_URL lipsește din variabilele de mediu.");
+    const url = cleanUrl(raw);
     activeUrl = url;
-    const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
+    const conn = parseUrl(url);
+    const local = conn.host === "localhost" || conn.host === "127.0.0.1";
     const p = new Pool({
-      connectionString: url,
+      ...conn,
       // SSL obligatoriu spre Supabase; dezactivat doar pentru un Postgres local de test.
       ssl: local ? false : { rejectUnauthorized: false },
       max: 3,
