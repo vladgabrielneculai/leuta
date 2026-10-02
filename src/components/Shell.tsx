@@ -141,9 +141,11 @@ export default function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<{ id: number; username: string } | null>(null);
-  const [checking, setChecking] = useState(true);
-
   const isAuthPage = path === "/login" || path === "/setup";
+  // Paginile protejate ajung în browser doar cu sesiune validă (verificată pe server în proxy.ts),
+  // deci nu mai blocăm randarea cu ecranul de încărcare: datele paginii pornesc imediat,
+  // în paralel cu cererea de status (care aduce doar numele utilizatorului).
+  const [checking, setChecking] = useState(false);
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   useEffect(() => {

@@ -143,7 +143,8 @@ async function init(db: DbInterface) {
 
   // Un singur round-trip: categoriile lipsă (după nume normalizat) + setările lipsă.
   const values = defaultsCats.map((_, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`).join(",");
-  await client().unsafe(
+  // Cele două INSERT-uri rulează în paralel: la pornirea la rece a unei funcții contează fiecare round-trip.
+  const cats = client().unsafe(
     `INSERT INTO categories (name, kind, bucket, color)
      SELECT v.name, v.kind, v.bucket, v.color FROM (VALUES ${values}) AS v(name, kind, bucket, color)
      WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE lower(trim(c.name)) = lower(trim(v.name)))
@@ -151,11 +152,12 @@ async function init(db: DbInterface) {
     defaultsCats.flat(),
   );
   const keys = Object.keys(defaults);
-  await client().unsafe(
+  const sets = client().unsafe(
     `INSERT INTO settings (key, value) VALUES ${keys.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`).join(",")}
      ON CONFLICT (key) DO NOTHING`,
     keys.flatMap((k) => [k, defaults[k]]),
   );
+  await Promise.all([cats, sets]);
   void db;
 }
 

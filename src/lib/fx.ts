@@ -45,14 +45,33 @@ async function store(rates: [string, number][]) {
     .run(...rates.flat());
 }
 
+// O singură reîmprospătare în desfășurare per instanță: dacă pagina cere /api/summary și
+// /api/fx în același timp, a doua cerere așteaptă rezultatul primei în loc să descarce din nou.
+let inFlight: Promise<{ ok: boolean; error?: string }> | null = null;
+
 /** Actualizează cursul zilnic și, la nevoie, istoricul pe ani. */
-export async function refreshRates(months: string[] = [], force = false): Promise<{ ok: boolean; error?: string }> {
+export function refreshRates(months: string[] = [], force = false): Promise<{ ok: boolean; error?: string }> {
+  if (inFlight && !force) return inFlight;
+  const run = doRefreshRates(months, force).finally(() => {
+    if (inFlight === run) inFlight = null;
+  });
+  inFlight = run;
+  return run;
+}
+
+async function doRefreshRates(months: string[], force: boolean): Promise<{ ok: boolean; error?: string }> {
   const db = await getDb();
   let error: string | undefined;
 
-  const last = Number((await setting("fx_last_fetch")) ?? 0);
-  // Actualizează cel mult o dată la 3 ore, sau forțat dacă force === true
-  if (force || Date.now() - last > 3 * 3600 * 1000) {
+  const [lastRaw, attemptRaw] = await Promise.all([setting("fx_last_fetch"), setting("fx_last_attempt")]);
+  const last = Number(lastRaw ?? 0);
+  const lastAttempt = Number(attemptRaw ?? 0);
+  // Actualizează cel mult o dată la 3 ore (sau forțat). După un eșec (BNR indisponibil),
+  // nu reîncercăm mai des de 15 minute, ca să nu încetinim fiecare deschidere a aplicației.
+  const stale = Date.now() - last > 3 * 3600 * 1000;
+  const recentlyFailed = Date.now() - lastAttempt < 15 * 60 * 1000;
+  if (force || (stale && !recentlyFailed)) {
+    await setSetting("fx_last_attempt", String(Date.now()));
     let parsed: [string, number][] = [];
     try {
       const xml = await fetchText(DAILY_URL);
@@ -80,7 +99,11 @@ export async function refreshRates(months: string[] = [], force = false): Promis
     if (y < 2005 || y > thisYear) continue;
     const has = (await db.prepare("SELECT COUNT(*)::int AS c FROM fx_rates WHERE date LIKE ?").get<{ c: number }>(`${y}-%`))!;
     const tried = await setting(`fx_year_${y}`);
-    const minNeeded = y === thisYear ? 1 : 200;
+    // Anul curent: ~250 zile lucrătoare/an → ne așteptăm la ~60% din zilele scurse.
+    // (Înainte pragul era 1, deci un singur curs recent oprea descărcarea anului, iar lunile
+    // Ian–Aug foloseau cursul din decembrie anul trecut.)
+    const dayOfYear = Math.floor((Date.now() - new Date(thisYear, 0, 1).getTime()) / 86_400_000);
+    const minNeeded = y === thisYear ? Math.max(1, Math.floor(dayOfYear * 0.6) - 10) : 200;
     if (has.c >= minNeeded || (!force && tried && Date.now() - Number(tried) < 24 * 3600 * 1000)) continue;
     try {
       await store(parseCubes(await fetchText(YEAR_URL(y))));
@@ -90,6 +113,9 @@ export async function refreshRates(months: string[] = [], force = false): Promis
     await setSetting(`fx_year_${y}`, String(Date.now()));
   }
 
+  // Ultima eroare se păstrează în setări, ca bannerul din UI să o poată afișa chiar dacă
+  // reîmprospătarea a rulat în fundal (după ce răspunsul a fost deja trimis).
+  await setSetting("fx_last_error", error ?? "");
   return { ok: !error, error };
 }
 
