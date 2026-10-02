@@ -14,10 +14,18 @@ const PUBLIC_PATHS = ["/login", "/setup", "/api/auth/login", "/api/auth/setup", 
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next();
+  // Header-ul `x-user-id` spune bazei de date al cui sunt datele. Îl ștergem mereu din cererea
+  // venită de la client și îl punem doar noi, după validarea sesiunii — deci nu poate fi falsificat.
+  const headers = new Headers(req.headers);
+  headers.delete("x-user-id");
+
+  if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next({ request: { headers } });
 
   const user = await userForToken(req.cookies.get(SESSION_COOKIE)?.value);
-  if (user) return NextResponse.next();
+  if (user) {
+    headers.set("x-user-id", String(user.id));
+    return NextResponse.next({ request: { headers } });
+  }
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "Neautentificat." }, { status: 401 });

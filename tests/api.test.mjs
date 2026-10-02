@@ -118,10 +118,34 @@ test("categoriile nu se pot duplica (indiferent de majuscule/spații)", async ()
   assert.equal(r.json.id, cats[0].id);
 });
 
+test("conturile nu își văd datele unul altuia (doar dacă TEST_USER2/TEST_PASS2 sunt setate)", { skip: !process.env.TEST_USER2 }, async () => {
+  const res = await fetch(BASE + "/api/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ username: process.env.TEST_USER2, password: process.env.TEST_PASS2 }),
+  });
+  assert.equal(res.status, 200, "login user 2");
+  const cookie2 = res.headers.get("set-cookie").split(";")[0];
+  const as2 = (p, init = {}) => fetch(BASE + p, { ...init, headers: { "content-type": "application/json", cookie: cookie2 } }).then((r) => r.json());
+
+  const mine = await call("/api/crud/entries", {
+    method: "POST",
+    body: { month: "1999-02", kind: "variable", category_id: "", goal_id: "", investment_id: "", description: "[test] privat", amount: 1, currency: "RON", recurring: false },
+  });
+  const seenBy2 = await as2("/api/crud/entries?month=1999-02");
+  assert.ok(!seenBy2.some((e) => e.id === mine.json.id), "utilizatorul 2 nu vede intrarea utilizatorului 1");
+  // Nici nu o poate modifica sau șterge
+  await as2("/api/crud/entries", { method: "PUT", body: JSON.stringify({ id: mine.json.id, amount: 999 }) });
+  await as2(`/api/crud/entries?id=${mine.json.id}`, { method: "DELETE" });
+  const still = (await call("/api/crud/entries?month=1999-02")).json.find((e) => e.id === mine.json.id);
+  assert.equal(still?.amount, 1, "intrarea a rămas neatinsă");
+  await call(`/api/crud/entries?id=${mine.json.id}`, { method: "DELETE" });
+});
+
 test("backup-ul conține toate tabelele financiare", async () => {
   const r = await call("/api/backup");
   assert.equal(r.status, 200);
-  for (const t of ["settings", "categories", "entries", "loans", "goals", "loan_schedules", "planned_purchases"]) {
+  for (const t of ["user_settings", "categories", "entries", "loans", "goals", "loan_schedules", "planned_purchases"]) {
     assert.ok(Array.isArray(r.json.data[t]), t);
   }
 });

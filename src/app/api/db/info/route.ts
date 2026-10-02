@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 const TABLES = [
   "entries", "loans", "loan_prepayments", "loan_schedules", "categories", "goals",
-  "investments", "investment_values", "planned_purchases", "settings", "fx_rates", "inflation_rates",
+  "investments", "investment_values", "planned_purchases", "user_settings", "fx_rates", "inflation_rates",
 ];
 
 export async function GET() {

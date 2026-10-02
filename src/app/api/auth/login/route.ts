@@ -3,7 +3,7 @@ import {
   clearFailedLogins, clientIp, createSession, isLockedOut, isSetupComplete, LOCKOUT_MESSAGE,
   recordFailedLogin, sessionCookieOptions, verifyPassword,
 } from "@/lib/auth";
-import { getDb } from "@/lib/db";
+import { getSystemDb as getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSession, generateSalt, hashPassword, isSetupComplete, sessionCookieOptions } from "@/lib/auth";
-import { getDb } from "@/lib/db";
+import { getDbFor, getSystemDb } from "@/lib/db";
 import { seedDemoData } from "@/lib/seed";
 
 export const dynamic = "force-dynamic";
@@ -27,14 +27,16 @@ export async function POST(req: NextRequest) {
 
     const salt = generateSalt();
     const passwordHash = hashPassword(password, salt);
-    const info = await (await getDb())
+    const info = await (await getSystemDb())
       .prepare("INSERT INTO users (username, password_hash, salt, created_at) VALUES (?, ?, ?, ?)")
       .run(username, passwordHash, salt, new Date().toISOString());
     const userId = Number(info.lastInsertRowid);
 
+    // Categoriile și setările implicite ale noului cont se creează la prima folosire a bazei lui.
+    const userDb = await getDbFor(userId);
     if (seedDemo) {
       try {
-        await seedDemoData();
+        await seedDemoData(userDb);
       } catch (err) {
         console.error("Eroare la încărcarea datelor demo:", err);
       }

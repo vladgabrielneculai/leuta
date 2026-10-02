@@ -1,8 +1,8 @@
-import { getDb } from "./db";
+import { getDb, type DbInterface } from "./db";
 import { addMonths, currentMonth } from "./util";
 
-export async function clearAllFinancialData(): Promise<void> {
-  const db = await getDb();
+export async function clearAllFinancialData(dbArg?: DbInterface): Promise<void> {
+  const db = dbArg ?? (await getDb());
   await db.transaction(async (db) => {
     await db.exec(`
       DELETE FROM entries;
@@ -16,8 +16,8 @@ export async function clearAllFinancialData(): Promise<void> {
   });
 }
 
-export async function seedDemoData(): Promise<{ success: boolean; message: string }> {
-  const db = await getDb();
+export async function seedDemoData(dbArg?: DbInterface): Promise<{ success: boolean; message: string }> {
+  const db = dbArg ?? (await getDb());
   const now = currentMonth();
   const m0 = now;
   const m1 = addMonths(now, -1);
@@ -27,7 +27,7 @@ export async function seedDemoData(): Promise<{ success: boolean; message: strin
   const months = [m3, m2, m1, m0];
 
   // Verifica daca modulul de investitii este activat in setari
-  const settingRow = await db.prepare("SELECT value FROM settings WHERE key = 'enable_investments'").get<{ value?: string }>();
+  const settingRow = await db.prepare("SELECT value FROM user_settings WHERE key = 'enable_investments'").get<{ value?: string }>();
   const enableInvestments = settingRow?.value === "1";
 
   await db.transaction(async (db) => {

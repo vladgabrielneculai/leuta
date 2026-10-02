@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
-import { getDb } from "./db";
+import { getSystemDb as getDb } from "./db"; // utilizatori/sesiuni = tabele comune
 
 export const SESSION_COOKIE = "bp_session";
 

@@ -12,7 +12,7 @@ const ALLOWED_TABLES = [
   "goals",
   "investments",
   "investment_values",
-  "settings",
+  "user_settings",
   "fx_rates",
   "planned_purchases",
   "inflation_rates",

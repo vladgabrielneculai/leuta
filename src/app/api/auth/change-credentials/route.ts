@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateSalt, getCurrentUser, hashPassword, verifyPassword } from "@/lib/auth";
-import { getDb } from "@/lib/db";
+import { getSystemDb as getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 

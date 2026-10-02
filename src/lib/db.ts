@@ -1,4 +1,5 @@
 import { attachDatabasePool } from "@vercel/functions";
+import { headers } from "next/headers";
 import { Pool, type PoolClient } from "pg";
 
 /**
@@ -13,6 +14,12 @@ import { Pool, type PoolClient } from "pg";
  * lăsate deschise sunt tăiate între timp de pooler-ul Supabase, iar la trezire driverul folosea
  * un socket mort și cererea atârna zeci de secunde. `attachDatabasePool` (recomandarea Vercel)
  * ține instanța vie cât să închidă curat conexiunile inactive înainte de înghețare.
+ *
+ * Mai mulți utilizatori: fiecare rând financiar are `user_id`, iar Postgres (row-level security)
+ * arată fiecărei cereri doar rândurile utilizatorului logat. Pentru asta, fiecare interogare a
+ * unui utilizator rulează într-o tranzacție care setează întâi `app.user_id` (vezi
+ * supabase/migrations/0002_multi_user.sql). Id-ul vine din proxy.ts (header `x-user-id`, pus de
+ * server după validarea sesiunii — clientul nu îl poate falsifica).
  */
 
 export type RunResult = { lastInsertRowid: number; changes: number };
@@ -135,47 +142,69 @@ function normalize(params: unknown[]): unknown[] {
   return params.map((p) => (p === undefined ? null : typeof p === "boolean" ? (p ? 1 : 0) : p));
 }
 
-async function run(target: Queryable | null, q: string, params: unknown[]) {
+/**
+ * Rulează o interogare. Cu `userId`: într-o tranzacție scurtă cu `app.user_id` setat (RLS).
+ * Fără `userId` („sistem”): direct, iar tabelele utilizatorilor rămân invizibile.
+ */
+async function run(target: PoolClient | null, userId: number | null, q: string, params: unknown[]) {
   const text = toPg(q);
   const values = normalize(params);
-  if (target) return target.query(text, values); // în tranzacție: fără reîncercare (ar fi nesigur)
+  if (target) return target.query(text, values); // deja într-o tranzacție (fără reîncercare)
+
+  const once = async () => {
+    if (userId === null) return pool().query(text, values);
+    const client = await pool().connect();
+    try {
+      // BEGIN + set_config într-un singur round-trip (userId e un întreg validat, deci sigur de inclus).
+      await client.query(`BEGIN; SELECT set_config('app.user_id', '${userId}', true)`);
+      const res = await client.query(text, values);
+      await client.query("COMMIT");
+      return res;
+    } catch (e) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw e;
+    } finally {
+      client.release();
+    }
+  };
+
   try {
-    return await pool().query(text, values);
+    return await once();
   } catch (e) {
     if (!isConnectionError(e)) throw e;
     await resetPool();
-    return pool().query(text, values); // o singură reîncercare, pe o conexiune proaspătă
+    return once(); // o singură reîncercare, pe o conexiune proaspătă
   }
 }
 
-function wrap(target: PoolClient | null): DbInterface {
+function wrap(target: PoolClient | null, userId: number | null): DbInterface {
   return {
     prepare(q: string): Statement {
       const isInsert = /^\s*insert\s/i.test(q) && !/\breturning\b/i.test(q);
       return {
         async run(...params) {
           // La INSERT cerem rândul înapoi ca să putem expune id-ul, la fel ca lastInsertRowid din SQLite.
-          const res = await run(target, isInsert ? `${q} RETURNING *` : q, params);
+          const res = await run(target, userId, isInsert ? `${q} RETURNING *` : q, params);
           const first = res.rows[0] as { id?: number } | undefined;
           return { lastInsertRowid: Number(first?.id ?? 0), changes: res.rowCount ?? res.rows.length };
         },
         async all<T>(...params: unknown[]) {
-          return (await run(target, q, params)).rows as T[];
+          return (await run(target, userId, q, params)).rows as T[];
         },
         async get<T>(...params: unknown[]) {
-          return (await run(target, q, params)).rows[0] as T | undefined;
+          return (await run(target, userId, q, params)).rows[0] as T | undefined;
         },
       };
     },
     async exec(q: string) {
-      await run(target, q, []);
+      await run(target, userId, q, []);
     },
     async transaction<T>(fn: (tx: DbInterface) => Promise<T>): Promise<T> {
-      if (target) return fn(wrap(target)); // deja într-o tranzacție
+      if (target) return fn(wrap(target, userId)); // deja într-o tranzacție
       const client = await pool().connect();
       try {
-        await client.query("BEGIN");
-        const res = await fn(wrap(client));
+        await client.query(userId === null ? "BEGIN" : `BEGIN; SELECT set_config('app.user_id', '${userId}', true)`);
+        const res = await fn(wrap(client, userId));
         await client.query("COMMIT");
         return res;
       } catch (e) {
@@ -188,8 +217,43 @@ function wrap(target: PoolClient | null): DbInterface {
   };
 }
 
-/** Datele implicite (categorii + setări) — garantate o singură dată per instanță de server. */
-async function init(db: DbInterface) {
+/** Pornirea conexiunii (o dată per instanță), cu comutare automată aws-0/aws-1 dacă e nevoie. */
+async function ensureConnected() {
+  if (!global.__dbInit) {
+    global.__dbInit = pool().query("SELECT 1").then(() => undefined).catch(async (e) => {
+      const alt = activeUrl && /tenant or user not found/i.test(String(e?.message)) ? alternatePoolerUrl(activeUrl) : null;
+      if (alt) {
+        await resetPool();
+        activeUrl = alt;
+        try {
+          await pool().query("SELECT 1");
+          return;
+        } catch (e2) {
+          global.__dbInit = undefined;
+          throw e2;
+        }
+      }
+      global.__dbInit = undefined; // reîncearcă la următoarea cerere
+      throw e;
+    });
+  }
+  await global.__dbInit;
+}
+
+// ---------- Date implicite per utilizator ----------
+
+const DEFAULT_SETTINGS: Record<string, string> = {
+  emergency_months: "6",
+  expected_invest_return: "7",
+  invest_tax_pct: "10",
+  inflation_pct: "5",
+  custom_needs: "50",
+  custom_wants: "25",
+  custom_savings: "25",
+  enable_investments: "0",
+};
+
+async function ensureUserDefaults(userId: number) {
   const defaultsCats: [string, string, string, string][] = [
     ["Salariu", "income", "needs", "#3D7A4E"],
     ["Tichete de masă", "income", "needs", "#5E9A6C"],
@@ -222,71 +286,111 @@ async function init(db: DbInterface) {
     enable_investments: "0",
   };
 
-  // Un singur round-trip: categoriile lipsă (după nume normalizat) + setările lipsă.
-  const values = defaultsCats.map((_, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`).join(",");
-  // Cele două INSERT-uri rulează în paralel: la pornirea la rece a unei funcții contează fiecare round-trip.
-  const cats = pool().query(
-    `INSERT INTO categories (name, kind, bucket, color)
-     SELECT v.name, v.kind, v.bucket, v.color FROM (VALUES ${values}) AS v(name, kind, bucket, color)
-     WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE lower(trim(c.name)) = lower(trim(v.name)))
-     ON CONFLICT DO NOTHING`,
-    defaultsCats.flat(),
-  );
-  const keys = Object.keys(defaults);
-  const sets = pool().query(
-    `INSERT INTO settings (key, value) VALUES ${keys.map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`).join(",")}
-     ON CONFLICT (key) DO NOTHING`,
-    keys.flatMap((k) => [k, defaults[k]]),
-  );
-  await Promise.all([cats, sets]);
-  void db;
+  const db = wrap(null, userId);
+  const values = defaultsCats.map(() => "(?, ?, ?, ?)").join(",");
+  const keys = Object.keys(DEFAULT_SETTINGS);
+  await Promise.all([
+    // Categoriile implicite lipsă (după nume normalizat) — ca în versiunea originală.
+    db
+      .prepare(
+        `INSERT INTO categories (name, kind, bucket, color)
+         SELECT v.name, v.kind, v.bucket, v.color FROM (VALUES ${values}) AS v(name, kind, bucket, color)
+         WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE lower(trim(c.name)) = lower(trim(v.name)))
+         ON CONFLICT DO NOTHING`,
+      )
+      .run(...defaultsCats.flat()),
+    db
+      .prepare(`INSERT INTO user_settings (key, value) VALUES ${keys.map(() => "(?, ?)").join(",")} ON CONFLICT DO NOTHING`)
+      .run(...keys.flatMap((k) => [k, DEFAULT_SETTINGS[k]])),
+  ]);
 }
 
-/** Returnează conexiunea; la prima utilizare pe instanță asigură datele implicite. */
-export async function getDb(): Promise<DbInterface> {
-  if (!global.__dbInit) {
-    global.__dbInit = init(wrap(null)).catch(async (e) => {
-      const alt = activeUrl && /tenant or user not found/i.test(String(e?.message)) ? alternatePoolerUrl(activeUrl) : null;
-      if (alt) {
-        await resetPool();
-        activeUrl = alt;
-        try {
-          await init(wrap(null));
-          return;
-        } catch (e2) {
-          global.__dbInit = undefined;
-          throw e2;
-        }
-      }
-      global.__dbInit = undefined; // reîncearcă la următoarea cerere
-      throw e;
-    });
+declare global {
+  // eslint-disable-next-line no-var
+  var __userDefaults: Map<number, Promise<void>> | undefined;
+}
+
+// ---------- Puncte de intrare ----------
+
+/** Id-ul utilizatorului cererii curente (pus de proxy.ts după validarea sesiunii), sau null. */
+export async function currentUserId(): Promise<number | null> {
+  try {
+    const raw = (await headers()).get("x-user-id");
+    const id = raw ? Number(raw) : NaN;
+    return Number.isInteger(id) && id > 0 ? id : null;
+  } catch {
+    return null; // în afara unei cereri
   }
-  await global.__dbInit;
-  return wrap(null);
 }
 
+/** Baza de date pentru un utilizator anume (datele implicite sunt garantate la prima folosire). */
+export async function getDbFor(userId: number): Promise<DbInterface> {
+  if (!Number.isInteger(userId) || userId <= 0) throw new Error("Utilizator invalid");
+  await ensureConnected();
+  const cache = (global.__userDefaults ??= new Map());
+  if (!cache.has(userId)) {
+    cache.set(userId, ensureUserDefaults(userId).catch((e) => { cache.delete(userId); throw e; }));
+  }
+  await cache.get(userId);
+  return wrap(null, userId);
+}
+
+/** Acces „sistem”: doar tabelele comune (utilizatori, sesiuni, curs, inflație, setări de sistem). */
+export async function getSystemDb(): Promise<DbInterface> {
+  await ensureConnected();
+  return wrap(null, null);
+}
+
+/**
+ * Baza de date pentru cererea curentă: a utilizatorului logat dacă există, altfel acces „sistem”.
+ * Codul paginilor/rutelor rămâne neschimbat — izolarea o face Postgres.
+ */
+export async function getDb(): Promise<DbInterface> {
+  const uid = await currentUserId();
+  return uid ? getDbFor(uid) : getSystemDb();
+}
+
+// ---------- Setări ----------
+
+/** Chei de sistem (comune tuturor): evidența descărcărilor BNR/Eurostat. Restul sunt preferințe personale. */
+export function isSystemSetting(key: string) {
+  return /^(fx_|inflation_last_|inflation_source$)/.test(key);
+}
+
+/** Setările de sistem + preferințele utilizatorului curent, într-un singur obiect (ca înainte). */
 export async function getSettings(): Promise<Record<string, string>> {
-  const rows = await (await getDb()).prepare("SELECT key, value FROM settings").all<{ key: string; value: string }>();
-  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  const [sys, own] = await Promise.all([
+    (await getSystemDb()).prepare("SELECT key, value FROM settings").all<{ key: string; value: string }>(),
+    (await currentUserId())
+      ? (await getDb()).prepare("SELECT key, value FROM user_settings").all<{ key: string; value: string }>()
+      : Promise.resolve([] as { key: string; value: string }[]),
+  ]);
+  return { ...DEFAULT_SETTINGS, ...Object.fromEntries([...sys, ...own].map((r) => [r.key, r.value])) };
 }
 
+/** Scrie o setare: cheile de sistem în `settings`, preferințele în `user_settings` (utilizatorul curent). */
 export async function setSetting(key: string, value: string) {
+  if (isSystemSetting(key)) {
+    await (await getSystemDb())
+      .prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value")
+      .run(key, value);
+    return;
+  }
+  if (!(await currentUserId())) return; // preferință personală fără utilizator: nimic de scris
   await (await getDb())
-    .prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value")
+    .prepare("INSERT INTO user_settings (key, value) VALUES (?, ?) ON CONFLICT (user_id, key) DO UPDATE SET value = EXCLUDED.value")
     .run(key, value);
 }
 
 export async function getSetting(key: string): Promise<string | undefined> {
-  const row = await (await getDb()).prepare("SELECT value FROM settings WHERE key = ?").get<{ value: string }>(key);
-  return row?.value;
+  if (isSystemSetting(key)) {
+    const row = await (await getSystemDb()).prepare("SELECT value FROM settings WHERE key = ?").get<{ value: string }>(key);
+    return row?.value;
+  }
+  if (!(await currentUserId())) return DEFAULT_SETTINGS[key];
+  const row = await (await getDb()).prepare("SELECT value FROM user_settings WHERE key = ?").get<{ value: string }>(key);
+  return row?.value ?? DEFAULT_SETTINGS[key];
 }
-
-/** Tabelele care au coloană `id` generată automat (pentru resetarea secvențelor după restaurare). */
-export const IDENTITY_TABLES = [
-  "categories", "goals", "investments", "entries", "loans",
-  "loan_prepayments", "loan_schedules", "planned_purchases",
-];
 
 export function num(v: string | undefined, fallback: number) {
   const n = Number(v);
