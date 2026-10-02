@@ -109,7 +109,10 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ table: 
     await db
       .prepare(`UPDATE ${table} SET ${keys.map((k) => `${k} = ?`).join(", ")} WHERE id = ?`)
       .run(...keys.map((k) => data[k]), body.id);
-    return NextResponse.json(await db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(body.id));
+    const row = await db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(body.id);
+    // Rând inexistent sau al altui cont (Postgres nu îl arată): răspuns clar, nu eroare internă.
+    if (!row) return NextResponse.json({ error: "Înregistrarea nu există." }, { status: 404 });
+    return NextResponse.json(row);
   } catch (e) {
     return fail(e);
   }
@@ -122,7 +125,8 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ tabl
     cfg(table);
     const id = req.nextUrl.searchParams.get("id");
     if (!id) throw new Error("Lipsește id-ul");
-    await (await getDb()).prepare(`DELETE FROM ${table} WHERE id = ?`).run(Number(id));
+    const res = await (await getDb()).prepare(`DELETE FROM ${table} WHERE id = ?`).run(Number(id));
+    if (!res.changes) return NextResponse.json({ error: "Înregistrarea nu există." }, { status: 404 });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return fail(e);

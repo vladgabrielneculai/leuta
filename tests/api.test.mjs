@@ -135,8 +135,10 @@ test("conturile nu își văd datele unul altuia (doar dacă TEST_USER2/TEST_PAS
   const seenBy2 = await as2("/api/crud/entries?month=1999-02");
   assert.ok(!seenBy2.some((e) => e.id === mine.json.id), "utilizatorul 2 nu vede intrarea utilizatorului 1");
   // Nici nu o poate modifica sau șterge
-  await as2("/api/crud/entries", { method: "PUT", body: JSON.stringify({ id: mine.json.id, amount: 999 }) });
-  await as2(`/api/crud/entries?id=${mine.json.id}`, { method: "DELETE" });
+  const put2 = await fetch(BASE + "/api/crud/entries", { method: "PUT", headers: { "content-type": "application/json", cookie: cookie2 }, body: JSON.stringify({ id: mine.json.id, amount: 999 }) });
+  assert.equal(put2.status, 404, "modificarea datelor altui cont = 404");
+  const del2 = await fetch(BASE + `/api/crud/entries?id=${mine.json.id}`, { method: "DELETE", headers: { cookie: cookie2 } });
+  assert.equal(del2.status, 404, "ștergerea datelor altui cont = 404");
   const still = (await call("/api/crud/entries?month=1999-02")).json.find((e) => e.id === mine.json.id);
   assert.equal(still?.amount, 1, "intrarea a rămas neatinsă");
   await call(`/api/crud/entries?id=${mine.json.id}`, { method: "DELETE" });
