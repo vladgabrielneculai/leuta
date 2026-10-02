@@ -1,0 +1,75 @@
+// Utilitare folosite atât pe server cât și în browser.
+
+export type Currency = "RON" | "EUR";
+export type Kind = "income" | "fixed" | "variable" | "saving";
+export type Bucket = "needs" | "wants" | "savings";
+export type Strategy = "term" | "installment";
+export type ScheduleType = "annuity" | "declining";
+
+export const KIND_LABEL: Record<Kind, string> = {
+  income: "Venituri",
+  fixed: "Costuri fixe",
+  variable: "Cheltuieli variabile",
+  saving: "Economii și investiții",
+};
+
+export const BUCKET_LABEL: Record<Bucket, string> = {
+  needs: "Nevoi",
+  wants: "Dorințe",
+  savings: "Economii",
+};
+
+const MONTHS_RO = [
+  "ianuarie", "februarie", "martie", "aprilie", "mai", "iunie",
+  "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie",
+];
+const MONTHS_SHORT = ["ian", "feb", "mar", "apr", "mai", "iun", "iul", "aug", "sep", "oct", "nov", "dec"];
+
+export function currentMonth(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function addMonths(month: string, n: number): string {
+  const [y, m] = month.split("-").map(Number);
+  const total = y * 12 + (m - 1) + n;
+  const ny = Math.floor(total / 12);
+  const nm = total - ny * 12 + 1;
+  return `${ny}-${String(nm).padStart(2, "0")}`;
+}
+
+export function monthDiff(from: string, to: string): number {
+  const [y1, m1] = from.split("-").map(Number);
+  const [y2, m2] = to.split("-").map(Number);
+  return (y2 - y1) * 12 + (m2 - m1);
+}
+
+export function monthLabel(month: string, short = false): string {
+  const [y, m] = month.split("-").map(Number);
+  if (short) return `${MONTHS_SHORT[m - 1]} ${String(y).slice(2)}`;
+  return `${MONTHS_RO[m - 1]} ${y}`;
+}
+
+export function lastMonths(end: string, count: number): string[] {
+  return Array.from({ length: count }, (_, i) => addMonths(end, i - count + 1));
+}
+
+const ronFmt = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 });
+const ronFmt2 = new Intl.NumberFormat("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export function lei(n: number, decimals = false): string {
+  return `${(decimals ? ronFmt2 : ronFmt).format(Math.round(n * 100) / 100)} lei`;
+}
+
+export function eur(n: number): string {
+  return `${ronFmt.format(Math.round(n))} €`;
+}
+
+export function pct(n: number, digits = 1): string {
+  if (!Number.isFinite(n)) return "–";
+  return `${n.toLocaleString("ro-RO", { maximumFractionDigits: digits, minimumFractionDigits: 0 })}%`;
+}
+
+export function clamp(n: number, lo: number, hi: number) {
+  return Math.min(hi, Math.max(lo, n));
+}
