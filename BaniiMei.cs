@@ -20,7 +20,7 @@ namespace BaniiMei
 {
     static class Program
     {
-        public const string DefaultUrl = "https://buget-personal.vercel.app";
+        public const string DefaultUrl = "https://buget-personal-beta.vercel.app";
         public const string WindowTitle = "Banii mei - Aplicație financiară";
 
         private static Mutex singleInstanceMutex = null;

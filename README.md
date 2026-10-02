@@ -6,7 +6,7 @@ Aplicație personală de buget: venituri, costuri fixe, cheltuieli variabile, ec
 
 | Componentă | Unde |
 |---|---|
-| Aplicația (Next.js 16) | Vercel, regiunea `fra1` (Frankfurt) |
+| Aplicația (Next.js 16) | https://buget-personal-beta.vercel.app — Vercel, regiunea `fra1` (Frankfurt) |
 | Baza de date (Postgres) | Supabase, proiectul `buget-personal` (`eu-central-1`) |
 | Codul | GitHub `vladgabrielneculai/buget-personal` — orice push pe `main` se publică automat |
 
@@ -54,7 +54,7 @@ Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiec
 Teste end-to-end ale API-ului (autentificare, protecția rutelor, CRUD, copiere lună, categorii, backup):
 
 ```bash
-BASE_URL=https://<adresa-aplicatiei> TEST_USER=<utilizator> TEST_PASS=<parola> npm test
+BASE_URL=https://buget-personal-beta.vercel.app TEST_USER=<utilizator> TEST_PASS=<parola> npm test
 ```
 
 Testele își creează propriile date (luna `1999-01`) și le șterg la final.
