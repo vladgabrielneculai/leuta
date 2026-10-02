@@ -1,4 +1,13 @@
 node_modules
 .next
-data/*.db*
-data/webview-profile
+.vercel
+.env*
+!.env.example
+*.tsbuildinfo
+
+# Desktop launcher build outputs (built locally with build-exe.ps1)
+*.exe
+*.dll
+native-libs/
+data/
+scratch/
