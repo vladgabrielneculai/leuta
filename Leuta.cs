@@ -21,7 +21,7 @@ namespace Leuta
 {
     static class Program
     {
-        public const string DefaultUrl = "https://buget-personal-beta.vercel.app";
+        public const string DefaultUrl = "https://leuta.vercel.app";
         public const string WindowTitle = "Leuța - Bugetul tău, ban cu ban";
 
         private static Mutex singleInstanceMutex = null;
