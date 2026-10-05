@@ -242,7 +242,9 @@ export default function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen overflow-x-clip lg:grid lg:grid-cols-[256px_1fr]">
-      <aside className="hidden lg:flex lg:flex-col lg:gap-6 lg:sticky lg:top-0 lg:h-screen border-r border-line bg-canvas/60 px-4 py-6">
+      {/* Meniul lateral are înălțimea ecranului; pe ecrane joase (sau cu zoom) se derulează separat de pagină,
+          ca indicatorii de jos (cursul EUR, inflația) să rămână accesibili. */}
+      <aside className="hidden lg:flex lg:flex-col lg:gap-6 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:overscroll-contain border-r border-line bg-canvas/60 px-4 py-6">
         <div className="flex items-start justify-between gap-2 px-1.5">
           <Link href="/" className="group flex items-center gap-2.5">
             <Logo className="h-10 w-10 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105" />
