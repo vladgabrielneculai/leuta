@@ -1,16 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import IntroSplash from "@/components/IntroSplash";
 import Logo from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { api, Field } from "@/components/ui";
 import { loginWithPasskey, passkeyErrorMessage, passkeysSupported } from "@/lib/passkeyClient";
 
+/** Animația de început rămâne montată cât timp se verifică sesiunea și după, ca să nu se reia de la capăt. */
+export default function LoginPage() {
+  return (
+    <>
+      <IntroSplash />
+      <LoginScreen />
+    </>
+  );
+}
+
 /**
  * Login: passkey (amprentă / Face ID / Windows Hello) e calea principală. Parola merge singură doar cât
  * contul n-are încă passkey; după aceea, parola + un cod de recuperare e varianta de urgență.
  */
-export default function LoginPage() {
+function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
