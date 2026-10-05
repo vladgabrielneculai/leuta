@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { errorResponse } from "@/lib/http";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
     const rows = await db.prepare(`SELECT * FROM "${table}" ${hasId ? "ORDER BY id" : ""} LIMIT 200`).all();
     return NextResponse.json({ table, columns, rows });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Eroare la citire tabel." }, { status: 500 });
+    return errorResponse(err, "Eroare la citire tabel.");
   }
 }
 
@@ -52,7 +53,7 @@ export async function DELETE(req: NextRequest) {
     await db.prepare(`DELETE FROM "${table}" WHERE id = ?`).run(Number(id));
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Eroare la ștergere rând." }, { status: 500 });
+    return errorResponse(err, "Eroare la ștergere rând.");
   }
 }
 

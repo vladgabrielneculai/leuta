@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { errorResponse } from "@/lib/http";
 import { getDb, type DbInterface } from "@/lib/db";
 import { TABLES } from "@/lib/crud";
 
@@ -130,7 +131,7 @@ export async function POST(req: NextRequest) {
     if (missing) return NextResponse.json({ error: "Creditul nu există." }, { status: 404 });
     return NextResponse.json({ ok: true, loanId, count: entries.length });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Eroare la salvare" }, { status: 500 });
+    return errorResponse(err, "Eroare la salvare");
   }
 }
 

@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { currentMonth, eur, lei } from "@/lib/util";
+import ReauthDialog from "./ReauthDialog";
 
 // ---------- Context aplicație: luna selectată și cursul EUR ----------
 
@@ -139,6 +140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      <ReauthDialog />
       {confirmState && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink/55 backdrop-blur-md animate-backdrop-fade"
@@ -265,15 +267,50 @@ export function useApi<T>(url: string | null, deps: unknown[] = []) {
   return { data, error, loading, reload: load, setData };
 }
 
+// ---------- Reconfirmarea identității ----------
+// Acțiunile sensibile (ștergeri, export, restaurare, parolă, passkey-uri) răspund 403 + `reauth: true`
+// dacă identitatea n-a fost confirmată în ultimele minute. Atunci cerem passkey-ul / parola și repetăm cererea.
+
+let reauthHandler: (() => Promise<boolean>) | null = null;
+export function setReauthHandler(h: (() => Promise<boolean>) | null) {
+  reauthHandler = h;
+}
+
+async function fetchWithReauth(doFetch: () => Promise<Response>): Promise<Response> {
+  const r = await doFetch();
+  if (r.status !== 403 || !reauthHandler) return r;
+  const j = await r.clone().json().catch(() => null);
+  if (!j?.reauth) return r;
+  return (await reauthHandler()) ? doFetch() : r;
+}
+
 export async function api<T = unknown>(url: string, method: string = "GET", body?: unknown): Promise<T> {
-  const r = await fetch(url, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const r = await fetchWithReauth(() =>
+    fetch(url, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+  );
   const j = await r.json();
   if (!r.ok) throw new Error(j.error ?? "Operația nu a reușit");
   return j as T;
+}
+
+/** Descarcă un fișier de la API (ex. backup-ul), cu reconfirmare dacă e nevoie. */
+export async function downloadFile(url: string, fallbackName: string) {
+  const r = await fetchWithReauth(() => fetch(url, { cache: "no-store" }));
+  if (!r.ok) {
+    const j = await r.json().catch(() => ({}));
+    throw new Error(j.error ?? "Descărcarea nu a reușit");
+  }
+  const name = /filename="([^"]+)"/.exec(r.headers.get("content-disposition") ?? "")?.[1] ?? fallbackName;
+  const href = URL.createObjectURL(await r.blob());
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(href);
 }
 
 // ---------- Afișare sume ----------

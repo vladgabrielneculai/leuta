@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, isSetupComplete } from "@/lib/auth";
+import { getCurrentSession, isSetupComplete, passkeyCount } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   let setupComplete: boolean;
-  let user: Awaited<ReturnType<typeof getCurrentUser>>;
+  let session: Awaited<ReturnType<typeof getCurrentSession>>;
   try {
-    [setupComplete, user] = await Promise.all([isSetupComplete(), getCurrentUser()]);
+    [setupComplete, session] = await Promise.all([isSetupComplete(), getCurrentSession()]);
   } catch {
     return NextResponse.json({ error: "Baza de date nu răspunde. Încearcă din nou." }, { status: 503 });
   }
   return NextResponse.json({
     setupNeeded: !setupComplete,
-    authenticated: !!user,
-    user: user ? { id: user.id, username: user.username } : null,
+    authenticated: !!session,
+    user: session ? { id: session.id, username: session.username } : null,
+    hasPasskey: session ? (await passkeyCount(session.id).catch(() => 1)) > 0 : undefined,
   });
 }

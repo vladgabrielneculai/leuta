@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, Field, Modal, Panel, useConfirm } from "./ui";
+import { api, downloadFile, Field, Modal, Panel, useConfirm } from "./ui";
 
 type DbInfo = {
   path: string;
@@ -130,7 +130,14 @@ export default function DatabaseManager({ onToast, onRefresh }: { onToast: (msg:
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
-            <a className="btn-ghost text-[13px] py-1" href="/api/backup" download>
+            <a
+              className="btn-ghost text-[13px] py-1"
+              href="/api/backup"
+              onClick={(e) => {
+                e.preventDefault();
+                downloadFile("/api/backup", "buget-backup.json").catch((err) => onToast(err.message));
+              }}
+            >
               Exportă JSON
             </a>
           </div>
