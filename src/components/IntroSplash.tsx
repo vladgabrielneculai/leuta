@@ -3,41 +3,34 @@
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
 
-const SEEN_KEY = "leuta_intro_seen";
 const BANDS = ["var(--c-leu)", "var(--c-mov)", "var(--c-rosu)", "var(--c-galben)", "var(--c-albastru)"];
 const WORD = "Leuța";
 // Momentul în care animația începe să se estompeze, apoi dispare cu totul (ms).
 const EXIT_AT = 2300;
 const GONE_AT = 2850;
 
-// Decizia „rulează sau nu” se ia o singură dată la încărcarea paginii (nu la fiecare montare: în
-// dezvoltare React rulează efectele de două ori, iar a doua oară animația ar părea deja văzută).
-// null = nedecis, -1 = nu rulează, altfel = momentul pornirii.
+// Animația rulează la fiecare încărcare (sau reîmprospătare) a paginii. Momentul pornirii se reține
+// la nivel de modul, deci o singură dată per încărcare: în dezvoltare React montează componentele de
+// două ori, iar fără asta animația ar porni de la capăt a doua oară.
+// null = nedecis, -1 = nu rulează (mișcare redusă), altfel = momentul pornirii.
 let startedAt: number | null = null;
 
 function decide(): number {
   if (startedAt !== null) return startedAt;
-  let seen = false;
-  try {
-    seen = sessionStorage.getItem(SEEN_KEY) === "1";
-    sessionStorage.setItem(SEEN_KEY, "1");
-  } catch {
-    // stocare indisponibilă (mod privat strict): animația rulează, nu e nimic de reținut
-  }
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  startedAt = seen || reduced ? -1 : performance.now();
+  startedAt = reduced ? -1 : performance.now();
   return startedAt;
 }
 
 /**
  * Animația de început de pe ecranul de autentificare: moneda-siglă cade rotindu-se, primește
  * luciul de monedă, benzile în culorile bancnotelor (1, 5, 10, 50, 100 lei) se umplu pe rând,
- * apoi apare numele. Se vede o dată pe sesiune, se poate sări cu o atingere și nu rulează
- * deloc dacă sistemul cere mișcare redusă.
+ * apoi apare numele. Se vede la fiecare încărcare a paginii, se poate sări cu o atingere și nu
+ * rulează deloc dacă sistemul cere mișcare redusă.
  */
 export default function IntroSplash() {
-  // Pornește vizibilă (randarea de pe server nu știe dacă a mai fost văzută), ca formularul
-  // să nu apară o clipă înaintea ei; efectul de mai jos o ascunde imediat dacă nu e cazul.
+  // Pornește vizibilă, ca formularul să nu apară o clipă înaintea ei; efectul de mai jos o ascunde
+  // imediat dacă sistemul cere mișcare redusă.
   const [phase, setPhase] = useState<"play" | "exit" | "gone">("play");
 
   useEffect(() => {
