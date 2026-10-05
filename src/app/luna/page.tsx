@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Summary } from "@/lib/analytics";
 import { addMonths, eur, KIND_LABEL, lei, monthLabel, type Currency, type Kind } from "@/lib/util";
-import { api, Money, PageHeader, Panel, Toast, useApi, useApp } from "@/components/ui";
+import { api, Money, PageHeader, Panel, PencilIcon, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
 
 type Category = { id: number; name: string; kind: Kind; bucket: string; color: string };
 type Goal = { id: number; name: string; type: string };
@@ -57,8 +57,10 @@ function EntryForm({
   onCancel?: () => void;
 }) {
   return (
+    // Telefon: categoria și descrierea pe câte un rând întreg, apoi suma + moneda, apoi „Lunar” + butoanele.
+    // Ecran mare: totul pe un singur rând.
     <form
-      className="grid grid-cols-2 gap-2 sm:grid-cols-[1.3fr_1.5fr_1fr_80px_auto_auto]"
+      className="grid grid-cols-[1fr_92px] gap-2 sm:grid-cols-[1.3fr_1.5fr_1fr_80px_auto_auto] [&>*:nth-child(-n+2)]:col-span-2 sm:[&>*:nth-child(-n+2)]:col-span-1"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit();
@@ -117,13 +119,15 @@ function EntryForm({
         <option>RON</option>
         <option>EUR</option>
       </select>
-      <label className="flex items-center gap-1.5 text-[13px] text-ink-soft" title="Se copiază în luna următoare">
-        <input type="checkbox" checked={draft.recurring} onChange={(e) => setDraft({ ...draft, recurring: e.target.checked })} />
-        Lunar
-      </label>
-      <div className="flex gap-1">
-        <button type="submit" className="btn-primary">{submitLabel}</button>
-        {onCancel && <button type="button" className="btn-ghost" onClick={onCancel}>Renunță</button>}
+      <div className="col-span-2 flex items-center justify-between gap-2 sm:contents">
+        <label className="flex min-h-[40px] items-center gap-2 text-[14px] text-ink-soft sm:min-h-0 sm:gap-1.5 sm:text-[13px]" title="Se copiază în luna următoare">
+          <input type="checkbox" className="h-[18px] w-[18px] sm:h-auto sm:w-auto" checked={draft.recurring} onChange={(e) => setDraft({ ...draft, recurring: e.target.checked })} />
+          Lunar
+        </label>
+        <div className="flex justify-end gap-1">
+          {onCancel && <button type="button" className="btn-ghost" onClick={onCancel}>Renunță</button>}
+          <button type="submit" className="btn-primary min-w-[96px]">{submitLabel}</button>
+        </div>
       </div>
     </form>
   );
@@ -218,22 +222,25 @@ function KindSection({
                   onSubmit={save} submitLabel="Salvează" onCancel={() => setEditId(null)} />
               </li>
             ) : (
-              <li key={e.id} className="group flex items-center gap-3 py-2">
+              <li key={e.id} className="group flex items-center gap-2.5 py-2 sm:gap-3">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate">
+                  <div className="line-clamp-2 leading-snug sm:line-clamp-none sm:truncate">
                     {kind === "saving" ? nameOfDest(e) : catMap.get(e.category_id ?? 0)?.name ?? "Fără categorie"}
-                    {e.recurring ? <span className="ml-2 rounded bg-albastru-tint px-1.5 text-[11px] text-albastru">lunar</span> : null}
+                    {e.recurring ? <span className="ml-2 whitespace-nowrap rounded bg-albastru-tint px-1.5 text-[11px] text-albastru">lunar</span> : null}
                   </div>
                   {e.description && <div className="truncate text-[13px] text-ink-soft">{e.description}</div>}
                 </div>
-                <span className="num text-right">
+                <span className="num shrink-0 whitespace-nowrap text-right">
                   {e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
                   {e.currency === "EUR" && <span className="block text-[12px] text-ink-faint">{lei(e.amount * rate)}</span>}
                 </span>
-                <div className="flex opacity-60 group-hover:opacity-100 focus-within:opacity-100">
+                {/* Pe telefon: iconițe (încap lângă sumă, ușor de atins); pe ecran mare: text, vizibil la hover. */}
+                <div className="flex shrink-0 sm:opacity-60 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
                   <button
-                    className="btn-ghost px-2"
+                    className="btn-ghost h-10 w-10 px-0 sm:h-auto sm:w-auto sm:px-2"
+                    aria-label="Editează"
+                    title="Editează"
                     onClick={() => {
                       setEditId(e.id);
                       setEdit({
@@ -246,9 +253,13 @@ function KindSection({
                       });
                     }}
                   >
-                    Editează
+                    <PencilIcon className="h-[18px] w-[18px] sm:hidden" />
+                    <span className="hidden sm:inline">Editează</span>
                   </button>
-                  <button className="btn-danger px-2" onClick={() => remove(e)}>Șterge</button>
+                  <button className="btn-danger h-10 w-10 px-0 sm:h-auto sm:w-auto sm:px-2" onClick={() => remove(e)} aria-label="Șterge" title="Șterge">
+                    <TrashIcon className="h-[18px] w-[18px] sm:hidden" />
+                    <span className="hidden sm:inline">Șterge</span>
+                  </button>
                 </div>
               </li>
             ),
@@ -377,15 +388,15 @@ export default function MonthPage() {
           {/* Widget Card Tichete de Masă & Buget Alimente */}
           <Panel title="Card Tichete de Masă & Alimente">
             <div className="flex flex-col gap-2.5 text-[13px]">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-3">
                 <span className="text-ink-soft">Tichete încărcate luna asta:</span>
                 <span className="num font-semibold text-leu">{lei(mealTicketTotal)}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-3">
                 <span className="text-ink-soft">Cheltuieli totale alimente:</span>
                 <span className="num font-semibold text-ink">{lei(foodTotal)}</span>
               </div>
-              <div className="border-t border-line pt-2 flex justify-between items-center">
+              <div className="border-t border-line pt-2 flex justify-between items-center gap-3">
                 <span className="text-ink-soft">Din salariu / bani proprii:</span>
                 <span className="num font-semibold text-mov">{lei(outOfPocketFood)}</span>
               </div>

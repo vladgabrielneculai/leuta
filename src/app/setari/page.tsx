@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BUCKET_LABEL, KIND_LABEL, type Bucket, type Kind } from "@/lib/util";
-import { api, downloadFile, Field, PageHeader, Panel, Toast, useApi, useApp } from "@/components/ui";
+import { api, downloadFile, Field, PageHeader, Panel, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
 import AccountSecurity from "@/components/AccountSecurity";
 import SecurityCenter from "@/components/SecurityCenter";
 import NotificationSettings from "@/components/NotificationSettings";
@@ -35,17 +35,19 @@ function CategoryRow({
   const [d, setD] = useState(c);
   const dirty = d.name !== c.name || d.bucket !== c.bucket || d.color !== c.color;
   return (
-    <li className="flex flex-wrap items-center gap-2 py-2">
-      <input type="color" value={d.color} onChange={(e) => setD({ ...d, color: e.target.value })} className="h-8 w-8 cursor-pointer rounded border border-line bg-field p-0.5" aria-label="Culoare" />
-      <input className="field min-w-[160px] flex-1" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} aria-label="Nume categorie" />
+    // Telefon: culoare | nume | ștergere pe primul rând, apoi „Nevoi/Dorințe” și „Salvează” (doar după o modificare).
+    // Ecran mare: totul pe un rând.
+    <li className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-2 py-2 sm:flex sm:flex-wrap">
+      <input type="color" value={d.color} onChange={(e) => setD({ ...d, color: e.target.value })} className="h-10 w-10 cursor-pointer rounded-lg border border-line bg-field p-1 sm:h-8 sm:w-8 sm:rounded sm:p-0.5" aria-label="Culoare" />
+      <input className="field sm:min-w-[160px] sm:flex-1" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} aria-label="Nume categorie" />
       {c.kind !== "income" && c.kind !== "saving" && (
-        <select className="field w-auto" value={d.bucket} onChange={(e) => setD({ ...d, bucket: e.target.value as Bucket })} aria-label="Tip pentru buget">
+        <select className="field order-1 col-start-2 sm:order-none sm:w-auto" value={d.bucket} onChange={(e) => setD({ ...d, bucket: e.target.value as Bucket })} aria-label="Tip pentru buget">
           <option value="needs">{BUCKET_LABEL.needs}</option>
           <option value="wants">{BUCKET_LABEL.wants}</option>
         </select>
       )}
       <button
-        className="btn-primary"
+        className={`btn-primary order-1 col-start-3 sm:order-none ${dirty ? "" : "hidden sm:inline-flex"}`}
         disabled={!dirty}
         onClick={async () => {
           const trimmed = d.name.trim();
@@ -70,7 +72,10 @@ function CategoryRow({
       >
         Salvează
       </button>
-      <button className="btn-danger" onClick={onDelete}>Șterge</button>
+      <button className="btn-danger h-10 w-10 px-0 sm:h-auto sm:w-auto sm:px-3.5" onClick={onDelete} aria-label="Șterge" title="Șterge">
+        <TrashIcon className="h-[18px] w-[18px] sm:hidden" />
+        <span className="hidden sm:inline">Șterge</span>
+      </button>
     </li>
   );
 }
@@ -200,22 +205,22 @@ export default function SettingsPage() {
               </div>
             ))}
 
-          <form className="mt-2 flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); addCat(); }}>
-            <div className="min-w-[160px] flex-1">
+          <form className="mt-2 grid grid-cols-2 items-end gap-2 sm:flex sm:flex-wrap" onSubmit={(e) => { e.preventDefault(); addCat(); }}>
+            <div className="col-span-2 min-w-[160px] flex-1">
               <Field label="Categorie nouă">
                 <input className="field" value={newCat.name} onChange={(e) => setNewCat({ ...newCat, name: e.target.value })} placeholder="ex. Animale de companie" />
               </Field>
             </div>
-            <select className="field w-auto" value={newCat.kind} onChange={(e) => setNewCat({ ...newCat, kind: e.target.value as Kind })} aria-label="Tip">
+            <select className={`field sm:w-auto ${newCat.kind === "fixed" || newCat.kind === "variable" ? "" : "col-span-2"}`} value={newCat.kind} onChange={(e) => setNewCat({ ...newCat, kind: e.target.value as Kind })} aria-label="Tip">
               {kinds.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
             </select>
             {(newCat.kind === "fixed" || newCat.kind === "variable") && (
-              <select className="field w-auto" value={newCat.bucket} onChange={(e) => setNewCat({ ...newCat, bucket: e.target.value as Bucket })} aria-label="Nevoie sau dorință">
+              <select className="field sm:w-auto" value={newCat.bucket} onChange={(e) => setNewCat({ ...newCat, bucket: e.target.value as Bucket })} aria-label="Nevoie sau dorință">
                 <option value="needs">Nevoi</option>
                 <option value="wants">Dorințe</option>
               </select>
             )}
-            <button className="btn-primary" type="submit">Adaugă categoria</button>
+            <button className="btn-primary col-span-2" type="submit">Adaugă categoria</button>
           </form>
         </Panel>
 

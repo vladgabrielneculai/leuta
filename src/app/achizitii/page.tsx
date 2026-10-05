@@ -435,7 +435,7 @@ export default function AffordabilityPage() {
           >
             {/* Banner verdict mare */}
             <div
-              className={`rounded-xl p-5 mb-4 ${
+              className={`rounded-xl p-4 sm:p-5 mb-4 ${
                 overallVerdict === "safe"
                   ? "bg-leu-tint text-leu"
                   : overallVerdict === "caution"
@@ -443,11 +443,11 @@ export default function AffordabilityPage() {
                   : "bg-rosu-tint text-rosu"
               }`}
             >
-              <div className="flex items-center justify-between gap-3 mb-1">
-                <h3 className="font-display text-[20px] font-bold">
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                <h3 className="font-display text-[18px] font-bold sm:text-[20px]">
                   {financingType === "cash" ? cash.title : loan.title}
                 </h3>
-                <span className="num text-[18px] font-bold px-2.5 py-0.5 rounded-full bg-field/80 dark:bg-black/30">
+                <span className="num whitespace-nowrap text-[15px] font-bold px-2.5 py-0.5 rounded-full bg-field/80 dark:bg-black/30 sm:text-[18px]">
                   Scor: {overallScore}/100
                 </span>
               </div>
@@ -529,7 +529,7 @@ export default function AffordabilityPage() {
       <Panel title="Cum impactează această achiziție venitul și bugetul tău" className="mb-6">
         <div className="grid gap-6 md:grid-cols-2">
           {/* Card: Impactul pe Regula 50/30/20 & Venit */}
-          <div className="rounded-xl border border-line bg-paper p-5">
+          <div className="rounded-xl border border-line bg-paper p-3.5 sm:p-5">
             <h4 className="font-semibold text-[15px] text-ink mb-2">
               📊 Impactul asupra venitului tău lunar ({lei(income)})
             </h4>
@@ -540,9 +540,9 @@ export default function AffordabilityPage() {
 
             <div className="space-y-4">
               <div>
-                <div className="flex justify-between text-[13px] mb-1">
+                <div className="flex justify-between gap-3 text-[13px] mb-1">
                   <span className="font-medium text-ink">Cheltuieli esențiale + Rate (Nevoi)</span>
-                  <span className="num font-semibold text-mov">
+                  <span className="num shrink-0 whitespace-nowrap text-right font-semibold text-mov">
                     {financingType === "cash" ? pct(loan.needsPctBefore, 1) : pct(loan.needsPctAfter, 1)} din venit
                   </span>
                 </div>
@@ -559,16 +559,16 @@ export default function AffordabilityPage() {
                 </div>
                 <div className="text-[11.5px] text-ink-soft mt-1">
                   {financingType === "cash"
-                    ? `${lei(needs + currentLoans)} lei/lună`
-                    : `${lei(needs + currentLoans + loan.monthlyPayment)} lei/lună (+${lei(loan.monthlyPayment)} rată nouă)`}
+                    ? `${lei(needs + currentLoans)}/lună`
+                    : `${lei(needs + currentLoans + loan.monthlyPayment)}/lună (+${lei(loan.monthlyPayment)} rată nouă)`}
                 </div>
               </div>
 
               <div>
-                <div className="flex justify-between text-[13px] mb-1">
+                <div className="flex justify-between gap-3 text-[13px] mb-1">
                   <span className="font-medium text-ink">Gradul de îndatorare (DTI - credite totale)</span>
                   <span
-                    className={`num font-bold ${
+                    className={`num shrink-0 font-bold ${
                       (financingType === "cash" ? loan.dtiBefore : loan.dtiAfter) > 40
                         ? "text-rosu"
                         : "text-ink"
@@ -609,9 +609,9 @@ export default function AffordabilityPage() {
               </div>
 
               <div>
-                <div className="flex justify-between text-[13px] mb-1">
+                <div className="flex justify-between gap-3 text-[13px] mb-1">
                   <span className="font-medium text-ink">Capacitatea lunară de economisire rămasă</span>
-                  <span className="num font-semibold text-leu">
+                  <span className="num shrink-0 whitespace-nowrap text-right font-semibold text-leu">
                     {financingType === "cash"
                       ? `${lei(monthlySavings)} / lună`
                       : `${lei(loan.savingsCapacityAfter)} / lună`}
@@ -627,7 +627,7 @@ export default function AffordabilityPage() {
           </div>
 
           {/* Card: Comparație Directă Plată Cash vs Credit */}
-          <div className="rounded-xl border border-line bg-paper p-5 flex flex-col justify-between">
+          <div className="rounded-xl border border-line bg-paper p-3.5 sm:p-5 flex flex-col justify-between">
             <div>
               <h4 className="font-semibold text-[15px] text-ink mb-2">
                 ⚖️ Comparație directă: Plată Integrală vs Credit Bancar
@@ -637,7 +637,7 @@ export default function AffordabilityPage() {
                 <strong>{lei(totalPrice)}</strong>:
               </p>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
                 {/* Varianta Cash */}
                 <div
                   className={`rounded-lg p-4 border transition-all ${
@@ -648,21 +648,21 @@ export default function AffordabilityPage() {
                     <span>💵</span> Plată Cash
                   </div>
                   <div className="mt-3 space-y-2 text-[12.5px]">
-                    <div className="flex justify-between">
+                    <div className="flex items-baseline justify-between gap-3">
                       <span className="text-ink-soft">Preț total plătit:</span>
-                      <strong className="num text-ink">{lei(totalPrice)}</strong>
+                      <strong className="num whitespace-nowrap text-right text-ink">{lei(totalPrice)}</strong>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex items-baseline justify-between gap-3">
                       <span className="text-ink-soft">Dobândă suportată:</span>
-                      <strong className="num text-leu">0 lei</strong>
+                      <strong className="num whitespace-nowrap text-right text-leu">0 lei</strong>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex items-baseline justify-between gap-3">
                       <span className="text-ink-soft">Impact pe economii:</span>
-                      <strong className="num text-rosu">-{lei(totalPrice)}</strong>
+                      <strong className="num whitespace-nowrap text-right text-rosu">-{lei(totalPrice)}</strong>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex items-baseline justify-between gap-3">
                       <span className="text-ink-soft">Ratǎ lunară nouă:</span>
-                      <strong className="num text-ink">0 lei/lună</strong>
+                      <strong className="num whitespace-nowrap text-right text-ink">0 lei/lună</strong>
                     </div>
                   </div>
                 </div>
@@ -677,21 +677,21 @@ export default function AffordabilityPage() {
                     <span>💳</span> Prin Credit
                   </div>
                   <div className="mt-3 space-y-2 text-[12.5px]">
-                    <div className="flex justify-between">
+                    <div className="flex items-baseline justify-between gap-3">
                       <span className="text-ink-soft">Cost total final:</span>
-                      <strong className="num text-mov">{lei(loan.totalCost)}</strong>
+                      <strong className="num whitespace-nowrap text-right text-mov">{lei(loan.totalCost)}</strong>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex items-baseline justify-between gap-3">
                       <span className="text-ink-soft">Dobândă în plus:</span>
-                      <strong className="num text-rosu">+{lei(loan.totalInterest)}</strong>
+                      <strong className="num whitespace-nowrap text-right text-rosu">+{lei(loan.totalInterest)}</strong>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex items-baseline justify-between gap-3">
                       <span className="text-ink-soft">Impact inițial economii:</span>
-                      <strong className="num text-ink">-{lei(downPayment)}</strong>
+                      <strong className="num whitespace-nowrap text-right text-ink">-{lei(downPayment)}</strong>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex items-baseline justify-between gap-3">
                       <span className="text-ink-soft">Ratǎ lunară nouă:</span>
-                      <strong className="num text-mov">{lei(loan.monthlyPayment)}/lună</strong>
+                      <strong className="num whitespace-nowrap text-right text-mov">{lei(loan.monthlyPayment)}/lună</strong>
                     </div>
                   </div>
                 </div>
@@ -780,7 +780,7 @@ export default function AffordabilityPage() {
                     {p.financing_type === "loan" && (
                       <div className="text-[12px] text-ink-soft mb-2 flex justify-between">
                         <span>Rată estimată:</span>
-                        <strong className="num text-mov">
+                        <strong className="num whitespace-nowrap text-right text-mov">
                           {lei(evalSaved.loan.monthlyPayment)} / lună
                         </strong>
                       </div>

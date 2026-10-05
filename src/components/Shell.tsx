@@ -43,17 +43,17 @@ function MonthPickerCompact() {
   const { month, setMonth } = useApp();
   const isNow = month === currentMonth();
   return (
-    <div className="mt-2.5 flex items-center justify-between gap-2 rounded-[10px] border border-line bg-sheet px-1 py-0.5">
-      <button className="h-9 w-10 rounded-lg text-[18px] text-ink-soft active:scale-95 active:bg-paper" onClick={() => setMonth(addMonths(month, -1))} aria-label="Luna anterioară">‹</button>
+    <div className="mt-2 flex items-center justify-between gap-2 rounded-[10px] border border-line bg-sheet p-0.5">
+      <button className="h-10 w-11 rounded-lg text-[20px] text-ink-soft active:scale-95 active:bg-paper" onClick={() => setMonth(addMonths(month, -1))} aria-label="Luna anterioară">‹</button>
       <button
-        className="flex flex-col items-center leading-tight"
+        className="flex min-w-0 flex-col items-center leading-tight"
         onClick={() => !isNow && setMonth(currentMonth())}
         title={isNow ? undefined : "Înapoi la luna curentă"}
       >
         <span className="font-display text-[15px] font-semibold capitalize text-ink">{monthLabel(month)}</span>
         {!isNow && <span className="text-[11px] font-medium text-albastru">atinge pentru luna curentă</span>}
       </button>
-      <button className="h-9 w-10 rounded-lg text-[18px] text-ink-soft active:scale-95 active:bg-paper" onClick={() => setMonth(addMonths(month, 1))} aria-label="Luna următoare">›</button>
+      <button className="h-10 w-11 rounded-lg text-[20px] text-ink-soft active:scale-95 active:bg-paper" onClick={() => setMonth(addMonths(month, 1))} aria-label="Luna următoare">›</button>
     </div>
   );
 }
@@ -225,7 +225,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[256px_1fr]">
+    <div className="min-h-screen overflow-x-clip lg:grid lg:grid-cols-[256px_1fr]">
       <aside className="hidden lg:flex lg:flex-col lg:gap-6 lg:sticky lg:top-0 lg:h-screen border-r border-line bg-canvas/60 px-4 py-6">
         <div className="flex items-start justify-between gap-2 px-1.5">
           <Link href="/" className="group flex items-center gap-2.5">
@@ -267,21 +267,23 @@ export default function Shell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="lg:hidden sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Logo className="h-8 w-8" />
+      <div className="lg:hidden sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/" className="flex min-w-0 items-center gap-2">
+            <Logo className="h-8 w-8 shrink-0" />
             <span className="font-display text-[20px] font-bold">Leuța</span>
+          </Link>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <ThemeToggle className="h-9 w-9" />
             {user && (
-              <span className="rounded bg-line/60 px-1.5 py-0.5 text-[11px] text-ink-soft">
-                {user.username}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle className="h-8 w-8" />
-            {user && (
-              <button onClick={handleLogout} className="px-1 py-2 text-[13px] text-rosu hover:underline">
+              <button
+                onClick={handleLogout}
+                className="flex h-9 items-center gap-1.5 rounded-full border border-line bg-sheet pl-1 pr-3 text-[13px] font-medium text-ink-soft active:scale-95"
+                title={`Deconectare (${user.username})`}
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-leu/15 text-[11px] font-semibold uppercase text-leu">
+                  {user.username.slice(0, 2)}
+                </span>
                 Ieșire
               </button>
             )}
@@ -292,9 +294,9 @@ export default function Shell({ children }: { children: ReactNode }) {
 
       {/* Meniul complet (toate secțiunile + indicatori) — se deschide din tab-ul „Mai mult”. */}
       {open && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-ink/30 backdrop-blur-[2px]" onClick={() => setOpen(false)}>
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-ink/30 backdrop-blur-[2px] animate-backdrop-fade" onClick={() => setOpen(false)}>
           <div
-            className="page-enter max-h-[85vh] overflow-y-auto rounded-t-[20px] border-t border-line bg-paper px-4 pt-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] shadow-2xl"
+            className="sheet-up max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-[20px] border-t border-line bg-paper px-4 pt-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" aria-hidden />
@@ -318,11 +320,14 @@ export default function Shell({ children }: { children: ReactNode }) {
                 key={t.href}
                 href={t.href}
                 onClick={() => setOpen(false)}
-                className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${on ? "text-albastru" : "text-ink-soft"}`}
+                aria-current={on ? "page" : undefined}
+                className={`flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] font-medium transition-colors ${on ? "text-albastru" : "text-ink-soft"}`}
               >
-                <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={on ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d={t.icon} />
-                </svg>
+                <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${on ? "bg-albastru-tint" : ""}`}>
+                  <svg viewBox="0 0 24 24" className="h-[21px] w-[21px]" fill="none" stroke="currentColor" strokeWidth={on ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d={t.icon} />
+                  </svg>
+                </span>
                 {t.label}
               </Link>
             );
@@ -330,25 +335,29 @@ export default function Shell({ children }: { children: ReactNode }) {
           <button
             onClick={() => setOpen(!open)}
             aria-expanded={open}
-            className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${open || !TABS.some((t) => active(t.href)) ? "text-albastru" : "text-ink-soft"}`}
+            className={`flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] font-medium transition-colors ${open || !TABS.some((t) => active(t.href)) ? "text-albastru" : "text-ink-soft"}`}
           >
-            <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
-              {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />}
-            </svg>
+            <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${open || !TABS.some((t) => active(t.href)) ? "bg-albastru-tint" : ""}`}>
+              <svg viewBox="0 0 24 24" className="h-[21px] w-[21px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
+                {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />}
+              </svg>
+            </span>
             {open ? "Închide" : "Mai mult"}
           </button>
         </div>
       </nav>
 
-      <main key={path} className="page-enter mx-auto w-full max-w-[1240px] px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-8 lg:py-10">
+      <main key={path} className="page-enter mx-auto w-full max-w-[1240px] px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-8 sm:pt-6 lg:py-10">
         {!hasPasskey && !path.startsWith("/setari") && (
           <Link
             href="/setari"
-            className="mb-5 flex items-center justify-between gap-3 rounded-lg border border-galben/40 bg-galben-tint px-4 py-3 text-[13px] hover:border-galben"
+            className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-galben/40 bg-galben-tint px-3.5 py-2.5 text-[13px] hover:border-galben sm:mb-5 sm:px-4 sm:py-3"
           >
             <span>
-              🔐 <strong>Protejează-ți contul cu un passkey</strong> (amprentă / Face ID). După asta, o parolă furată nu mai
-              ajunge pentru a intra în aplicație.
+              🔐 <strong>Protejează-ți contul cu un passkey</strong>
+              <span className="hidden sm:inline">
+                {" "}(amprentă / Face ID). După asta, o parolă furată nu mai ajunge pentru a intra în aplicație.
+              </span>
             </span>
             <span className="shrink-0 font-semibold text-albastru">Setări →</span>
           </Link>

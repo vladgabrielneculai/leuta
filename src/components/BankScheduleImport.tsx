@@ -206,7 +206,7 @@ export default function BankScheduleImport({
 
           <fieldset className="rounded-md border border-line p-4">
             <legend className="px-1 text-[14px] font-medium">Asigurări anuale (nu apar în grafic)</legend>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Asigurare PAD (lei/an)">
                 <input className="field num" type="number" min="0" step="0.01" value={annual.pad_amount || ""} placeholder="0"
                   onChange={(e) => setAnnual({ ...annual, pad_amount: n(e.target.value) })} />

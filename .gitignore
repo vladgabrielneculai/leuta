@@ -11,3 +11,7 @@ node_modules
 native-libs/
 data/
 scratch/
+
+# Generate automat de `next dev` (instrucțiuni pentru agenți AI), recreate la fiecare pornire
+AGENTS.md
+CLAUDE.md

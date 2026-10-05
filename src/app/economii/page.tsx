@@ -383,7 +383,7 @@ export default function SavingsPage() {
             <Field label="Nume">
               <input className="field" value={goal.name} onChange={(e) => setGoal({ ...goal, name: e.target.value })} required />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Suma țintă (lei)" hint={goal.type === "emergency" ? `Gol = automat (${s.emergency.months} luni de nevoi esențiale)` : undefined}>
                 <input className="field num" type="number" min={0} value={goal.target} onChange={(e) => setGoal({ ...goal, target: e.target.value })} required={goal.type === "goal"} />
               </Field>
@@ -396,19 +396,19 @@ export default function SavingsPage() {
                 </Field>
               )}
               <Field label="Culoare">
-                <div className="flex gap-2 pt-1">
+                <div className="flex flex-wrap gap-2.5 pt-1 sm:gap-2">
                   {GOAL_COLORS.map((c) => (
                     <button key={c} type="button" aria-label={`Culoarea ${c}`} onClick={() => setGoal({ ...goal, color: c })}
-                      className={`h-7 w-7 rounded-full ${goal.color === c ? "ring-2 ring-ink ring-offset-2" : ""}`} style={{ background: c }} />
+                      className={`h-9 w-9 rounded-full sm:h-7 sm:w-7 ${goal.color === c ? "ring-2 ring-ink ring-offset-2" : ""}`} style={{ background: c }} />
                   ))}
                 </div>
               </Field>
             </div>
-            <div className="flex justify-between gap-2">
+            <div className="form-actions sm:justify-between">
               {goal.id ? (
                 <button type="button" className="btn-danger" onClick={() => deleteGoal(s.goals.find((g) => g.id === goal.id)!)}>Șterge obiectivul</button>
-              ) : <span />}
-              <div className="flex gap-2">
+              ) : <span className="hidden sm:block" />}
+              <div className="flex gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
                 <button type="button" className="btn-ghost" onClick={() => setGoal(null)}>Renunță</button>
                 <button type="submit" className="btn-primary">{goal.id ? "Salvează" : "Creează"}</button>
               </div>
@@ -423,7 +423,7 @@ export default function SavingsPage() {
             <Field label="Nume">
               <input className="field" value={inv.name} onChange={(e) => setInv({ ...inv, name: e.target.value })} placeholder="ex. ETF S&P 500" required />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Tip">
                 <select className="field" value={inv.type} onChange={(e) => setInv({ ...inv, type: e.target.value })}>
                   {["ETF", "Acțiuni", "Fond mutual", "Depozit", "Titluri de stat", "Pilon III", "Crypto", "Altele"].map((t) => <option key={t}>{t}</option>)}
@@ -433,9 +433,9 @@ export default function SavingsPage() {
                 <input className="field num" type="number" step={0.1} value={inv.expected_return} onChange={(e) => setInv({ ...inv, expected_return: e.target.value })} />
               </Field>
             </div>
-            <div className="flex justify-between gap-2">
-              {inv.id ? <button type="button" className="btn-danger" onClick={() => deleteInv(inv.id!, inv.name)}>Șterge investiția</button> : <span />}
-              <div className="flex gap-2">
+            <div className="form-actions sm:justify-between">
+              {inv.id ? <button type="button" className="btn-danger" onClick={() => deleteInv(inv.id!, inv.name)}>Șterge investiția</button> : <span className="hidden sm:block" />}
+              <div className="flex gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
                 <button type="button" className="btn-ghost" onClick={() => setInv(null)}>Renunță</button>
                 <button type="submit" className="btn-primary">{inv.id ? "Salvează" : "Adaugă"}</button>
               </div>

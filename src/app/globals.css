@@ -101,6 +101,9 @@
     overflow-x: hidden;
     background: rgb(var(--paper));
   }
+  /* Nimic nu poate împinge pagina mai lată decât ecranul (ex. tooltip-urile graficelor pe telefon).
+     `clip` (spre deosebire de `hidden`) nu creează un container de scroll, deci `sticky` merge în continuare. */
+  html, body { overflow-x: clip; }
   h1, h2, h3 {
     font-family: "Bricolage Grotesque Variable", system-ui, sans-serif;
     letter-spacing: -0.01em;
@@ -108,6 +111,12 @@
   .num { font-variant-numeric: tabular-nums; }
   :focus-visible { outline: 2px solid rgb(var(--albastru)); outline-offset: 2px; border-radius: 4px; }
   input, select, textarea { font: inherit; }
+  /* iOS dă câmpurilor de dată/lună o lățime minimă proprie, care le scoate din grid pe ecrane înguste. */
+  input[type="date"], input[type="month"] { min-width: 0; min-height: 2.75rem; }
+  @media (min-width: 640px) {
+    input[type="date"], input[type="month"] { min-height: 0; }
+  }
+  select.field { text-overflow: ellipsis; }
   input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
 
   /* Mobil: copiii de grid se pot micșora sub lățimea conținutului (altfel un select
@@ -142,10 +151,11 @@
     @apply panel hover:shadow-[0_8px_24px_-4px_rgb(var(--shadow)/0.1)] hover:border-line-strong hover:-translate-y-0.5;
   }
   .field {
-    @apply w-full rounded-lg border border-line bg-field px-3 py-2 text-[16px] sm:py-1.5 sm:text-[14px] text-ink placeholder:text-ink-faint transition-all duration-150 focus:border-albastru focus:ring-1 focus:ring-albastru focus:outline-none;
+    @apply block w-full min-w-0 rounded-lg border border-line bg-field px-3 py-2.5 text-[16px] sm:py-1.5 sm:text-[14px] text-ink placeholder:text-ink-faint transition-all duration-150 focus:border-albastru focus:ring-1 focus:ring-albastru focus:outline-none;
   }
+  /* Pe telefon butoanele au minimum 40px înălțime: ușor de atins cu degetul. */
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[14px] font-medium transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[14px] sm:min-h-0 font-medium transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
   }
   .btn-primary {
     @apply btn bg-albastru text-on-accent shadow-sm hover:bg-albastru-deep hover:shadow-md hover:shadow-albastru/20;
@@ -159,6 +169,12 @@
   .label {
     @apply block text-[13px] text-ink-soft mb-1 font-medium;
   }
+  /* Butoanele de la finalul unui formular dintr-o fereastră: pe telefon rămân lipite jos, pe toată lățimea
+     (formularele lungi, ca cel de credit, nu mai trebuie derulate până la capăt ca să salvezi). */
+  .form-actions {
+    @apply sticky bottom-[calc(-1*max(1rem,env(safe-area-inset-bottom)))] z-10 -mx-4 mb-[calc(-1*max(1rem,env(safe-area-inset-bottom)))] flex flex-col-reverse gap-2 border-t border-line bg-sheet px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:m-0 sm:flex-row sm:items-center sm:justify-end sm:border-0 sm:bg-transparent sm:p-0;
+  }
+  .form-actions > * { @apply w-full sm:w-auto; }
   .stat-card {
     @apply rounded-xl border border-line/80 bg-sheet p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
   }
@@ -176,12 +192,20 @@
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
+/* `backwards`, nu `both`: după animație elementul rămâne fără `transform`. Un `transform` păstrat ar face
+   din <main> containerul elementelor `position: fixed` din pagină (ferestre, notificări), care ar apărea
+   atunci sub barele de navigare și decalate la scroll pe telefon. */
 .page-enter {
-  animation: pageEnter 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: pageEnter 280ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
+@keyframes sheetUp {
+  0% { transform: translateY(24px); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+.sheet-up { animation: sheetUp 260ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 
 /* Indicatori live / online pulsant */
 @keyframes pulseDot {
@@ -239,7 +263,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .band-grow, .page-enter, .live-dot, .shimmer, .animate-modal-pop, .animate-backdrop-fade { animation: none !important; }
+  .band-grow, .page-enter, .sheet-up, .live-dot, .shimmer, .animate-modal-pop, .animate-backdrop-fade { animation: none !important; }
   * { transition: none !important; }
 }
 
