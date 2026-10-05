@@ -1,6 +1,6 @@
 import { getDb, getSettings, num } from "./db";
 import { loadRates, rateForMonthFrom, type RateInfo } from "./fx";
-import { monthCashflow, simulate, statusAt, variableRate, type Loan, type LoanStatus, type Prepayment } from "./loan";
+import { monthCashflow, simulate, statusAt, variableRate, type Loan, type LoanStatus, type Prepayment, type ScheduleRow } from "./loan";
 import { addMonths, lastMonths, lei, monthDiff, monthLabel, pct, type Bucket, type Kind } from "./util";
 
 type EntryRow = {
@@ -129,14 +129,22 @@ export type Summary = {
 
 async function loadLoans() {
   const db = await getDb();
-  const [loans, pre] = await Promise.all([
+  const [loans, pre, schedules] = await Promise.all([
     db.prepare("SELECT * FROM loans ORDER BY id").all<Loan>(),
     db.prepare("SELECT * FROM loan_prepayments ORDER BY month").all<Prepayment & { loan_id: number }>(),
+    // Doar graficele active (sursa calculelor), nu și cele păstrate pentru comparație.
+    db
+      .prepare(
+        `SELECT s.* FROM loan_schedules s JOIN loans l ON l.id = s.loan_id
+         WHERE l.use_schedule = 1 ORDER BY s.loan_id, s.installment_nr`,
+      )
+      .all<ScheduleRow & { loan_id: number }>(),
   ]);
   return loans.map((loan) => {
     const prepayments = pre.filter((p) => p.loan_id === loan.id);
-    const sim = simulate(loan, { prepayments });
-    const base = prepayments.length ? simulate(loan) : sim;
+    const schedule = schedules.filter((r) => r.loan_id === loan.id);
+    const sim = simulate(loan, { prepayments, schedule });
+    const base = prepayments.length ? simulate(loan, { schedule }) : sim;
     return { loan, prepayments, sim, base };
   });
 }
@@ -196,8 +204,10 @@ export async function buildSummary(month: string): Promise<Summary> {
         else t.needs += v;
       }
     }
+    let annualInsurance = 0; // PAD / facultativă: în cheltuieli, dar nu și în gradul lunar de îndatorare
     for (const { loan, sim } of loans) {
       const cf = monthCashflow(loan, sim, m);
+      annualInsurance += cf.annualInsurance;
       t.loanPayments += cf.payment;
       t.loanInterest += cf.interest;
       t.loanInsurance += cf.insurance;
@@ -209,7 +219,7 @@ export async function buildSummary(month: string): Promise<Summary> {
     t.spent = t.fixed + t.variable + t.loanPayments + t.loanInsurance + t.prepayFees;
     t.unallocated = t.income - t.spent - t.savedTotal;
     t.savingsRate = t.income > 0 ? (t.savedTotal / t.income) * 100 : 0;
-    t.dti = t.income > 0 ? ((t.loanPayments + t.loanInsurance) / t.income) * 100 : 0;
+    t.dti = t.income > 0 ? ((t.loanPayments + t.loanInsurance - annualInsurance) / t.income) * 100 : 0;
     return t;
   };
 

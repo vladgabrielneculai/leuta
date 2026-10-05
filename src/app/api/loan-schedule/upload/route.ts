@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parseExcelBuffer, parsePdfBuffer } from "@/lib/scheduleParser";
+import { parseExcelBuffer, parsePdf, type ScheduleMeta } from "@/lib/scheduleParser";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +18,12 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
 
     let rows: ReturnType<typeof parseExcelBuffer> = [];
+    let meta: ScheduleMeta | null = null;
 
     if (filename.endsWith(".xlsx") || filename.endsWith(".xls") || filename.endsWith(".csv")) {
       rows = parseExcelBuffer(buffer);
     } else if (filename.endsWith(".pdf")) {
-      rows = await parsePdfBuffer(buffer);
+      ({ rows, meta } = await parsePdf(buffer));
     } else {
       return NextResponse.json({ error: "Format nesuportat. Te rugăm să încarci un fișier Excel (.xlsx, .xls), CSV sau PDF (.pdf)." }, { status: 400 });
     }
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
       count: rows.length,
       preview: rows.slice(0, 6),
       rows,
+      meta,
     });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Eroare la citirea fișierului." }, { status: 500 });

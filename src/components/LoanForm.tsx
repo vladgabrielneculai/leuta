@@ -25,6 +25,10 @@ export const emptyLoan = (): LoanDraft => ({
   active: 1,
   already_paid_principal: 0,
   already_paid_interest: 0,
+  pad_amount: 0,
+  pad_due_date: "",
+  opt_ins_amount: 0,
+  opt_ins_due_date: "",
 });
 
 export default function LoanForm({
@@ -37,7 +41,7 @@ export default function LoanForm({
   onCancel: () => void;
 }) {
   const [d, setD] = useState<LoanDraft>(initial ?? emptyLoan());
-  const [years, setYears] = useState(String((initial?.term_months ?? 360) / 12));
+  const [years, setYears] = useState(String(+((initial?.term_months ?? 360) / 12).toFixed(2)));
   const [fixedYears, setFixedYears] = useState(String((initial?.fixed_months ?? 36) / 12));
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -233,8 +237,23 @@ export default function LoanForm({
           <Field label="Comision în perioada variabilă (%)">
             <input className="field num" type="number" min="0" step="0.1" value={d.fee_variable_pct} onChange={(e) => set("fee_variable_pct", n(e.target.value))} />
           </Field>
-          <Field label="Asigurări lunare (lei)" hint="Se adaugă la rata lunară">
+          <Field
+            label="Asigurări lunare (lei)"
+            hint={Number(d.use_schedule) === 1 ? "Cu graficul băncii activ se iau costurile din grafic" : "Se adaugă la rata lunară"}
+          >
             <input className="field num" type="number" min="0" step="0.01" value={d.insurance_monthly || ""} onChange={(e) => set("insurance_monthly", n(e.target.value))} />
+          </Field>
+          <Field label="Asigurare PAD (lei/an)" hint="Plătită o dată pe an">
+            <input className="field num" type="number" min="0" step="0.01" value={d.pad_amount || ""} onChange={(e) => set("pad_amount", n(e.target.value))} />
+          </Field>
+          <Field label="Scadența PAD" hint="Luna din fiecare an în care se plătește">
+            <input className="field" type="date" value={d.pad_due_date ?? ""} onChange={(e) => set("pad_due_date", e.target.value)} />
+          </Field>
+          <Field label="Asigurare facultativă (lei/an)" hint="Lasă gol dacă nu ai">
+            <input className="field num" type="number" min="0" step="0.01" value={d.opt_ins_amount || ""} onChange={(e) => set("opt_ins_amount", n(e.target.value))} />
+          </Field>
+          <Field label="Scadența asigurării facultative">
+            <input className="field" type="date" value={d.opt_ins_due_date ?? ""} onChange={(e) => set("opt_ins_due_date", e.target.value)} />
           </Field>
           <Field label="Efectul implicit al plăților anticipate">
             <select className="field" value={d.strategy} onChange={(e) => set("strategy", e.target.value as LoanDraft["strategy"])}>

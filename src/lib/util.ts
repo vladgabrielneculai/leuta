@@ -70,6 +70,16 @@ export function pct(n: number, digits = 1): string {
   return `${n.toLocaleString("ro-RO", { maximumFractionDigits: digits, minimumFractionDigits: 0 })}%`;
 }
 
+/** Durata în ani și luni: 360 → „30 ani”, 340 → „28 ani 4 luni”. */
+export function termLabel(months: number): string {
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  const ys = y === 1 ? "1 an" : `${y} ani`;
+  if (!m) return ys;
+  const ms = m === 1 ? "1 lună" : `${m} luni`;
+  return y ? `${ys} ${ms}` : ms;
+}
+
 export function clamp(n: number, lo: number, hi: number) {
   return Math.min(hi, Math.max(lo, n));
 }

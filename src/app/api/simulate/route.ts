@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { simulate, statusAt, type Loan, type Prepayment, type SimOptions } from "@/lib/loan";
+import { simulate, statusAt, type Loan, type Prepayment, type ScheduleRow, type SimOptions } from "@/lib/loan";
 import { currentMonth } from "@/lib/util";
 
 export const dynamic = "force-dynamic";
@@ -10,18 +10,19 @@ export async function POST(req: NextRequest) {
   const db = await getDb();
   const loan = await db.prepare("SELECT * FROM loans WHERE id = ?").get<Loan>(body.loanId);
   if (!loan) return NextResponse.json({ error: "Creditul nu există" }, { status: 404 });
-  const prepayments = await db.prepare("SELECT * FROM loan_prepayments WHERE loan_id = ? ORDER BY month").all<Prepayment>(loan.id);
+  const [prepayments, customSchedule] = await Promise.all([
+    db.prepare("SELECT * FROM loan_prepayments WHERE loan_id = ? ORDER BY month").all<Prepayment>(loan.id),
+    db.prepare("SELECT * FROM loan_schedules WHERE loan_id = ? ORDER BY installment_nr ASC").all<ScheduleRow>(loan.id),
+  ]);
   const sc = body.scenario ?? {};
+  // simulate() folosește graficul băncii doar dacă e activ pentru credit (use_schedule = 1).
+  const schedule = customSchedule;
 
-  const original = simulate(loan, { irccOverride: sc.irccOverride, irccShock: sc.irccShock });
-  const actual = simulate(loan, { prepayments, irccOverride: sc.irccOverride, irccShock: sc.irccShock });
-  const base = { ...sc, prepayments };
+  const original = simulate(loan, { schedule, irccOverride: sc.irccOverride, irccShock: sc.irccShock });
+  const actual = simulate(loan, { schedule, prepayments, irccOverride: sc.irccOverride, irccShock: sc.irccShock });
+  const base = { ...sc, schedule, prepayments };
   const term = simulate(loan, { ...base, strategy: "term" });
   const installment = simulate(loan, { ...base, strategy: "installment" });
-
-  const customSchedule = await db
-    .prepare("SELECT * FROM loan_schedules WHERE loan_id = ? ORDER BY installment_nr ASC")
-    .all(loan.id);
 
   const month = currentMonth();
   const slim = (r: ReturnType<typeof simulate>) => ({ ...r, status: statusAt(loan, r, month) });

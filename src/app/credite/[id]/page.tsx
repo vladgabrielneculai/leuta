@@ -6,9 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Bar as RBar, CartesianGrid, ComposedChart, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import type { Loan, LoanStatus, Prepayment, SimResult } from "@/lib/loan";
+import { annualInsuranceMonthly, type Loan, type LoanStatus, type Prepayment, type SimResult } from "@/lib/loan";
 import type { Strategy } from "@/lib/util";
-import { addMonths, currentMonth, lei, monthDiff, monthLabel, pct } from "@/lib/util";
+import { addMonths, currentMonth, lei, monthDiff, monthLabel, pct, termLabel } from "@/lib/util";
 import LoanForm from "@/components/LoanForm";
 import LoanScheduleManager from "@/components/LoanScheduleManager";
 import { api, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Stat, Toast, useApi, useApp } from "@/components/ui";
@@ -27,6 +27,8 @@ type SimResponse = {
 type Scenario = { extraMonthly: number; extraFrom: string; oneTimeAmount: number; oneTimeMonth: string; irccShock: number };
 
 const kLei = (v: number) => `${Math.round(v / 1000)}k`;
+const fmtDate = (d?: string | null) => (d ? d.slice(0, 10).split("-").reverse().join(".") : "–");
+const monthName = (d: string) => monthLabel(d.slice(0, 7)).split(" ")[0];
 
 async function runSim(loanId: number, scenario: Record<string, unknown>) {
   return api<SimResponse>("/api/simulate", "POST", { loanId, scenario });
@@ -132,6 +134,20 @@ export default function LoanDetail() {
   const fixedEnd = addMonths(loan.start_date.slice(0, 7), loan.fixed_months);
   const variableRate = loan.margin + loan.ircc + sc.irccShock;
   const scenarioActive = sc.extraMonthly > 0 || sc.oneTimeAmount > 0;
+  const annualMonthly = annualInsuranceMonthly(loan);
+  // Prima creștere importantă a ratei de acum înainte (ex. trecerea de la dobânda fixă la cea variabilă).
+  const rateJump = (() => {
+    const rows = actual.rows;
+    for (let i = 1; i < rows.length - 1; i++) {
+      if (rows[i].month <= now || rows[i].prepayment > 0 || rows[i - 1].prepayment > 0) continue;
+      // Luna doar cu dobândă de la schimbarea dobânzii (BCR) nu e rata nouă: comparăm cu rata de după ea.
+      const r = rows[i].principal === 0 && rows[i + 1] ? rows[i + 1] : rows[i];
+      const from = rows[i - 1].payment + rows[i - 1].insurance;
+      const to = r.payment + r.insurance;
+      if (from > 0 && (to - from) / from > 0.05) return { month: rows[i].month, from, payment: to, rate: r.rate };
+    }
+    return null;
+  })();
 
   // Rambursare vs investiție pentru suma unică
   const lumpSaved = lumpOnly ? lumpOnly.actual.totalInterest - lumpOnly.term.totalInterest - lumpOnly.term.totalFees + lumpOnly.actual.totalFees : 0;
@@ -226,7 +242,7 @@ export default function LoanDetail() {
       <Link href="/credite" className="mb-3 inline-block text-[14px] text-albastru hover:underline">‹ Toate creditele</Link>
       <PageHeader
         title={loan.name}
-        intro={`${loan.bank || "Bancă nespecificată"} · ${lei(loan.principal)} pe ${loan.term_months / 12} ani · ${
+        intro={`${loan.bank || "Bancă nespecificată"} · ${lei(loan.principal)} pe ${termLabel(loan.term_months)} · ${
           loan.schedule_type === "annuity" ? "rate egale" : "rate descrescătoare"
         } · acordat în ${monthLabel(loan.start_date.slice(0, 7))}`}
         actions={
@@ -242,7 +258,7 @@ export default function LoanDetail() {
           <Money value={st.totalPaidSoFar} size="lg" tone="leu" />
         </Stat>
         <Stat label="Sold rămas" accent="#6A4E99" hint={`${pct(st.paidPct, 0)} din principal achitat`}><Money value={st.balance} size="lg" /></Stat>
-        <Stat label="Rata următoare" accent="#6A4E99" hint={loan.insurance_monthly ? `+ ${lei(loan.insurance_monthly)} asigurări` : undefined}>
+        <Stat label="Rata următoare" accent="#6A4E99" hint={st.nextInsurance ? `+ ${lei(st.nextInsurance, true)} asigurări = ${lei(st.nextPayment + st.nextInsurance, true)}` : undefined}>
           <Money value={st.nextPayment} size="lg" decimals />
         </Stat>
         <Stat label="Dobânda acum" accent="#2E5C8A" hint={st.inFixed ? `Fixă încă ${st.monthsToVariable} luni` : "Marjă + IRCC"}>
@@ -253,6 +269,54 @@ export default function LoanDetail() {
           <Money value={original.totalInterest - actual.totalInterest} size="lg" tone="leu" />
         </Stat>
       </div>
+
+      {/* Situația la zi din aplicația băncii + asigurări anuale */}
+      {(loan.status_date || annualMonthly > 0 || rateJump) && (
+        <Panel className="mb-6" title="Situația la zi de la bancă">
+          {(loan.arrears_amount ?? 0) > 0 && (
+            <p className="mb-4 rounded-md bg-rosu-tint p-3 text-[13px] font-medium text-rosu">
+              Ai o sumă restantă de {lei(loan.arrears_amount ?? 0, true)}
+              {(loan.arrears_count ?? 0) > 0 ? ` (${loan.arrears_count} rate restante)` : ""}. Am adăugat-o la plățile creditului din{" "}
+              {monthLabel((loan.status_date ?? now).slice(0, 7))}.
+            </p>
+          )}
+          {rateJump && (
+            <p className="mb-4 rounded-md bg-galben-tint p-3 text-[13px]">
+              ⚠️ Din <strong>{monthLabel(rateJump.month)}</strong> rata crește de la {lei(rateJump.from, true)} la{" "}
+              <strong>{lei(rateJump.payment, true)}</strong> (+{lei(rateJump.payment - rateJump.from)} pe lună), la trecerea pe dobânda de {pct(rateJump.rate, 2)}.
+            </p>
+          )}
+          <dl className="num grid grid-cols-2 gap-x-6 gap-y-3 text-[13px] sm:grid-cols-3 lg:grid-cols-4">
+            {loan.status_date && (
+              <>
+                <div><dt className="text-ink-soft">Sold curent (credit actual)</dt><dd className="font-semibold text-mov">{lei(loan.current_balance ?? 0, true)}</dd></div>
+                <div><dt className="text-ink-soft">Următoarea rată</dt><dd className="font-medium">{lei(loan.next_payment_amount ?? 0, true)} · {fmtDate(loan.next_payment_date)}</dd></div>
+                <div><dt className="text-ink-soft">Principal / Dobândă</dt><dd className="font-medium">{lei(loan.next_principal ?? 0, true)} / {lei(loan.next_interest ?? 0, true)}</dd></div>
+                <div><dt className="text-ink-soft">Taxe lunare (asigurare viață)</dt><dd className="font-medium">{lei(loan.next_fees ?? 0, true)}</dd></div>
+                <div><dt className="text-ink-soft">Rata dobânzii</dt><dd className="font-medium">{pct(loan.current_rate ?? 0, 2)}</dd></div>
+                <div><dt className="text-ink-soft">Maturitate</dt><dd className="font-medium">{fmtDate(loan.maturity_date)}</dd></div>
+                <div><dt className="text-ink-soft">Restanțe</dt><dd className="font-medium">{(loan.arrears_amount ?? 0) > 0 ? `${lei(loan.arrears_amount ?? 0, true)} (${loan.arrears_count ?? 0} rate)` : "Nu"}</dd></div>
+                {loan.contract_nr && <div><dt className="text-ink-soft">Nr. contract</dt><dd className="font-medium">{loan.contract_nr}</dd></div>}
+              </>
+            )}
+            {(loan.pad_amount ?? 0) > 0 && (
+              <div><dt className="text-ink-soft">Asigurare PAD (anual)</dt><dd className="font-medium">{lei(loan.pad_amount ?? 0, true)} · în {loan.pad_due_date ? monthName(loan.pad_due_date) : "–"}</dd></div>
+            )}
+            {(loan.opt_ins_amount ?? 0) > 0 && (
+              <div><dt className="text-ink-soft">Asigurare facultativă (anual)</dt><dd className="font-medium">{lei(loan.opt_ins_amount ?? 0, true)} · în {loan.opt_ins_due_date ? monthName(loan.opt_ins_due_date) : "–"}</dd></div>
+            )}
+            {annualMonthly > 0 && (
+              <div><dt className="text-ink-soft">De pus deoparte lunar</dt><dd className="font-medium text-leu">{lei(annualMonthly, true)} / lună</dd></div>
+            )}
+          </dl>
+          {loan.status_date && (
+            <p className="mt-3 text-[12px] text-ink-faint">
+              Actualizat la {fmtDate(loan.status_date)}
+              {Number(loan.use_schedule) === 1 ? " · ratele, dobânda, asigurarea și soldul se calculează din graficul băncii" : ""}.
+            </p>
+          )}
+        </Panel>
+      )}
 
       {/* Situația banilor deja plătiți & Raportare la zi */}
       <Panel
