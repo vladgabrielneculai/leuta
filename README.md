@@ -6,9 +6,10 @@
 
 | Componentă | Unde |
 |---|---|
-| Aplicația (Next.js 16) | https://buget-personal-beta.vercel.app — Vercel, regiunea `fra1` (Frankfurt) |
-| Baza de date (Postgres) | Supabase, proiectul `buget-personal` (`eu-central-1`) |
+| Aplicația (Next.js 16) | https://leuta.vercel.app — Vercel, regiunea `fra1` (Frankfurt); vechea adresă `buget-personal-beta.vercel.app` redirecționează aici |
+| Baza de date (Postgres) | Supabase, proiectul „Leuța” (`eu-central-1`) |
 | Codul | GitHub `vladgabrielneculai/buget-personal` — orice push pe `main` se publică automat |
+| Bot Telegram | [@leuta_app_bot](https://t.me/leuta_app_bot) — se conectează din *Setări → Notificări* |
 
 ---
 
@@ -68,7 +69,7 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 | `TELEGRAM_BOT_TOKEN` | token-ul de la @BotFather (opțional, pentru Telegram) |
 | `RESEND_API_KEY` | cheia API Resend (opțional, pentru email) |
 | `RESEND_FROM` | opțional, ex. `Leuța <buget@domeniul-tau.ro>`; implicit `onboarding@resend.dev`, care trimite doar către adresa contului Resend |
-| `APP_URL` | opțional, adresa principală (ex. `https://buget-personal-beta.vercel.app`) pentru linkurile din emailuri și webhook-ul Telegram |
+| `APP_URL` | opțional, adresa principală (`https://leuta.vercel.app`) pentru linkurile din emailuri și webhook-ul Telegram |
 
 Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiectul e pe celălalt cluster (`aws-0`), aplicația comută singură.
 
@@ -83,7 +84,7 @@ Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiec
 Teste end-to-end ale API-ului (autentificare, protecția rutelor, CRUD, copiere lună, categorii, backup):
 
 ```bash
-BASE_URL=https://buget-personal-beta.vercel.app TEST_USER=<utilizator> TEST_PASS=<parola> npm test
+BASE_URL=https://leuta.vercel.app TEST_USER=<utilizator> TEST_PASS=<parola> npm test
 ```
 
 Testele își creează propriile date (luna `1999-01`) și le șterg la final.
