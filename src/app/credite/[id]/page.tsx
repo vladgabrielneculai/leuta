@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import { annualInsuranceMonthly, type Loan, type LoanStatus, type Prepayment, type SimResult } from "@/lib/loan";
 import type { Strategy } from "@/lib/util";
-import { addMonths, currentMonth, lei, monthDiff, monthLabel, pct, termLabel } from "@/lib/util";
+import { addMonths, currentMonth, lei, monthDiff, monthLabel, pct, r2, termLabel } from "@/lib/util";
 import { confetti } from "@/lib/confetti";
 import LoanForm from "@/components/LoanForm";
 import LoanScheduleManager from "@/components/LoanScheduleManager";
@@ -79,10 +79,10 @@ export default function LoanDetail() {
     for (let i = 0; i < len; i++) {
       out.push({
         luna: data.original.rows[i].month,
-        Inițial: Math.round(data.original.rows[i]?.balanceEnd ?? 0),
-        Actual: data.actual.rows[i] ? Math.round(data.actual.rows[i].balanceEnd) : 0,
-        "Scenariu: perioadă": data.term.rows[i] ? Math.round(data.term.rows[i].balanceEnd) : 0,
-        "Scenariu: rată": data.installment.rows[i] ? Math.round(data.installment.rows[i].balanceEnd) : 0,
+        Inițial: r2(data.original.rows[i]?.balanceEnd ?? 0),
+        Actual: data.actual.rows[i] ? r2(data.actual.rows[i].balanceEnd) : 0,
+        "Scenariu: perioadă": data.term.rows[i] ? r2(data.term.rows[i].balanceEnd) : 0,
+        "Scenariu: rată": data.installment.rows[i] ? r2(data.installment.rows[i].balanceEnd) : 0,
       });
     }
     return out;
@@ -96,8 +96,8 @@ export default function LoanDetail() {
     for (let i = from; i < len; i++) {
       out.push({
         luna: (data.installment.rows[i] ?? data.term.rows[i]).month,
-        "Reducerea perioadei": data.term.rows[i] ? Math.round(data.term.rows[i].payment) : null,
-        "Reducerea ratei": data.installment.rows[i] ? Math.round(data.installment.rows[i].payment) : null,
+        "Reducerea perioadei": data.term.rows[i] ? r2(data.term.rows[i].payment) : null,
+        "Reducerea ratei": data.installment.rows[i] ? r2(data.installment.rows[i].payment) : null,
       });
     }
     return out;
@@ -255,7 +255,7 @@ export default function LoanDetail() {
         }
       />
 
-      <div className="panel mb-6 grid grid-cols-2 gap-6 p-5 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="panel mb-6 grid grid-cols-2 gap-6 p-5 sm:grid-cols-3 2xl:grid-cols-6">
         <Stat label="Bani deja plătiți" accent="var(--c-leu)" hint={`${lei(st.principalPaid)} principal · ${lei(st.interestPaid)} dobândă`}>
           <Money value={st.totalPaidSoFar} size="lg" tone="leu" />
         </Stat>

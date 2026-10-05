@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { celebrateOnce } from "@/lib/confetti";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { GoalView, InvestmentView, Summary } from "@/lib/analytics";
-import { lei, monthLabel, pct } from "@/lib/util";
+import { lei, monthLabel, pct, r2 } from "@/lib/util";
 import { api, Bar, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Skeleton, Stat, Toast, useApi, useApp } from "@/components/ui";
 
 const GOAL_COLORS = ["#C99A1E", "#3D7A4E", "#2E5C8A", "#B5456A", "#6A4E99"];
@@ -92,7 +92,7 @@ export default function SavingsPage() {
   const tax = Number(s?.settings.invest_tax_pct ?? 10);
   const inflation = Number(s?.settings.inflation_pct ?? inflationRate ?? 5);
 
-  const p = proj ?? { monthly: String(Math.round(avgInvest) || 500), years: "15", rate: String(expected) };
+  const p = proj ?? { monthly: String(r2(avgInvest) || 500), years: "15", rate: String(expected) };
   const projData = useMemo(
     () => projection(invested, Number(p.monthly) || 0, (Number(p.rate) || 0) * (1 - tax / 100), Math.min(40, Number(p.years) || 1)),
     [invested, p.monthly, p.rate, p.years, tax],
@@ -304,7 +304,7 @@ export default function SavingsPage() {
                         <td className={`py-2 pr-3 text-right ${i.gain >= 0 ? "text-leu" : "text-rosu"}`}>{lei(i.gain)}</td>
                         <td className="py-2 pr-3 text-[13px] text-ink-soft">{i.valueMonth ? monthLabel(i.valueMonth, true) : "după contribuții"}</td>
                         <td className="py-2 text-right whitespace-nowrap">
-                          <button className="btn-ghost px-2" onClick={() => setValueFor({ inv: i, value: String(Math.round(i.value)) })}>Actualizează valoarea</button>
+                          <button className="btn-ghost px-2" onClick={() => setValueFor({ inv: i, value: String(r2(i.value)) })}>Actualizează valoarea</button>
                           <button className="btn-ghost px-2" onClick={() => setInv({ id: i.id, name: i.name, type: i.type, expected_return: String(i.expected_return) })}>Editează</button>
                         </td>
                       </tr>

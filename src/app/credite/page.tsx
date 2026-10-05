@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Bar as RBar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Summary } from "@/lib/analytics";
-import { addMonths, lei, monthLabel, pct, termLabel } from "@/lib/util";
+import { addMonths, lei, monthLabel, pct, r2, termLabel } from "@/lib/util";
 import BankScheduleImport, { type BankImportResult } from "@/components/BankScheduleImport";
 import LoanForm, { emptyLoan } from "@/components/LoanForm";
 import { api, Bar, chartTooltipStyle, Empty, Modal, Money, PageHeader, Panel, Skeleton, Stat, useApi, useApp } from "@/components/ui";
@@ -55,9 +55,9 @@ export default function LoansPage() {
 
   const chartData = loans.map((l) => ({
     name: l.loan.name,
-    Achitat: Math.round(l.status.principalPaid || (l.loan.principal - l.status.balance)),
-    Rămas: Math.round(l.status.balance),
-    "Dobândă de plătit": Math.round(l.status.interestLeft),
+    Achitat: r2(l.status.principalPaid || (l.loan.principal - l.status.balance)),
+    Rămas: r2(l.status.balance),
+    "Dobândă de plătit": r2(l.status.interestLeft),
   }));
 
   return (

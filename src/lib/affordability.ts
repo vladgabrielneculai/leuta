@@ -1,3 +1,4 @@
+import { lei } from "./util";
 export type FinancingType = "cash" | "loan";
 
 export type PurchasePlan = {
@@ -123,7 +124,7 @@ export function evaluateAffordability(
     cashVerdict = "danger";
     cashScore = 20;
     cashReasons.push(
-      `Suma necesară (${price.toLocaleString("ro-RO")} lei) depășește economiile tale totale disponibile (${totalSavings.toLocaleString("ro-RO")} lei).`
+      `Suma necesară (${lei(price)}) depășește economiile tale totale disponibile (${lei(totalSavings)}).`
     );
   } else if (emergencyMonthsAfter < 1.5) {
     cashVerdict = "danger";
@@ -141,7 +142,7 @@ export function evaluateAffordability(
     cashVerdict = "safe";
     cashScore = 95;
     cashReasons.push(
-      `Ai suficiente economii! După achiziție îți rămân ${savingsAfter.toLocaleString("ro-RO")} lei, acoperind confortabil ${emergencyMonthsAfter.toFixed(1)} luni de cheltuieli.`
+      `Ai suficiente economii! După achiziție îți rămân ${lei(savingsAfter)}, acoperind confortabil ${emergencyMonthsAfter.toFixed(1)} luni de cheltuieli.`
     );
   }
 
@@ -214,7 +215,7 @@ export function evaluateAffordability(
   if (downPayment > totalSavings) {
     loanVerdict = "danger";
     loanScore = 15;
-    loanReasons.push(`Avansul solicitat (${downPayment.toLocaleString("ro-RO")} lei) depășește economiile tale totale.`);
+    loanReasons.push(`Avansul solicitat (${lei(downPayment)}) depășește economiile tale totale.`);
   } else if (dtiAfter > 40) {
     loanVerdict = "danger";
     loanScore = 25;
@@ -225,7 +226,7 @@ export function evaluateAffordability(
     loanVerdict = "danger";
     loanScore = 30;
     loanReasons.push(
-      `Rata lunară de ${monthlyPayment.toFixed(0)} lei îți depășește banii liberi lunari, împingând bugetul în deficit cu ${Math.abs(freeCashflowAfter).toFixed(0)} lei/lună.`
+      `Rata lunară de ${lei(monthlyPayment)} îți depășește banii liberi lunari, împingând bugetul în deficit cu ${lei(Math.abs(freeCashflowAfter))}/lună.`
     );
   } else if (dtiAfter > 25) {
     loanVerdict = "caution";
@@ -234,20 +235,20 @@ export function evaluateAffordability(
       `Gradul de îndatorare de ${dtiAfter.toFixed(1)}% este în limitele băncii, dar peste nivelul recomandat de sănătate financiară (20-25%).`
     );
     if (freeCashflowAfter < 300) {
-      loanReasons.push(`Banii liberi rămași lunar scad la doar ${Math.round(freeCashflowAfter)} lei.`);
+      loanReasons.push(`Banii liberi rămași lunar scad la doar ${lei(freeCashflowAfter)}.`);
     }
   } else {
     loanVerdict = "safe";
     loanScore = 90;
     loanReasons.push(
-      `Rata lunară estimată este de ${monthlyPayment.toFixed(0)} lei/lună, menținând gradul de îndatorare la un nivel excelent (${dtiAfter.toFixed(1)}%).`
+      `Rata lunară estimată este de ${lei(monthlyPayment)}/lună, menținând gradul de îndatorare la un nivel excelent (${dtiAfter.toFixed(1)}%).`
     );
-    loanReasons.push(`Îți mai rămân aproximativ ${Math.round(freeCashflowAfter)} lei liberi în fiecare lună.`);
+    loanReasons.push(`Îți mai rămân aproximativ ${lei(freeCashflowAfter)} liberi în fiecare lună.`);
   }
 
   if (totalInterest > 0) {
     loanReasons.push(
-      `Creditul te va costa în total cu ${Math.round(totalInterest).toLocaleString("ro-RO")} lei mai mult decât plata pe loc (dobânzi bancare).`
+      `Creditul te va costa în total cu ${lei(totalInterest)} mai mult decât plata pe loc (dobânzi bancare).`
     );
   }
 

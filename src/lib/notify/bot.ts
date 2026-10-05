@@ -1,7 +1,7 @@
 import { buildSummary } from "../analytics";
 import { sha256 } from "../auth";
 import { getDb, getSystemDb, runAsUser } from "../db";
-import { lei, monthLabel, type Kind } from "../util";
+import { eur, lei, monthLabel, type Kind } from "../util";
 import { dailyMessage } from "./notifications";
 import { toTelegram } from "./render";
 import { editTelegram, esc, sendTelegram, tg, type Keyboard } from "./telegram";
@@ -99,7 +99,7 @@ export function parseExpense(text: string) {
 const kindLabel = (k: Kind) => (k === "income" ? "venit" : k === "fixed" ? "cost fix" : "cheltuială variabilă");
 
 function entryText(e: { amount: number; currency: string; description: string; kind: Kind }, cat: Category | null, prefix = "✅ Adăugat") {
-  const amount = e.currency === "EUR" ? `${e.amount.toLocaleString("ro-RO")} €` : lei(e.amount, true);
+  const amount = e.currency === "EUR" ? eur(e.amount) : lei(e.amount);
   return `${prefix}: <b>${esc(amount)}</b> · ${esc(cat?.name ?? "fără categorie")} <i>(${kindLabel(e.kind)})</i>${e.description ? `\n<i>${esc(e.description)}</i>` : ""}`;
 }
 

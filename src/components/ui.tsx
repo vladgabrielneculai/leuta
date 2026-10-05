@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { currentMonth, eur, lei } from "@/lib/util";
+import { currentMonth, eur, lei, money } from "@/lib/util";
 import ReauthDialog from "./ReauthDialog";
 import { watchSystemTheme } from "@/lib/theme";
 
@@ -368,7 +368,7 @@ export function Money({
   const sizes = {
     sm: "text-[14px]",
     md: "text-[17px] font-medium",
-    lg: "font-display text-[26px] font-semibold leading-tight",
+    lg: "font-display text-[21px] sm:text-[23px] font-semibold leading-tight tracking-tight",
     xl: "font-display text-[40px] font-semibold leading-none tracking-tight",
   };
   const tones: Record<string, string> = {
@@ -376,7 +376,15 @@ export function Money({
   };
   return (
     <span className="num inline-flex flex-col">
-      <span className={`${sizes[size]} ${tone ? tones[tone] : ""}`}>{lei(v, decimals)}</span>
+      {size === "lg" || size === "xl" ? (
+        // Cifrele mari: „lei” mai mic, lângă sumă, ca să încapă pe un rând chiar și cu zecimale.
+        <span className={`${sizes[size]} ${tone ? tones[tone] : ""}`}>
+          <span className="whitespace-nowrap">{money(v)}</span>
+          <span className="ml-1 inline-block text-[0.55em] font-semibold opacity-70">lei</span>
+        </span>
+      ) : (
+        <span className={`${sizes[size]} ${tone ? tones[tone] : ""}`}>{lei(v, decimals)}</span>
+      )}
       <span className={`text-ink-faint ${size === "xl" || size === "lg" ? "text-[13px] mt-1" : "text-[12px]"}`}>
         {eur(v / r)}
       </span>

@@ -8,7 +8,7 @@ import {
 import { useEffect } from "react";
 import type { Summary } from "@/lib/analytics";
 import { celebrateOnce } from "@/lib/confetti";
-import { currentMonth, eur, lei, monthLabel, pct } from "@/lib/util";
+import { currentMonth, eur, lei, monthLabel, pct, r2 } from "@/lib/util";
 import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Skeleton, Stat, useApi, useApp } from "@/components/ui";
 
 type S = Summary & { fxError: string | null };
@@ -128,18 +128,18 @@ export default function Dashboard() {
 
   const trendData = s.trend.map((x) => ({
     luna: monthLabel(x.month, true),
-    Venit: Math.round(x.income),
-    Cheltuit: Math.round(x.spent),
-    Economisit: Math.round(x.savedTotal),
+    Venit: r2(x.income),
+    Cheltuit: r2(x.spent),
+    Economisit: r2(x.savedTotal),
     rata: x.hasData ? Number(x.savingsRate.toFixed(1)) : null,
   }));
 
   const pieData = s.categories.filter((c) => c.amount > 0);
   const nwData = s.netWorth.map((x) => ({
     luna: monthLabel(x.month, true),
-    Active: Math.round(x.assets),
+    Active: r2(x.assets),
     Datorii: -Math.round(x.debt),
-    "Avere netă": Math.round(x.net),
+    "Avere netă": r2(x.net),
   }));
 
   return (
