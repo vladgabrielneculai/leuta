@@ -58,7 +58,7 @@ async function fetchWithTimeout(url: string, timeoutMs = 9000): Promise<any> {
       cache: "no-store",
       headers: {
         Accept: "application/json",
-        "User-Agent": "BaniiMei-App/1.0",
+        "User-Agent": "Leuta-App/1.0",
       },
     });
     if (!res.ok) throw new Error(`Serverul a răspuns cu codul ${res.status}`);

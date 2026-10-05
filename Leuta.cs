@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -8,20 +8,21 @@ using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
-// Banii mei — fereastră desktop pentru versiunea ONLINE a aplicației.
+// Leuța — fereastră desktop pentru versiunea ONLINE a aplicației.
 //
 // Înainte, executabilul pornea local un server Node.js (npm run start) și cerea Node instalat.
 // Acum aplicația rulează pe Vercel + Supabase, așa că fereastra doar deschide adresa online:
 // nu mai e nevoie de Node, npm install sau npm run dev. Adresa se citește din
-// „BaniiMei.url.txt” (lângă exe), ca să poată fi schimbată fără recompilare.
+// „Leuta.url.txt” (lângă exe; „BaniiMei.url.txt” e acceptat pentru instalările vechi), ca să poată fi
+// schimbată fără recompilare. Fișierul e salvat UTF-8 cu BOM, ca diacriticele să fie citite corect de csc.exe.
 // Cod compatibil C# 5, ca să se poată compila și cu csc.exe din .NET Framework (build-exe.ps1).
 
-namespace BaniiMei
+namespace Leuta
 {
     static class Program
     {
         public const string DefaultUrl = "https://buget-personal-beta.vercel.app";
-        public const string WindowTitle = "Banii mei - Aplicație financiară";
+        public const string WindowTitle = "Leuța - Bugetul tău, ban cu ban";
 
         private static Mutex singleInstanceMutex = null;
         private static NotifyIcon trayIcon = null;
@@ -47,7 +48,7 @@ namespace BaniiMei
             Application.SetCompatibleTextRenderingDefault(false);
 
             bool createdNew;
-            singleInstanceMutex = new Mutex(true, "BaniiMeiDesktopAppMutex", out createdNew);
+            singleInstanceMutex = new Mutex(true, "LeutaDesktopAppMutex", out createdNew);
             BaseDir = AppDomain.CurrentDomain.BaseDirectory;
 
             if (!createdNew)
@@ -69,22 +70,23 @@ namespace BaniiMei
             Application.Run(mainWindow);
         }
 
-        /// Prima linie ne-goală din BaniiMei.url.txt, altfel adresa implicită.
+        /// Prima adresă din Leuta.url.txt (sau BaniiMei.url.txt, la instalările vechi), altfel adresa implicită.
         private static string ReadUrl()
         {
-            try
+            foreach (string name in new[] { "Leuta.url.txt", "BaniiMei.url.txt" })
             {
-                string path = Path.Combine(BaseDir, "BaniiMei.url.txt");
-                if (File.Exists(path))
+                try
                 {
+                    string path = Path.Combine(BaseDir, name);
+                    if (!File.Exists(path)) continue;
                     foreach (string line in File.ReadAllLines(path))
                     {
                         string t = line.Trim();
                         if (t.StartsWith("http://") || t.StartsWith("https://")) return t.TrimEnd('/');
                     }
                 }
+                catch { }
             }
-            catch { }
             return DefaultUrl;
         }
 
@@ -172,6 +174,7 @@ namespace BaniiMei
             {
                 // Profilul WebView (cookie-ul de login „ține-mă minte”) rămâne în %LOCALAPPDATA%,
                 // ca să nu depindă de folderul în care stă exe-ul.
+                // Profilul rămâne în folderul vechi „BaniiMei”, ca sesiunea (login-ul) să nu se piardă la redenumire.
                 string profileDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BaniiMei", "webview-profile");
                 if (!Directory.Exists(profileDir)) Directory.CreateDirectory(profileDir);
 
@@ -209,7 +212,7 @@ namespace BaniiMei
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Componenta WebView2 nu a putut porni: " + ex.Message + "\n\nAplicația se deschide în browser.", "Banii mei", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Componenta WebView2 nu a putut porni: " + ex.Message + "\n\nAplicația se deschide în browser.", "Leuța", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 try { Process.Start(Program.AppUrl); } catch { }
             }
         }
@@ -235,7 +238,7 @@ namespace BaniiMei
 
         private string GetOfflineHtml()
         {
-            return @"<!DOCTYPE html><html lang=""ro""><head><meta charset=""UTF-8""><title>Banii mei</title>
+            return @"<!DOCTYPE html><html lang=""ro""><head><meta charset=""UTF-8""><title>Leuța</title>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#EDF1EE;
 font-family:'Segoe UI',sans-serif;color:#1C2B30}.c{background:#fff;border:1px solid #D5DDD8;border-radius:20px;padding:40px 44px;
 max-width:440px;text-align:center;box-shadow:0 20px 50px -15px rgba(28,43,48,.15)}h1{font-size:22px;margin:0 0 8px}
@@ -251,7 +254,7 @@ padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600}</styl
 <html lang=""ro"">
 <head>
     <meta charset=""UTF-8"">
-    <title>Banii mei</title>
+    <title>Leuța</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -288,9 +291,7 @@ padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600}</styl
         .logo-box {
             width: 76px;
             height: 76px;
-            background: linear-gradient(135deg, #E6F3E9 0%, #CCE5D2 100%);
-            border: 1px solid #B8D6C0;
-            border-radius: 22px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -402,10 +403,10 @@ padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600}</styl
 <body>
     <div class=""splash-card"">
         <div class=""logo-box"">
-            <span class=""logo-letter"">B</span>
+            <svg viewBox=""0 0 64 64"" width=""76"" height=""76""><defs><linearGradient id=""g"" x1=""10"" y1=""6"" x2=""54"" y2=""60"" gradientUnits=""userSpaceOnUse""><stop offset=""0"" stop-color=""#5FA374""/><stop offset=""0.55"" stop-color=""#3D7A4E""/><stop offset=""1"" stop-color=""#24502F""/></linearGradient></defs><circle cx=""32"" cy=""32"" r=""30"" fill=""url(#g)""/><circle cx=""32"" cy=""32"" r=""26.5"" fill=""none"" stroke=""#F3EBD3"" stroke-opacity=""0.55"" stroke-width=""1.1"" stroke-dasharray=""1.6 2.2""/><circle cx=""32"" cy=""32"" r=""24.6"" fill=""none"" stroke=""#F3EBD3"" stroke-opacity=""0.3"" stroke-width=""0.8"" stroke-dasharray=""2.4 1.4""/><path d=""M22.5 15.5h7v22.2l13.2-6.6 2.9 6.3-17.6 8.9c-2.6 1.3-5.5-.6-5.5-3.5V15.5z"" fill=""#F7F0DA""/><circle cx=""46.3"" cy=""27.6"" r=""3.1"" fill=""#E4B74C""/></svg>
         </div>
-        <div class=""title"">Banii mei</div>
-        <div class=""subtitle"">Aplicație desktop Windows • Buget Personal</div>
+        <div class=""title"">Leuța</div>
+        <div class=""subtitle"">Bugetul tău, ban cu ban</div>
         <div class=""stripes"">
             <span class=""stripe"" style=""background: #3D7A4E;""></span>
             <span class=""stripe"" style=""background: #6A4E99;""></span>

@@ -1,5 +1,5 @@
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "   Banii mei - Construire Windows Native" -ForegroundColor Cyan
+Write-Host "   Leuta - Construire Windows Native" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 
 # 1. Asigurare dependinte native WebView2
@@ -27,27 +27,27 @@ if (!(Test-Path (Join-Path $nativeDir "Microsoft.Web.WebView2.WinForms.dll"))) {
     Remove-Item $zipPath -Force
 }
 
-# 2. Copiere DLL-uri native in folderul radacina al aplicatiei (langa BaniiMei.exe)
+# 2. Copiere DLL-uri native in folderul radacina al aplicatiei (langa Leuta.exe)
 Copy-Item -Path (Join-Path $nativeDir "Microsoft.Web.WebView2.Core.dll") -Destination $PSScriptRoot -Force
 Copy-Item -Path (Join-Path $nativeDir "Microsoft.Web.WebView2.WinForms.dll") -Destination $PSScriptRoot -Force
 Copy-Item -Path (Join-Path $nativeDir "WebView2Loader.dll") -Destination $PSScriptRoot -Force
 
 # 3. (Nu mai e nevoie de build Next.js: aplicatia ruleaza online, pe Vercel.)
 
-# 4. Compilare executabil Windows Native BaniiMei.exe
-Write-Host "`n3. Compilare executabil Windows Native BaniiMei.exe..." -ForegroundColor Cyan
-Stop-Process -Name BaniiMei -Force -ErrorAction SilentlyContinue
+# 4. Compilare executabil Windows Native Leuta.exe
+Write-Host "`n3. Compilare executabil Windows Native Leuta.exe..." -ForegroundColor Cyan
+Stop-Process -Name Leuta,BaniiMei -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 300
 
 $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 $refArgs = "/reference:System.Windows.Forms.dll,System.Drawing.dll,System.dll,`"$PSScriptRoot\Microsoft.Web.WebView2.WinForms.dll`",`"$PSScriptRoot\Microsoft.Web.WebView2.Core.dll`""
 
-& $csc /target:winexe /out:BaniiMei.exe /win32icon:app.ico $refArgs BaniiMei.cs
+& $csc /target:winexe /codepage:65001 /out:Leuta.exe /win32icon:app.ico $refArgs Leuta.cs
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "`n[SUCCES] Executabilul nativ BaniiMei.exe a fost generat cu succes!" -ForegroundColor Green
-    Write-Host "Fereastra deschide versiunea online (adresa din BaniiMei.url.txt). Nu e nevoie de Node.js." -ForegroundColor Green
-    Write-Host "Poti deschide BaniiMei.exe oricand sau poti rula 'npm run shortcut' pentru scurtatura pe Desktop." -ForegroundColor Yellow
+    Write-Host "`n[SUCCES] Executabilul nativ Leuta.exe a fost generat cu succes!" -ForegroundColor Green
+    Write-Host "Fereastra deschide versiunea online (adresa din Leuta.url.txt). Nu e nevoie de Node.js." -ForegroundColor Green
+    Write-Host "Poti deschide Leuta.exe oricand sau poti rula 'npm run shortcut' pentru scurtatura pe Desktop." -ForegroundColor Yellow
 } else {
     Write-Host "Eroare la compilare csc.exe!" -ForegroundColor Red
     exit $LASTEXITCODE
