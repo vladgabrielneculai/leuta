@@ -1,8 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
-import type { Loan, Row, SimResult } from "@/lib/loan";
-import { addMonths, currentMonth, lei, monthDiff, monthLabel, pct, type Strategy } from "@/lib/util";
+import { useState } from "react";
+import type { Loan, ScheduleRow, SimResult } from "@/lib/loan";
+import { loanFieldsFromSchedule } from "@/lib/loanImport";
+import { addMonths, currentMonth, lei, type Strategy } from "@/lib/util";
+import BankScheduleImport, { type BankImportResult } from "./BankScheduleImport";
+import LoanStatusForm, { type LoanStatusDraft } from "./LoanStatusForm";
 import { api, Field, Modal, Panel, useConfirm } from "./ui";
 
 type CustomScheduleRow = {
@@ -32,15 +35,9 @@ export default function LoanScheduleManager({
 }) {
   const confirm = useConfirm();
   const now = currentMonth();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [importMode, setImportMode] = useState<"file" | "manual" | "contract">("file");
-
-  // File upload state
-  const [uploading, setUploading] = useState(false);
-  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
-  const [uploadedRows, setUploadedRows] = useState<CustomScheduleRow[] | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [importMode, setImportMode] = useState<"file" | "status" | "manual" | "contract">("file");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Manual paste state
   const [importText, setImportText] = useState("");
@@ -134,48 +131,41 @@ export default function LoanScheduleManager({
     setTimeout(() => setAppliedToast(false), 4000);
   };
 
-  // Upload fisier Excel / PDF
-  const handleFileUpload = async (file: File) => {
-    setUploadError(null);
-    setUploading(true);
-    setUploadedRows(null);
-    setUploadedFilename(file.name);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("loanId", String(loan.id));
-
-      const res = await fetch("/api/loan-schedule/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Eroare la parsarea fișierului");
-
-      setUploadedRows(data.rows);
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Eroare la încărcare");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleSaveUploadedSchedule = async () => {
-    if (!uploadedRows || uploadedRows.length === 0) return;
+  /** Salvează graficul (și, opțional, datele creditului) — de aici înainte e sursa calculelor. */
+  const saveSchedule = async (entries: ScheduleRow[], source: string, loanPatch: Partial<Loan> = {}) => {
+    setSaveError(null);
     setBusy(true);
     try {
-      await api("/api/loan-schedule", "POST", { loanId: loan.id, entries: uploadedRows });
+      const clean = entries.map(({ installment_nr, month, balance_start, principal, interest, fee, payment, balance_end, is_paid }) => ({
+        installment_nr, month, balance_start, principal, interest, fee, payment, balance_end, is_paid,
+      }));
+      await api("/api/loan-schedule", "POST", { loanId: loan.id, entries: clean, loanPatch, source });
       setModalOpen(false);
-      setUploadedRows(null);
-      setUploadedFilename(null);
       onUpdated();
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Nu s-a putut salva");
+      setSaveError(err instanceof Error ? err.message : "Nu s-a putut salva");
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleConfirmImport = (r: BankImportResult) => {
+    const patch = r.updateLoan ? loanFieldsFromSchedule(r.meta, r.rows, loan) : {};
+    return saveSchedule(r.rows, r.filename.toLowerCase().endsWith(".pdf") ? "pdf" : "file", { ...patch, ...r.annual });
+  };
+
+  const handleSaveStatus = (draft: LoanStatusDraft, rows: ScheduleRow[]) => {
+    const balance = rows[0]?.balance_start ?? 0;
+    const lastRow = rows[rows.length - 1];
+    return saveSchedule(rows, "manual", {
+      ...draft,
+      current_balance: balance,
+      status_date: new Date().toISOString().slice(0, 10),
+      already_paid_principal: loan.principal > balance ? Math.round((loan.principal - balance) * 100) / 100 : loan.already_paid_principal,
+      insurance_monthly: draft.next_fees,
+      // Durata creditului: până la maturitate (numărul ratei = indexul lunii de la acordare + 1).
+      term_months: lastRow ? Math.max(1, lastRow.installment_nr) : loan.term_months,
+    });
   };
 
   const handleImportText = async () => {
@@ -226,7 +216,7 @@ export default function LoanScheduleManager({
       }
 
       setBusy(true);
-      await api("/api/loan-schedule", "POST", { loanId: loan.id, entries });
+      await api("/api/loan-schedule", "POST", { loanId: loan.id, entries, source: "text" });
       setModalOpen(false);
       setImportText("");
       onUpdated();
@@ -252,7 +242,7 @@ export default function LoanScheduleManager({
         is_paid: r.month < now ? 1 : 0,
       }));
 
-      await api("/api/loan-schedule", "POST", { loanId: loan.id, entries });
+      await api("/api/loan-schedule", "POST", { loanId: loan.id, entries, source: "contract" });
       setModalOpen(false);
       onUpdated();
     } catch (err) {
@@ -265,8 +255,8 @@ export default function LoanScheduleManager({
   const handleResetSchedule = async () => {
     if (
       !(await confirm({
-        title: "Resetare scadențar bancar",
-        message: "Sigur vrei să resetezi schema la calculul automat conform formulei anuităților?",
+        title: "Renunță la graficul băncii",
+        message: "Sigur vrei să ștergi graficul încărcat? Creditul va fi calculat din nou doar din parametrii contractului (dobândă, perioadă).",
         confirmText: "Resetează",
         danger: true,
       }))
@@ -282,15 +272,23 @@ export default function LoanScheduleManager({
   };
 
   const hasCustom = customSchedule && customSchedule.length > 0;
+  const SOURCE_LABEL: Record<string, string> = {
+    pdf: "grafic PDF bancă",
+    file: "fișier bancă",
+    manual: "situația la zi",
+    text: "text importat",
+    contract: "generat din contract",
+  };
+  const activeSource = Number(loan.use_schedule) === 1 ? SOURCE_LABEL[loan.schedule_source ?? ""] ?? "grafic bancă" : null;
 
   return (
     <Panel
       title="Schema de rambursare & Recalculator plată anticipată"
       aside={
         <div className="flex flex-wrap items-center gap-2">
-          {hasCustom ? (
-            <span className="rounded-full bg-leu-tint px-2.5 py-0.5 text-[12px] font-medium text-leu">
-              Scadențar bancă activ ({customSchedule.length} rate)
+          {hasCustom && activeSource ? (
+            <span className="rounded-full bg-leu-tint px-2.5 py-0.5 text-[12px] font-medium text-leu" title="Ratele, dobânda, asigurarea și soldul se iau din acest grafic">
+              Sursa calculelor: {activeSource} ({customSchedule.length} rate)
             </span>
           ) : (
             <span className="rounded-full bg-paper px-2.5 py-0.5 text-[12px] text-ink-soft border border-line">
@@ -298,7 +296,7 @@ export default function LoanScheduleManager({
             </span>
           )}
           <button className="btn-ghost text-[13px] py-1" onClick={() => setModalOpen(true)}>
-            {hasCustom ? "Modifică / Încarcă fișier" : "Importă fișier Excel / PDF"}
+            {hasCustom ? "Actualizează graficul / situația la zi" : "Încarcă grafic PDF / situația la zi"}
           </button>
           <button className="btn-ghost text-[13px] py-1" onClick={handleDownloadCsv}>
             Exportă CSV
@@ -400,17 +398,25 @@ export default function LoanScheduleManager({
       </div>
 
       {/* Modal pentru import / citire automată scadențar */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Import scadențar bancă (Excel / PDF)">
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Graficul de rambursare de la bancă">
         <div className="flex flex-col gap-4">
           {/* Meniu mod import */}
-          <div className="flex border-b border-line gap-2 pb-2">
+          <div className="flex flex-wrap border-b border-line gap-2 pb-2">
             <button
               className={`px-3 py-1.5 text-[13px] font-semibold rounded-md ${
                 importMode === "file" ? "bg-leu text-white" : "bg-paper text-ink-soft hover:text-ink"
               }`}
               onClick={() => setImportMode("file")}
             >
-              📄 Încarcă fișier Excel / PDF
+              📄 Grafic PDF / Excel
+            </button>
+            <button
+              className={`px-3 py-1.5 text-[13px] font-semibold rounded-md ${
+                importMode === "status" ? "bg-leu text-white" : "bg-paper text-ink-soft hover:text-ink"
+              }`}
+              onClick={() => setImportMode("status")}
+            >
+              🏦 Situația la zi (manual)
             </button>
             <button
               className={`px-3 py-1.5 text-[13px] font-semibold rounded-md ${
@@ -430,108 +436,26 @@ export default function LoanScheduleManager({
             </button>
           </div>
 
-          {/* 1. Modul Încarcă fișier */}
+          {/* 1. Graficul băncii (PDF BCR / Excel) */}
           {importMode === "file" && (
-            <div className="flex flex-col gap-4">
-              <p className="text-[13px] text-ink-soft">
-                Încarcă direct fișierul <strong>Excel (.xlsx, .xls)</strong> sau <strong>PDF (.pdf)</strong> descărcat din aplicația băncii tale (Banca Transilvania, BCR, ING, Raiffeisen, BRD etc.). Coloanele vor fi citite automat!
-              </p>
-
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) handleFileUpload(file);
-                }}
-                className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-line bg-paper/50 p-8 text-center cursor-pointer hover:border-leu hover:bg-leu-tint/10 transition-colors"
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.xls,.pdf,.csv"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleFileUpload(f);
-                  }}
-                />
-                <div className="text-[28px] mb-2">📁</div>
-                <div className="text-[14px] font-semibold text-ink">
-                  {uploading ? "Se citește fișierul…" : "Apasă aici sau trage fișierul Excel / PDF"}
-                </div>
-                <div className="text-[12px] text-ink-soft mt-1">
-                  Acceptă .xlsx, .xls, .pdf și .csv
-                </div>
-              </div>
-
-              {uploadError && (
-                <div className="rounded-md bg-rosu-tint p-3 text-[13px] text-rosu font-medium">
-                  {uploadError}
-                </div>
-              )}
-
-              {/* Previzualizare rânduri extrase */}
-              {uploadedRows && uploadedRows.length > 0 && (
-                <div className="rounded-lg border border-leu/40 bg-leu-tint/20 p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-[14px] text-ink">
-                      ✓ Au fost identificate {uploadedRows.length} rate din „{uploadedFilename}”!
-                    </span>
-                  </div>
-
-                  <p className="text-[12px] text-ink-soft mb-3">
-                    Iată primele rate recunoscute din fișier:
-                  </p>
-
-                  <div className="max-h-[180px] overflow-auto rounded border border-line bg-sheet">
-                    <table className="w-full text-[12px] font-mono text-left">
-                      <thead className="sticky top-0 bg-paper border-b border-line">
-                        <tr>
-                          <th className="p-1.5">Nr</th>
-                          <th className="p-1.5">Luna</th>
-                          <th className="p-1.5 text-right">Sold</th>
-                          <th className="p-1.5 text-right">Principal</th>
-                          <th className="p-1.5 text-right">Dobândă</th>
-                          <th className="p-1.5 text-right">Rată</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-line">
-                        {uploadedRows.slice(0, 6).map((r) => (
-                          <tr key={r.installment_nr}>
-                            <td className="p-1.5">{r.installment_nr}</td>
-                            <td className="p-1.5">
-                              <div className="flex items-center gap-1.5">
-                                <span>{r.month}</span>
-                                {(r.is_paid === 1 || r.month < now) && (
-                                  <span className="rounded bg-leu-tint px-1.5 py-0.5 text-[10px] font-semibold text-leu border border-leu/30">
-                                    ✓ Achitată
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="p-1.5 text-right">{lei(r.balance_start)}</td>
-                            <td className="p-1.5 text-right">{lei(r.principal)}</td>
-                            <td className="p-1.5 text-right">{lei(r.interest)}</td>
-                            <td className="p-1.5 text-right font-medium">{lei(r.payment)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <button
-                    className="btn-primary mt-4 w-full justify-center py-2.5 text-[14px] font-semibold"
-                    onClick={handleSaveUploadedSchedule}
-                    disabled={busy}
-                  >
-                    {busy ? "Se salvează…" : `Confirmă și salvează scadențarul (${uploadedRows.length} rate)`}
-                  </button>
-                </div>
-              )}
-            </div>
+            <BankScheduleImport
+              showUpdateLoan
+              busy={busy}
+              initialAnnual={{
+                pad_amount: loan.pad_amount ?? 0,
+                pad_due_date: loan.pad_due_date ?? "",
+                opt_ins_amount: loan.opt_ins_amount ?? 0,
+                opt_ins_due_date: loan.opt_ins_due_date ?? "",
+              }}
+              confirmLabel={(count) => `Folosește graficul băncii (${count} rate)`}
+              onConfirm={handleConfirmImport}
+            />
           )}
+
+          {/* Situația la zi din aplicația băncii → grafic reconstruit */}
+          {importMode === "status" && <LoanStatusForm loan={loan} busy={busy} onSave={handleSaveStatus} />}
+
+          {saveError && <div className="rounded-md bg-rosu-tint p-3 text-[13px] font-medium text-rosu">{saveError}</div>}
 
           {/* 2. Modul Generează din contract */}
           {importMode === "contract" && (

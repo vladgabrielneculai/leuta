@@ -5,24 +5,53 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Bar as RBar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Summary } from "@/lib/analytics";
-import { addMonths, lei, monthLabel, pct } from "@/lib/util";
-import LoanForm from "@/components/LoanForm";
-import { Bar, chartTooltipStyle, Empty, Modal, Money, PageHeader, Panel, Stat, useApi, useApp } from "@/components/ui";
+import { addMonths, lei, monthLabel, pct, termLabel } from "@/lib/util";
+import BankScheduleImport, { type BankImportResult } from "@/components/BankScheduleImport";
+import LoanForm, { emptyLoan } from "@/components/LoanForm";
+import { api, Bar, chartTooltipStyle, Empty, Modal, Money, PageHeader, Panel, Stat, useApi, useApp } from "@/components/ui";
+import { loanFieldsFromSchedule, loanNameFromMeta } from "@/lib/loanImport";
 
 export default function LoansPage() {
   const { month, bump } = useApp();
   const router = useRouter();
   const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const { data: s } = useApi<Summary>(`/api/summary?month=${month}`);
 
   const loans = s?.loans ?? [];
   const active = loans.filter((l) => l.status.balance > 0);
   const totalDebt = active.reduce((a, l) => a + l.status.balance, 0);
-  const totalPayment = active.reduce((a, l) => a + l.status.nextPayment + l.loan.insurance_monthly, 0);
+  const totalPayment = active.reduce((a, l) => a + l.status.nextPayment + l.status.nextInsurance, 0);
   const interestLeft = active.reduce((a, l) => a + l.status.interestLeft, 0);
   const saved = loans.reduce((a, l) => a + l.interestSaved, 0);
   const totalPaid = loans.reduce((a, l) => a + (l.status.totalPaidSoFar || 0), 0);
   const totalPrincipalPaid = loans.reduce((a, l) => a + (l.status.principalPaid || 0), 0);
+
+  // Credit nou direct din graficul băncii: datele creditului + ratele, salvate împreună.
+  const createFromSchedule = async (r: BankImportResult) => {
+    setImportError(null);
+    setImportBusy(true);
+    try {
+      const base = emptyLoan();
+      const fields = loanFieldsFromSchedule(r.meta, r.rows, { ...base, start_date: "" });
+      const createLoan = { ...base, name: loanNameFromMeta(r.meta), ...fields, ...r.annual };
+      const entries = r.rows.map(({ date: _date, ...row }) => row);
+      const res = await api<{ loanId: number }>("/api/loan-schedule", "POST", {
+        createLoan,
+        entries,
+        source: r.filename.toLowerCase().endsWith(".pdf") ? "pdf" : "file",
+      });
+      setImporting(false);
+      bump();
+      router.push(`/credite/${res.loanId}`);
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "Creditul nu a putut fi creat");
+    } finally {
+      setImportBusy(false);
+    }
+  };
 
   const chartData = loans.map((l) => ({
     name: l.loan.name,
@@ -36,7 +65,12 @@ export default function LoansPage() {
       <PageHeader
         title="Credite"
         intro="Situația fiecărui credit la luna selectată, cu plățile anticipate deja făcute și istoricul achitat."
-        actions={<button className="btn-primary" onClick={() => setAdding(true)}>Adaugă credit</button>}
+        actions={
+          <>
+            <button className="btn-ghost" onClick={() => setImporting(true)}>📄 Adaugă din grafic PDF</button>
+            <button className="btn-primary" onClick={() => setAdding(true)}>Adaugă credit</button>
+          </>
+        }
       />
 
       {!s ? (
@@ -44,6 +78,7 @@ export default function LoansPage() {
       ) : loans.length === 0 ? (
         <Empty title="Niciun credit adăugat">
           Adaugă creditul ipotecar ca să vezi graficul de rambursare, efectul plăților anticipate și trecerea la dobânda variabilă.
+          Cel mai simplu: încarcă graficul de rambursare PDF descărcat din aplicația băncii (BCR / George).
         </Empty>
       ) : (
         <>
@@ -70,7 +105,7 @@ export default function LoansPage() {
                   <div>
                     <h2 className="text-[20px] font-semibold">{l.loan.name}</h2>
                     <p className="text-[13px] text-ink-soft">
-                      {l.loan.bank || "Bancă nespecificată"} · {lei(l.loan.principal)} pe {l.loan.term_months / 12} ani ·{" "}
+                      {l.loan.bank || "Bancă nespecificată"} · {lei(l.loan.principal)} pe {termLabel(l.loan.term_months)} ·{" "}
                       {l.loan.schedule_type === "annuity" ? "rate egale" : "rate descrescătoare"}
                     </p>
                   </div>
@@ -85,7 +120,7 @@ export default function LoansPage() {
                 <dl className="num mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-[13px]">
                   <div><dt className="text-ink-soft">Bani deja plătiți</dt><dd className="font-semibold text-leu">{lei(l.status.totalPaidSoFar)}</dd></div>
                   <div><dt className="text-ink-soft">Sold rămas</dt><dd className="font-medium text-mov">{lei(l.status.balance)}</dd></div>
-                  <div><dt className="text-ink-soft">Rata următoare</dt><dd className="font-medium">{lei(l.status.nextPayment + l.loan.insurance_monthly)}</dd></div>
+                  <div><dt className="text-ink-soft">Rata următoare</dt><dd className="font-medium">{lei(l.status.nextPayment + l.status.nextInsurance)}</dd></div>
                   <div><dt className="text-ink-soft">Dobânda acum</dt><dd className="font-medium">{pct(l.status.currentRate, 2)}</dd></div>
                   <div><dt className="text-ink-soft">Rate achitate</dt><dd className="font-medium">{l.status.installmentsPaidCount} rate ({pct(l.status.paidPct, 0)})</dd></div>
                   <div><dt className="text-ink-soft">Ultima rată</dt><dd className="font-medium">{monthLabel(l.status.payoffMonth)}</dd></div>
@@ -118,6 +153,15 @@ export default function LoansPage() {
           )}
         </>
       )}
+
+      <Modal open={importing} onClose={() => setImporting(false)} title="Credit nou din graficul băncii">
+        <BankScheduleImport
+          busy={importBusy}
+          confirmLabel={(count) => `Creează creditul (${count} rate)`}
+          onConfirm={createFromSchedule}
+        />
+        {importError && <p className="mt-3 text-[13px] text-rosu">{importError}</p>}
+      </Modal>
 
       <Modal open={adding} onClose={() => setAdding(false)} title="Credit nou">
         <LoanForm

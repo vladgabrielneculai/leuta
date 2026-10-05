@@ -26,6 +26,13 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 
 ---
 
+## 🏦 Credite din graficul băncii
+
+- **Credite → „Adaugă din grafic PDF”**: încarci graficul de rambursare descărcat din George (BCR). Se citesc suma, soldul actual, data acordării, dobânzile pe perioade, nr. contractului și toate ratele (principal, dobândă, asigurare, sold).
+- Pe un credit existent: **„Actualizează graficul / situația la zi”** → PDF nou (după o plată anticipată sau o schimbare de dobândă) sau datele copiate manual din aplicația băncii (sold, următoarea rată, principal, dobândă, taxe lunare, maturitate, restanțe, rata dobânzii), din care graficul se reconstruiește până la maturitate.
+- Cu graficul activ, ratele din buget, soldul și dobânda se iau exact din grafic; plățile anticipate și scenariile de IRCC recalculează restul ca banca.
+- Asigurarea PAD și cea facultativă (anuale) apar ca sumă întreagă în luna scadenței, în fiecare an; suma restantă se adaugă la plățile lunii în care a fost raportată.
+
 ## 🔐 Securitate
 
 Aplicația e acum publică pe internet, deci:
@@ -45,7 +52,7 @@ Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiec
 
 ## 🗄️ Baza de date
 
-- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite).
+- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite), `0002_multi_user.sql`, `0003_loan_bank_schedule.sql` (graficul băncii ca sursă, situația la zi, asigurări anuale).
 - Backup / restaurare: *Setări → Exportă JSON* / *Restaurează*.
 - Editare directă: Supabase Dashboard → Table Editor.
 

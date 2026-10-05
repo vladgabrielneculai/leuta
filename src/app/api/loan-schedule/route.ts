@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, type DbInterface } from "@/lib/db";
+import { TABLES } from "@/lib/crud";
 
 export const dynamic = "force-dynamic";
 
@@ -29,18 +30,75 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ loanId: Number(loanId), entries: rows });
 }
 
+/** Doar coloanele cunoscute ale creditului (aceeași listă ca la CRUD). */
+function loanFields(data: Record<string, unknown> | undefined) {
+  const out: Record<string, unknown> = {};
+  if (!data) return out;
+  for (const col of TABLES.loans.columns) {
+    if (!(col in data)) continue;
+    let v = data[col];
+    if (typeof v === "boolean") v = v ? 1 : 0;
+    if (v === "" && col.endsWith("_date") && col !== "start_date") v = null;
+    out[col] = v;
+  }
+  return out;
+}
+
+async function insertLoan(tx: DbInterface, data: Record<string, unknown>) {
+  const keys = Object.keys(data);
+  const info = await tx
+    .prepare(`INSERT INTO loans (${keys.join(",")}) VALUES (${keys.map(() => "?").join(",")})`)
+    .run(...keys.map((k) => data[k]));
+  return info.lastInsertRowid;
+}
+
+async function updateLoan(tx: DbInterface, id: number, data: Record<string, unknown>) {
+  const keys = Object.keys(data);
+  if (!keys.length) return true;
+  const res = await tx
+    .prepare(`UPDATE loans SET ${keys.map((k) => `${k} = ?`).join(", ")} WHERE id = ?`)
+    .run(...keys.map((k) => data[k]), id);
+  return res.changes > 0;
+}
+
+/**
+ * Salvează graficul băncii pentru un credit și îl face sursa calculelor (use_schedule = 1).
+ * Opțional, în aceeași tranzacție: `loanPatch` actualizează creditul (date citite din PDF / situația la zi),
+ * iar `createLoan` creează întâi un credit nou (import „Adaugă credit din PDF”).
+ */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { loanId, entries } = body as { loanId: number; entries: Omit<ScheduleEntry, "id">[] };
+    const { entries, loanPatch, createLoan, source } = body as {
+      loanId?: number;
+      entries: Omit<ScheduleEntry, "id" | "loan_id">[];
+      loanPatch?: Record<string, unknown>;
+      createLoan?: Record<string, unknown>;
+      source?: string;
+    };
+    let loanId = Number(body.loanId) || 0;
 
-    if (!loanId || !Array.isArray(entries)) {
+    if ((!loanId && !createLoan) || !Array.isArray(entries) || entries.length === 0) {
       return NextResponse.json({ error: "Date invalide" }, { status: 400 });
     }
 
     const db = await getDb();
-    await db.transaction(async (tx) => {
+    const missing = await db.transaction(async (tx) => {
+      const flags = { use_schedule: 1, ...(source ? { schedule_source: source } : {}) };
+      if (createLoan) {
+        const data = loanFields({ ...createLoan, ...flags });
+        if (!data.name || !(Number(data.principal) > 0) || !data.start_date) {
+          throw new Error("Lipsesc datele creditului (nume, sumă, data acordării).");
+        }
+        loanId = await insertLoan(tx, data);
+      } else if (!(await updateLoan(tx, loanId, loanFields({ ...loanPatch, ...flags })))) {
+        return true; // creditul nu există sau e al altui cont
+      }
+
       await tx.prepare("DELETE FROM loan_schedules WHERE loan_id = ?").run(loanId);
+
+      // Numerele ratelor sunt unice per credit; dacă fișierul le repetă, le renumerotăm în ordine.
+      const renumber = new Set(entries.map((e) => e.installment_nr)).size !== entries.length;
 
       // Un scadențar are până la ~360 de rate: le inserăm în loturi, nu rând cu rând (fiecare rând = un round-trip).
       const CHUNK = 200;
@@ -53,10 +111,10 @@ export async function POST(req: NextRequest) {
               interest, fee, payment, balance_end, is_paid
             ) VALUES ${part.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(",")}`,
           )
-          .run(...part.flatMap((r) => [
+          .run(...part.flatMap((r, j) => [
           loanId,
           r.month,
-          r.installment_nr,
+          renumber ? i + j + 1 : r.installment_nr,
           Number(r.balance_start) || 0,
           Number(r.principal) || 0,
           Number(r.interest) || 0,
@@ -66,9 +124,11 @@ export async function POST(req: NextRequest) {
           r.is_paid ? 1 : 0,
         ]));
       }
+      return false;
     });
 
-    return NextResponse.json({ ok: true, count: entries.length });
+    if (missing) return NextResponse.json({ error: "Creditul nu există." }, { status: 404 });
+    return NextResponse.json({ ok: true, loanId, count: entries.length });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Eroare la salvare" }, { status: 500 });
   }
@@ -78,7 +138,11 @@ export async function DELETE(req: NextRequest) {
   const loanId = req.nextUrl.searchParams.get("loanId");
   if (!loanId) return NextResponse.json({ error: "Lipsește loanId" }, { status: 400 });
 
-  await (await getDb()).prepare("DELETE FROM loan_schedules WHERE loan_id = ?").run(Number(loanId));
+  await (await getDb()).transaction(async (tx) => {
+    await tx.prepare("DELETE FROM loan_schedules WHERE loan_id = ?").run(Number(loanId));
+    // Fără grafic, creditul revine la calculul din parametrii contractului.
+    await tx.prepare("UPDATE loans SET use_schedule = 0, schedule_source = '' WHERE id = ?").run(Number(loanId));
+  });
   return NextResponse.json({ ok: true });
 }
 

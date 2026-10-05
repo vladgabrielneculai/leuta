@@ -12,6 +12,10 @@ export const TABLES: Record<string, { columns: string[]; filters: string[]; orde
       "name", "bank", "principal", "start_date", "term_months", "schedule_type", "fixed_rate", "fixed_months",
       "margin", "ircc", "fee_fixed_pct", "fee_variable_pct", "insurance_monthly", "strategy", "active",
       "already_paid_principal", "already_paid_interest",
+      "use_schedule", "schedule_source", "schedule_generated_at", "contract_nr",
+      "status_date", "current_balance", "arrears_amount", "arrears_count", "next_payment_date", "next_payment_amount",
+      "next_principal", "next_interest", "next_fees", "maturity_date", "current_rate",
+      "pad_amount", "pad_due_date", "opt_ins_amount", "opt_ins_due_date",
     ],
 
     filters: [],
