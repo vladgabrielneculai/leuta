@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BUCKET_LABEL, KIND_LABEL, type Bucket, type Kind } from "@/lib/util";
-import { api, Field, PageHeader, Panel, Toast, useApi, useApp } from "@/components/ui";
+import { api, downloadFile, Field, PageHeader, Panel, Toast, useApi, useApp } from "@/components/ui";
 import AccountSecurity from "@/components/AccountSecurity";
+import SecurityCenter from "@/components/SecurityCenter";
 import DatabaseManager from "@/components/DatabaseManager";
 
 type Category = { id: number; name: string; kind: Kind; bucket: Bucket; color: string };
@@ -217,6 +218,8 @@ export default function SettingsPage() {
         </Panel>
 
         <div className="flex flex-col gap-6">
+          <SecurityCenter onToast={(msg) => setToast(msg)} />
+
           <AccountSecurity onToast={(msg) => setToast(msg)} />
 
           <DatabaseManager
@@ -315,10 +318,15 @@ export default function SettingsPage() {
 
           <Panel title="Copie de siguranță">
             <p className="mb-3 text-[13px] text-ink-soft">
-              Datele stau în <code className="rounded bg-line/60 px-1">data/buget.db</code>. Exportă periodic un fișier JSON și păstrează-l pe NAS sau în cloud.
+              Datele stau în baza de date Supabase. Exportă periodic un fișier JSON și păstrează-l pe NAS sau în cloud.
             </p>
             <div className="flex flex-wrap gap-2">
-              <a className="btn-primary" href="/api/backup">Exportă datele</a>
+              <button
+                className="btn-primary"
+                onClick={() => downloadFile("/api/backup", "buget-backup.json").catch((e) => setToast(e.message))}
+              >
+                Exportă datele
+              </button>
               <button className="btn-ghost" onClick={() => fileRef.current?.click()}>Restaurează din fișier</button>
               <input
                 ref={fileRef}

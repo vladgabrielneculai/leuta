@@ -10,7 +10,29 @@ import { SESSION_COOKIE, userForToken } from "@/lib/auth";
  */
 
 // Rute accesibile fără sesiune: ecranele de login/setup și endpoint-urile lor.
-const PUBLIC_PATHS = ["/login", "/setup", "/api/auth/login", "/api/auth/setup", "/api/auth/status"];
+const PUBLIC_PATHS = [
+  "/login", "/setup", "/api/auth/login", "/api/auth/setup", "/api/auth/status",
+  "/api/auth/passkey/login/options", "/api/auth/passkey/login/verify",
+];
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/**
+ * Protecție CSRF suplimentară (pe lângă cookie-ul SameSite=Lax): o cerere care modifică date trebuie să
+ * vină din aplicația însăși. Browserele trimit mereu `Origin` / `Sec-Fetch-Site` la POST/PUT/DELETE.
+ */
+function isCrossSite(req: NextRequest) {
+  if (SAFE_METHODS.has(req.method)) return false;
+  if (req.headers.get("sec-fetch-site") === "cross-site") return true;
+  const origin = req.headers.get("origin");
+  if (!origin) return false; // clienți non-browser (fără cookie-ul cuiva) — nu sunt un vector CSRF
+  const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").split(",")[0].trim();
+  try {
+    return new URL(origin).host !== host;
+  } catch {
+    return true;
+  }
+}
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -18,6 +40,10 @@ export async function proxy(req: NextRequest) {
   // venită de la client și îl punem doar noi, după validarea sesiunii — deci nu poate fi falsificat.
   const headers = new Headers(req.headers);
   headers.delete("x-user-id");
+
+  if (pathname.startsWith("/api/") && isCrossSite(req)) {
+    return NextResponse.json({ error: "Cerere respinsă." }, { status: 403 });
+  }
 
   if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next({ request: { headers } });
 

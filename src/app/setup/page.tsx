@@ -35,8 +35,8 @@ export default function SetupPage() {
       setError("Numele de utilizator trebuie să aibă cel puțin 3 caractere.");
       return;
     }
-    if (password.length < 8) {
-      setError("Parola trebuie să aibă cel puțin 8 caractere.");
+    if (password.length < 12) {
+      setError("Parola trebuie să aibă cel puțin 12 caractere.");
       return;
     }
     if (password !== confirmPassword) {
@@ -84,7 +84,7 @@ export default function SetupPage() {
             <h1 className="font-display text-[24px] font-bold">Banii mei</h1>
           </div>
           <p className="mt-2 text-[14px] text-ink-soft">
-            Bun venit! Aceasta este prima deschidere a aplicației. Configurează-ți utilizatorul și parola — aplicația e online, deci alege o parolă puternică (minim 8 caractere).
+            Bun venit! Aceasta este prima deschidere a aplicației. Configurează-ți utilizatorul și parola — aplicația e online, deci alege o parolă puternică (minim 12 caractere).
           </p>
         </div>
 

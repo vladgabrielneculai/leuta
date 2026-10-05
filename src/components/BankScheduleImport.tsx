@@ -117,7 +117,7 @@ export default function BankScheduleImport({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.xlsx,.xls,.csv"
+          accept=".pdf,.xlsx,.csv"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -129,7 +129,7 @@ export default function BankScheduleImport({
         <div className="text-[14px] font-semibold text-ink">
           {uploading ? "Se citește graficul…" : parsed ? `„${parsed.filename}” — alege alt fișier` : "Apasă aici sau trage PDF-ul de la bancă"}
         </div>
-        <div className="mt-1 text-[12px] text-ink-soft">PDF, .xlsx, .xls sau .csv</div>
+        <div className="mt-1 text-[12px] text-ink-soft">PDF, .xlsx sau .csv</div>
       </div>
 
       {error && <div className="rounded-md bg-rosu-tint p-3 text-[13px] font-medium text-rosu">{error}</div>}

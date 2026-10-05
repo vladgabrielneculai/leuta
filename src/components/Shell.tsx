@@ -141,6 +141,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<{ id: number; username: string } | null>(null);
+  const [hasPasskey, setHasPasskey] = useState(true);
   const isAuthPage = path === "/login" || path === "/setup";
   // Paginile protejate ajung în browser doar cu sesiune validă (verificată pe server în proxy.ts),
   // deci nu mai blocăm randarea cu ecranul de încărcare: datele paginii pornesc imediat,
@@ -149,7 +150,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   useEffect(() => {
-    api<{ setupNeeded: boolean; authenticated: boolean; user: { id: number; username: string } | null }>("/api/auth/status")
+    api<{ setupNeeded: boolean; authenticated: boolean; user: { id: number; username: string } | null; hasPasskey?: boolean }>("/api/auth/status")
       .then((res) => {
         if (res.setupNeeded) {
           if (path !== "/setup") window.location.replace("/setup");
@@ -157,6 +158,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           if (path !== "/login") window.location.replace("/login");
         } else {
           setUser(res.user);
+          setHasPasskey(res.hasPasskey !== false);
           if (isAuthPage) window.location.replace("/");
         }
       })
@@ -331,6 +333,18 @@ export default function Shell({ children }: { children: ReactNode }) {
       </nav>
 
       <main key={path} className="page-enter mx-auto w-full max-w-[1240px] px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-8 lg:py-10">
+        {!hasPasskey && !path.startsWith("/setari") && (
+          <Link
+            href="/setari"
+            className="mb-5 flex items-center justify-between gap-3 rounded-lg border border-galben/40 bg-galben-tint px-4 py-3 text-[13px] hover:border-galben"
+          >
+            <span>
+              🔐 <strong>Protejează-ți contul cu un passkey</strong> (amprentă / Face ID). După asta, o parolă furată nu mai
+              ajunge pentru a intra în aplicație.
+            </span>
+            <span className="shrink-0 font-semibold text-albastru">Setări →</span>
+          </Link>
+        )}
         {children}
       </main>
     </div>

@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import readXlsxFile from "read-excel-file/node";
 import type { ScheduleRow } from "./loan";
 
 // Polyfills pentru API-urile DOM de browser necesare în mediul Node.js pentru parsarea fișierelor PDF
@@ -114,6 +114,7 @@ export function cleanNum(val: unknown): number {
 
 export function parseDateToMonth(val: unknown, fallbackMonth?: string): string {
   if (!val) return fallbackMonth ?? new Date().toISOString().slice(0, 7);
+  if (val instanceof Date && !isNaN(val.getTime())) return val.toISOString().slice(0, 7);
   const str = String(val).trim();
 
   // YYYY-MM
@@ -147,22 +148,47 @@ export function parseDateToMonth(val: unknown, fallbackMonth?: string): string {
   return fallbackMonth ?? new Date().toISOString().slice(0, 7);
 }
 
-export function parseExcelBuffer(buffer: Buffer): ParsedScheduleRow[] {
-  const wb = XLSX.read(buffer, { type: "buffer" });
-  if (!wb.SheetNames.length) return [];
-
-  // Alege prima foaie sau foaia cu cel mai relevant nume
-  let sheetName = wb.SheetNames[0];
-  for (const name of wb.SheetNames) {
-    const l = name.toLowerCase();
-    if (l.includes("scadent") || l.includes("grafic") || l.includes("rate") || l.includes("amortiz")) {
-      sheetName = name;
-      break;
+/** CSV simplu: separator „;”, „,” sau tab (detectat din primul rând), câmpuri între ghilimele. */
+function parseCsv(text: string): string[][] {
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter((l) => l.trim());
+  if (!lines.length) return [];
+  const first = lines[0];
+  const sep = [";", "\t", ","].map((c) => [c, first.split(c).length] as const).sort((a, b) => b[1] - a[1])[0][0];
+  return lines.map((line) => {
+    const out: string[] = [];
+    let cur = "";
+    let quoted = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (quoted) {
+        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (ch === '"') quoted = false;
+        else cur += ch;
+      } else if (ch === '"') quoted = true;
+      else if (ch === sep) { out.push(cur); cur = ""; }
+      else cur += ch;
     }
-  }
+    out.push(cur);
+    return out;
+  });
+}
 
-  const sheet = wb.Sheets[sheetName];
-  const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+/** Rândurile tabelului dintr-un fișier .xlsx (foaia cu numele cel mai relevant) sau .csv. */
+async function spreadsheetRows(buffer: Buffer, filename: string): Promise<unknown[][]> {
+  const name = filename.toLowerCase();
+  if (name.endsWith(".csv")) return parseCsv(buffer.toString("utf8"));
+  if (name.endsWith(".xls")) {
+    throw new Error("Formatul vechi .xls nu e suportat. Deschide fișierul în Excel și salvează-l ca .xlsx sau .csv.");
+  }
+  const sheets = await readXlsxFile(buffer);
+  if (!sheets.length) return [];
+  const pick =
+    sheets.find((s) => /scadent|grafic|rate|amortiz/i.test(s.sheet)) ?? sheets[0];
+  return pick.data as unknown[][];
+}
+
+export async function parseSpreadsheet(buffer: Buffer, filename: string): Promise<ParsedScheduleRow[]> {
+  const rows = await spreadsheetRows(buffer, filename);
   if (!rows || rows.length < 2) return [];
 
   // 1. Identifică rândul de antet (header)

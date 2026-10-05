@@ -20,8 +20,8 @@ export default function AccountSecurity({ onToast }: { onToast: (msg: string) =>
       return;
     }
 
-    if (newPassword && newPassword.length < 8) {
-      setError("Noua parolă trebuie să aibă cel puțin 8 caractere.");
+    if (newPassword && newPassword.length < 12) {
+      setError("Noua parolă trebuie să aibă cel puțin 12 caractere.");
       return;
     }
 

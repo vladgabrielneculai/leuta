@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { errorResponse } from "@/lib/http";
 import { getDb } from "@/lib/db";
 import { TABLES } from "@/lib/crud";
 
@@ -25,7 +26,7 @@ function clean(body: Record<string, unknown>, columns: string[]) {
 }
 
 function fail(e: unknown) {
-  return NextResponse.json({ error: e instanceof Error ? e.message : "Operația nu a reușit" }, { status: 400 });
+  return errorResponse(e, "Operația nu a reușit", 400);
 }
 
 export async function GET(req: NextRequest, context: { params: Promise<{ table: string }> }) {

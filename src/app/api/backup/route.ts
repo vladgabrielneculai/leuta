@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireRecentAuth } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { errorResponse, MAX_UPLOAD_BYTES } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +30,10 @@ const FKS: Record<string, Record<string, string>> = {
 
 const HAS_ID = new Set(["categories", "goals", "investments", "loans", "entries", "loan_prepayments", "loan_schedules", "planned_purchases"]);
 
+// Exportul (toate datele financiare) și restaurarea (le înlocuiește) cer identitatea confirmată recent.
 export async function GET() {
+  const auth = await requireRecentAuth();
+  if ("response" in auth) return auth.response;
   const db = await getDb();
   const dump: Record<string, unknown[]> = {};
   dump.user_settings = await db.prepare("SELECT key, value FROM user_settings").all();
@@ -48,6 +53,11 @@ export async function GET() {
 // Restaurarea înlocuiește complet datele utilizatorului curent (ale celorlalți nu sunt atinse).
 export async function POST(req: NextRequest) {
   try {
+    const auth = await requireRecentAuth();
+    if ("response" in auth) return auth.response;
+    if (Number(req.headers.get("content-length") ?? 0) > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: "Fișierul de backup este prea mare." }, { status: 413 });
+    }
     const body = (await req.json()) as { version: number; data: Record<string, Record<string, unknown>[]> };
     if (![1, 2].includes(body.version) || !body.data) throw new Error("Fișierul nu este un backup valid al aplicației");
     const db = await getDb();
@@ -93,6 +103,6 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Restaurarea nu a reușit" }, { status: 400 });
+    return errorResponse(e, "Restaurarea nu a reușit", 400);
   }
 }

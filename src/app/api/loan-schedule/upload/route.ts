@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parseExcelBuffer, parsePdf, type ScheduleMeta } from "@/lib/scheduleParser";
+import { errorResponse, MAX_UPLOAD_BYTES } from "@/lib/http";
+import { parsePdf, parseSpreadsheet, type ParsedScheduleRow, type ScheduleMeta } from "@/lib/scheduleParser";
 
 export const dynamic = "force-dynamic";
 
@@ -13,19 +14,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Nu a fost selectat niciun fișier." }, { status: 400 });
     }
 
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: "Fișierul este prea mare (maxim 10 MB)." }, { status: 413 });
+    }
     const filename = file.name.toLowerCase();
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    let rows: ReturnType<typeof parseExcelBuffer> = [];
+    let rows: ParsedScheduleRow[] = [];
     let meta: ScheduleMeta | null = null;
 
     if (filename.endsWith(".xlsx") || filename.endsWith(".xls") || filename.endsWith(".csv")) {
-      rows = parseExcelBuffer(buffer);
+      rows = await parseSpreadsheet(buffer, filename);
     } else if (filename.endsWith(".pdf")) {
       ({ rows, meta } = await parsePdf(buffer));
     } else {
-      return NextResponse.json({ error: "Format nesuportat. Te rugăm să încarci un fișier Excel (.xlsx, .xls), CSV sau PDF (.pdf)." }, { status: 400 });
+      return NextResponse.json({ error: "Format nesuportat. Încarcă un fișier PDF, Excel (.xlsx) sau CSV." }, { status: 400 });
     }
 
     if (!rows || rows.length === 0) {
@@ -44,7 +48,7 @@ export async function POST(req: NextRequest) {
       meta,
     });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Eroare la citirea fișierului." }, { status: 500 });
+    return errorResponse(err, "Eroare la citirea fișierului.");
   }
 }
 
