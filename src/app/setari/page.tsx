@@ -5,6 +5,7 @@ import { BUCKET_LABEL, KIND_LABEL, type Bucket, type Kind } from "@/lib/util";
 import { api, downloadFile, Field, PageHeader, Panel, Toast, useApi, useApp } from "@/components/ui";
 import AccountSecurity from "@/components/AccountSecurity";
 import SecurityCenter from "@/components/SecurityCenter";
+import NotificationSettings from "@/components/NotificationSettings";
 import DatabaseManager from "@/components/DatabaseManager";
 
 type Category = { id: number; name: string; kind: Kind; bucket: Bucket; color: string };
@@ -218,6 +219,8 @@ export default function SettingsPage() {
         </Panel>
 
         <div className="flex flex-col gap-6">
+          <NotificationSettings onToast={(msg) => setToast(msg)} />
+
           <SecurityCenter onToast={(msg) => setToast(msg)} />
 
           <AccountSecurity onToast={(msg) => setToast(msg)} />

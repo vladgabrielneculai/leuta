@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { attachDatabasePool } from "@vercel/functions";
 import { headers } from "next/headers";
 import { Pool, type PoolClient } from "pg";
@@ -312,8 +313,21 @@ declare global {
 
 // ---------- Puncte de intrare ----------
 
+/**
+ * Contextul „rulează ca utilizatorul X” pentru codul fără sesiune de browser (cron-ul de notificări,
+ * webhook-ul Telegram): în interiorul lui, getDb()/getSettings()/buildSummary() văd datele acelui cont.
+ */
+const userContext = new AsyncLocalStorage<number>();
+
+export function runAsUser<T>(userId: number, fn: () => Promise<T>): Promise<T> {
+  if (!Number.isInteger(userId) || userId <= 0) throw new Error("Utilizator invalid");
+  return userContext.run(userId, fn);
+}
+
 /** Id-ul utilizatorului cererii curente (pus de proxy.ts după validarea sesiunii), sau null. */
 export async function currentUserId(): Promise<number | null> {
+  const ctx = userContext.getStore();
+  if (ctx) return ctx;
   try {
     const raw = (await headers()).get("x-user-id");
     const id = raw ? Number(raw) : NaN;

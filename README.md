@@ -33,6 +33,13 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 - Cu graficul activ, ratele din buget, soldul și dobânda se iau exact din grafic; plățile anticipate și scenariile de IRCC recalculează restul ca banca.
 - Asigurarea PAD și cea facultativă (anuale) apar ca sumă întreagă în luna scadenței, în fiecare an; suma restantă se adaugă la plățile lunii în care a fost raportată.
 
+## 🔔 Notificări (Telegram + email)
+
+- **Telegram**: reminder la 21:00 („Ai trecut cheltuielile de azi?”), scadențe de credit și alerte de buget. Îi poți scrie botului `45 mâncare`, `120,50 benzină`, `+5000 salariu` și cheltuiala intră în aplicație (categoria se alege automat și se poate schimba din butoane). Comenzi: `/azi`, `/luna`, `/sold`, `/anuleaza`.
+- **Email** (Resend): rezumatul săptămânal (duminică) și bilanțul lunii (pe 1), cu design, plus scadențele.
+- În *Setări → Notificări* alegi pentru fiecare tip de mesaj pe ce canal vine și poți trimite mesaje de test.
+- Rulează din Vercel Cron (`vercel.json`): două rulări pe zi, 18:00 și 19:00 UTC, ca să prindă 21:00 în România și vara, și iarna.
+
 ## 🔐 Securitate
 
 - **Passkey obligatoriu** (amprentă / Face ID / Windows Hello): după primul passkey adăugat în *Setări → Passkey-uri & dispozitive*, parola singură nu mai deschide contul. Pentru urgențe: parola + unul din cele 10 **coduri de recuperare** (o singură folosire fiecare).
@@ -51,12 +58,17 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 | Variabilă | Valoare |
 |---|---|
 | `DATABASE_URL` | `postgres://bp_app.<project-ref>:<parola>@aws-1-eu-central-1.pooler.supabase.com:6543/postgres` |
+| `CRON_SECRET` | un șir lung aleator (Vercel îl trimite automat la rularea cron-ului) |
+| `TELEGRAM_BOT_TOKEN` | token-ul de la @BotFather (opțional, pentru Telegram) |
+| `RESEND_API_KEY` | cheia API Resend (opțional, pentru email) |
+| `RESEND_FROM` | opțional, ex. `Banii mei <buget@domeniul-tau.ro>`; implicit `onboarding@resend.dev`, care trimite doar către adresa contului Resend |
+| `APP_URL` | opțional, adresa principală (ex. `https://buget-personal-beta.vercel.app`) pentru linkurile din emailuri și webhook-ul Telegram |
 
 Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiectul e pe celălalt cluster (`aws-0`), aplicația comută singură.
 
 ## 🗄️ Baza de date
 
-- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite), `0002_multi_user.sql`, `0003_loan_bank_schedule.sql` (graficul băncii ca sursă, situația la zi, asigurări anuale), `0004_security_hardening.sql` (passkey-uri, coduri de recuperare, sesiuni hash-uite, istoric).
+- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite), `0002_multi_user.sql`, `0003_loan_bank_schedule.sql` (graficul băncii ca sursă, situația la zi, asigurări anuale), `0004_security_hardening.sql` (passkey-uri, coduri de recuperare, sesiuni hash-uite, istoric), `0005_notifications.sql` (Telegram, jurnalul notificărilor).
 - Backup / restaurare: *Setări → Exportă JSON* / *Restaurează*.
 - Editare directă: Supabase Dashboard → Table Editor.
 

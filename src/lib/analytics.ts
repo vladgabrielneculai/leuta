@@ -127,7 +127,7 @@ export type Summary = {
   settings: Record<string, string>;
 };
 
-async function loadLoans() {
+export async function loadLoans() {
   const db = await getDb();
   const [loans, pre, schedules] = await Promise.all([
     db.prepare("SELECT * FROM loans ORDER BY id").all<Loan>(),

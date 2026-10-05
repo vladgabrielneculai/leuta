@@ -13,6 +13,8 @@ import { SESSION_COOKIE, userForToken } from "@/lib/auth";
 const PUBLIC_PATHS = [
   "/login", "/setup", "/api/auth/login", "/api/auth/setup", "/api/auth/status",
   "/api/auth/passkey/login/options", "/api/auth/passkey/login/verify",
+  // Apelate de servicii externe, autentificate în rută: Telegram (secret în header) și Vercel Cron (CRON_SECRET).
+  "/api/telegram/webhook", "/api/cron/daily",
 ];
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
