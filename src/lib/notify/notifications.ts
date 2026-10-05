@@ -5,7 +5,9 @@ import { addMonths, lei, monthLabel, pct } from "../util";
 import { emailConfigured, isEmail, sendEmail } from "./email";
 import { parsePrefs, type Channel, type NotifyKind } from "./kinds";
 import { toEmailHtml, toPlainText, toTelegram, type Message, type Row } from "./render";
-import { sendTelegram, telegramConfigured } from "./telegram";
+import { sendTelegram, sendTelegramDocument, telegramConfigured } from "./telegram";
+import { buildReceipt } from "../receipt/model";
+import { receiptFilename, renderReceiptPdf } from "../receipt/pdf";
 import { addDays, daysBetween, isoWeek, localNow, longDate, shortDate, type LocalNow } from "./time";
 
 /**
@@ -284,7 +286,19 @@ export async function monthlyMessage(month: string, appUrl: string): Promise<Mes
         : []),
     ],
     cta: { label: "Deschide bilanțul în aplicație", url: `${appUrl}/` },
+    attachment: await monthlyReceipt(month),
   };
+}
+
+/** Bonul lunii în PDF, atașat bilanțului lunar. Dacă generarea eșuează, bilanțul pleacă fără el. */
+async function monthlyReceipt(month: string): Promise<Message["attachment"]> {
+  try {
+    const content = await renderReceiptPdf(await buildReceipt(month));
+    return { filename: receiptFilename(month), content, caption: `🧾 Bonul lunii ${monthLabel(month)}` };
+  } catch (e) {
+    console.error("Bonul lunar nu a putut fi generat:", e);
+    return undefined;
+  }
 }
 
 // ---------- Trimiterea ----------
@@ -324,9 +338,16 @@ export async function deliver(m: Message, channels: Channel[], target: Target, a
   const errors: string[] = [];
   if (channels.includes("telegram") && target.chatId && telegramConfigured()) {
     await sendTelegram(target.chatId, toTelegram(m)).then(() => sent.push("telegram"), (e) => errors.push(e.message));
+    // Fișierul pleacă după mesaj; dacă el nu ajunge, mesajul rămâne trimis (nu-l retrimitem).
+    if (m.attachment && sent.includes("telegram")) {
+      await sendTelegramDocument(target.chatId, m.attachment.filename, m.attachment.content, m.attachment.caption).catch((e) =>
+        console.error("Bonul lunar nu a putut fi trimis pe Telegram:", e),
+      );
+    }
   }
   if (channels.includes("email") && target.email && emailConfigured()) {
-    await sendEmail(target.email, `${SUBJECT_PREFIX}${m.title}`, toEmailHtml(m, appUrl), toPlainText(m)).then(
+    const files = m.attachment ? [{ filename: m.attachment.filename, content: m.attachment.content }] : [];
+    await sendEmail(target.email, `${SUBJECT_PREFIX}${m.title}`, toEmailHtml(m, appUrl), toPlainText(m), files).then(
       () => sent.push("email"),
       (e) => errors.push(e.message),
     );

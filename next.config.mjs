@@ -35,6 +35,12 @@ const securityHeaders = [
 const nextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ["pdf-parse"],
+  // Fonturile bonului lunar (citite de pe disc la generarea PDF-ului) trebuie incluse în funcțiile Vercel.
+  outputFileTracingIncludes: {
+    "/api/receipt": ["./src/lib/receipt/fonts/**"],
+    "/api/cron/daily": ["./src/lib/receipt/fonts/**"],
+    "/api/notifications/test": ["./src/lib/receipt/fonts/**"],
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

@@ -24,7 +24,7 @@ export const KIND_INFO: Record<NotifyKind, { label: string; description: string 
   },
   monthly: {
     label: "Bilanțul lunii",
-    description: "Pe 1 ale lunii: venituri, cheltuieli, economii și rata de economisire a lunii trecute.",
+    description: "Pe 1 ale lunii: venituri, cheltuieli, economii și rata de economisire a lunii trecute, plus bonul lunii în PDF.",
   },
 };
 

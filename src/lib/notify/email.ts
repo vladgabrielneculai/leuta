@@ -8,7 +8,13 @@ const RESEND_API = process.env.RESEND_API_BASE || "https://api.resend.com";
 
 export const emailConfigured = () => !!process.env.RESEND_API_KEY;
 
-export async function sendEmail(to: string, subject: string, html: string, text: string) {
+export async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  text: string,
+  attachments: { filename: string; content: Uint8Array }[] = [],
+) {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error("Emailul nu e configurat (lipsește RESEND_API_KEY).");
   const r = await fetch(`${RESEND_API}/emails`, {
@@ -20,6 +26,9 @@ export async function sendEmail(to: string, subject: string, html: string, text:
       subject,
       html,
       text,
+      ...(attachments.length
+        ? { attachments: attachments.map((a) => ({ filename: a.filename, content: Buffer.from(a.content).toString("base64") })) }
+        : {}),
     }),
     signal: AbortSignal.timeout(10000),
   });
