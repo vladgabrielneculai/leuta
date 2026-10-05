@@ -28,7 +28,7 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 
 ## 🖥️ Pe Windows
 
-`BaniiMei.exe` deschide versiunea online în propria fereastră (tray, splash, fără tab de browser). Nu mai pornește niciun server local și nu mai cere Node.js. Adresa se citește din `BaniiMei.url.txt`, lângă exe.
+`Leuta.exe` (construit cu `npm run build:exe`) deschide versiunea online în propria fereastră (tray, splash, fără tab de browser). Nu mai pornește niciun server local și nu mai cere Node.js. Adresa se citește din `Leuta.url.txt`, lângă exe (sau din `BaniiMei.url.txt`, la instalările vechi); scurtătura „Leuța” de pe Desktop se face cu `npm run shortcut`.
 
 ---
 
@@ -67,7 +67,7 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 | `CRON_SECRET` | un șir lung aleator (Vercel îl trimite automat la rularea cron-ului) |
 | `TELEGRAM_BOT_TOKEN` | token-ul de la @BotFather (opțional, pentru Telegram) |
 | `RESEND_API_KEY` | cheia API Resend (opțional, pentru email) |
-| `RESEND_FROM` | opțional, ex. `Banii mei <buget@domeniul-tau.ro>`; implicit `onboarding@resend.dev`, care trimite doar către adresa contului Resend |
+| `RESEND_FROM` | opțional, ex. `Leuța <buget@domeniul-tau.ro>`; implicit `onboarding@resend.dev`, care trimite doar către adresa contului Resend |
 | `APP_URL` | opțional, adresa principală (ex. `https://buget-personal-beta.vercel.app`) pentru linkurile din emailuri și webhook-ul Telegram |
 
 Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiectul e pe celălalt cluster (`aws-0`), aplicația comută singură.

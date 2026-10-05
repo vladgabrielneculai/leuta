@@ -18,7 +18,7 @@ export async function GET() {
   const sizeBytes = Number(counts?.size ?? 0);
 
   return NextResponse.json({
-    path: "Supabase · proiect buget-personal (eu-central-1)",
+    path: "Supabase · Postgres (eu-central-1)",
     sizeBytes,
     sizeFormatted: `${(sizeBytes / 1024 / 1024).toFixed(1)} MB`,
     tables: TABLES.map((name) => ({ name, count: Number(counts?.[name] ?? 0) })),

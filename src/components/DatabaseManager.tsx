@@ -178,7 +178,7 @@ export default function DatabaseManager({ onToast, onRefresh }: { onToast: (msg:
         </div>
 
         <div className="rounded-md bg-paper p-3 text-[12px] text-ink-soft border border-line">
-          <strong>Sfat pentru modificări directe:</strong> datele sunt în proiectul Supabase <code className="font-mono">buget-personal</code>. Le poți vedea și edita din Supabase Dashboard → Table Editor, sau poți descărca oricând un backup cu „Exportă JSON”.
+          <strong>Sfat pentru modificări directe:</strong> datele sunt în baza de date Supabase a aplicației. Le poți vedea și edita din Supabase Dashboard → Table Editor, sau poți descărca oricând un backup cu „Exportă JSON”.
         </div>
       </div>
 
