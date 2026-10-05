@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Summary } from "@/lib/analytics";
-import { addMonths, KIND_LABEL, lei, monthLabel, type Currency, type Kind } from "@/lib/util";
+import { addMonths, eur, KIND_LABEL, lei, monthLabel, type Currency, type Kind } from "@/lib/util";
 import { api, Money, PageHeader, Panel, Toast, useApi, useApp } from "@/components/ui";
 
 type Category = { id: number; name: string; kind: Kind; bucket: string; color: string };
@@ -228,7 +228,7 @@ function KindSection({
                   {e.description && <div className="truncate text-[13px] text-ink-soft">{e.description}</div>}
                 </div>
                 <span className="num text-right">
-                  {e.currency === "EUR" ? `${e.amount.toLocaleString("ro-RO")} €` : lei(e.amount, e.amount % 1 !== 0)}
+                  {e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
                   {e.currency === "EUR" && <span className="block text-[12px] text-ink-faint">{lei(e.amount * rate)}</span>}
                 </span>
                 <div className="flex opacity-60 group-hover:opacity-100 focus-within:opacity-100">

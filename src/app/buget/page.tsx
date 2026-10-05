@@ -5,7 +5,7 @@ import {
   Area, AreaChart, Bar as RBar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import type { MethodView, Summary } from "@/lib/analytics";
-import { BUCKET_LABEL, lei, monthLabel, pct, type Bucket } from "@/lib/util";
+import { BUCKET_LABEL, lei, monthLabel, pct, r2, type Bucket } from "@/lib/util";
 import { api, chartTooltipStyle, Empty, Field, PageHeader, Panel, Skeleton, Toast, useApi, useApp } from "@/components/ui";
 
 const BUCKETS: Bucket[] = ["needs", "wants", "savings"];
@@ -96,8 +96,8 @@ export default function BudgetPage() {
 
   const best = [...s.methods].sort((a, b) => b.score - a.score)[0];
   const compareData = BUCKETS.map((b) => {
-    const row: Record<string, string | number> = { grup: BUCKET_LABEL[b], "Situația ta": Math.round(t[b === "savings" ? "savedTotal" : b]) };
-    for (const m of s.methods) row[m.name] = Math.round(m.targets[b]);
+    const row: Record<string, string | number> = { grup: BUCKET_LABEL[b], "Situația ta": r2(t[b === "savings" ? "savedTotal" : b]) };
+    for (const m of s.methods) row[m.name] = r2(m.targets[b]);
     return row;
   });
 
