@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Venituri, cheltuieli, credite și economii — lună de lună.",
     start_url: "/",
     display: "standalone",
-    background_color: "#0B1417",
-    theme_color: "#0B1417",
+    background_color: "#100F0D",
+    theme_color: "#100F0D",
     lang: "ro",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },

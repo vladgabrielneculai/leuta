@@ -112,7 +112,7 @@ export default function BankScheduleImport({
           const f = e.dataTransfer.files?.[0];
           if (f) upload(f);
         }}
-        className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-line bg-paper/50 p-6 text-center transition-colors hover:border-leu hover:bg-leu-tint/10"
+        className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-line bg-paper/50 p-6 text-center transition-colors hover:border-leu hover:bg-leu-tint/10"
       >
         <input
           ref={fileInputRef}

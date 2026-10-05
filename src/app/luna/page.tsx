@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { Summary } from "@/lib/analytics";
 import { addMonths, eur, KIND_LABEL, lei, monthLabel, type Currency, type Kind } from "@/lib/util";
 import { api, downloadFile, Money, PageHeader, Panel, PencilIcon, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
+import { Leader } from "@/components/receipt";
 
 type Category = { id: number; name: string; kind: Kind; bucket: string; color: string };
 type Goal = { id: number; name: string; type: string };
@@ -210,11 +211,11 @@ function KindSection({
           {KIND_LABEL[kind]}
         </span>
       }
-      aside={<span className="num font-medium">{lei(total)}</span>}
+      aside={<span className="num font-semibold">{lei(total)}</span>}
     >
       <p className="mb-4 text-[13px] text-ink-soft">{info.help}</p>
       {entries.length > 0 && (
-        <ul className="mb-4 divide-y divide-line border-y border-line">
+        <ul className="mb-1">
           {entries.map((e) =>
             editId === e.id ? (
               <li key={e.id} className="py-2.5">
@@ -222,21 +223,30 @@ function KindSection({
                   onSubmit={save} submitLabel="Salvează" onCancel={() => setEditId(null)} />
               </li>
             ) : (
-              <li key={e.id} className="group flex items-center gap-2.5 py-2 sm:gap-3">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
-                <div className="min-w-0 flex-1">
-                  <div className="line-clamp-2 leading-snug sm:line-clamp-none sm:truncate">
-                    {kind === "saving" ? nameOfDest(e) : catMap.get(e.category_id ?? 0)?.name ?? "Fără categorie"}
-                    {e.recurring ? <span className="ml-2 whitespace-nowrap rounded bg-albastru-tint px-1.5 text-[11px] text-albastru">lunar</span> : null}
-                  </div>
-                  {e.description && <div className="truncate text-[13px] text-ink-soft">{e.description}</div>}
+              // Rând de bon: categoria ...... suma; descrierea dedesubt, mai mică.
+              <li key={e.id} className="group flex items-start gap-2.5 py-1.5 sm:gap-3">
+                <span className="mt-[7px] h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
+                <div className="min-w-0 flex-1 pt-px">
+                  <Leader
+                    label={
+                      <span className="line-clamp-2 leading-snug">
+                        {kind === "saving" ? nameOfDest(e) : catMap.get(e.category_id ?? 0)?.name ?? "Fără categorie"}
+                      </span>
+                    }
+                    value={e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
+                  />
+                  {(e.description || e.recurring || e.currency === "EUR") && (
+                    <div className="flex items-baseline justify-between gap-3 text-[12.5px] text-ink-soft">
+                      <span className="min-w-0 truncate">
+                        {e.recurring ? <span className="mr-1.5 rounded-sm border border-albastru/40 px-1 font-mono text-[10px] uppercase tracking-wide text-albastru">lunar</span> : null}
+                        {e.description}
+                      </span>
+                      {e.currency === "EUR" && <span className="num shrink-0 text-ink-faint">= {lei(e.amount * rate)}</span>}
+                    </div>
+                  )}
                 </div>
-                <span className="num shrink-0 whitespace-nowrap text-right">
-                  {e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
-                  {e.currency === "EUR" && <span className="block text-[12px] text-ink-faint">{lei(e.amount * rate)}</span>}
-                </span>
                 {/* Pe telefon: iconițe (încap lângă sumă, ușor de atins); pe ecran mare: text, vizibil la hover. */}
-                <div className="flex shrink-0 sm:opacity-60 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+                <div className="flex w-20 shrink-0 justify-end sm:w-[8.5rem] sm:opacity-60 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
                   <button
                     className="btn-ghost h-10 w-10 px-0 sm:h-auto sm:w-auto sm:px-2"
                     aria-label="Editează"
@@ -265,6 +275,17 @@ function KindSection({
             ),
           )}
         </ul>
+      )}
+      {entries.length > 0 && (
+        <div className="mb-4">
+          <div className="rule-dashed" aria-hidden />
+          {/* Aliniat cu sumele de deasupra: același spațiu stânga (pătratul colorat) și dreapta (butoanele). */}
+          <div className="flex gap-2.5 pt-2 sm:gap-3">
+            <span className="w-2.5 shrink-0" />
+            <Leader className="min-w-0 flex-1" strong label={<span className="font-mono text-[13px] uppercase tracking-[0.06em]">Subtotal</span>} value={lei(total)} />
+            <span className="w-20 shrink-0 sm:w-[8.5rem]" />
+          </div>
+        </div>
       )}
       <EntryForm kind={kind} draft={draft} setDraft={setDraft} cats={cats} goals={goals} invs={invs} onSubmit={add} submitLabel="Adaugă" />
       {err && <p className="mt-2 text-[13px] text-rosu">{err}</p>}
@@ -381,7 +402,7 @@ export default function MonthPage() {
         <aside className="xl:sticky xl:top-8 xl:self-start flex flex-col gap-5">
           <Panel title="Bilanțul lunii">
             {t ? (
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2.5">
                 <Row label="Venituri" value={t.income} color="var(--c-leu)" rate={rate} />
                 <Row label="Costuri fixe" value={t.fixed} color="var(--c-albastru)" rate={rate} />
                 <div>
@@ -394,9 +415,12 @@ export default function MonthPage() {
                 <Row label={investmentsEnabled ? "Economii și investiții" : "Economii"} value={t.savings + (investmentsEnabled ? t.investments : 0)} color="var(--c-galben)" rate={rate} />
                 {t.prepayments > 0 && <Row label="Plăți anticipate" value={t.prepayments} color="var(--c-galben)" rate={rate} />}
                 {t.prepayFees > 0 && <Row label="Comisioane rambursare" value={t.prepayFees} color="var(--c-mov)" rate={rate} />}
-                <div className="border-t border-line pt-3">
-                  <div className="text-[13px] text-ink-soft">{t.unallocated >= 0 ? "Rămas nealocat" : "Depășire"}</div>
-                  <Money value={t.unallocated} rate={rate} size="lg" tone={t.unallocated < 0 ? "rosu" : "leu"} />
+                <div className="mt-1.5">
+                  <div className="rule-double" aria-hidden />
+                  <div className="flex items-end justify-between gap-3 pt-2.5">
+                    <span className="receipt-title pb-1 text-[12.5px]">{t.unallocated >= 0 ? "Rest nealocat" : "Depășire"}</span>
+                    <span className="text-right"><Money value={t.unallocated} rate={rate} size="lg" tone={t.unallocated < 0 ? "rosu" : "leu"} /></span>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -407,20 +431,12 @@ export default function MonthPage() {
           {/* Widget Card Tichete de Masă & Buget Alimente */}
           <Panel title="Card Tichete de Masă & Alimente">
             <div className="flex flex-col gap-2.5 text-[13px]">
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-ink-soft">Tichete încărcate luna asta:</span>
-                <span className="num font-semibold text-leu">{lei(mealTicketTotal)}</span>
-              </div>
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-ink-soft">Cheltuieli totale alimente:</span>
-                <span className="num font-semibold text-ink">{lei(foodTotal)}</span>
-              </div>
-              <div className="border-t border-line pt-2 flex justify-between items-center gap-3">
-                <span className="text-ink-soft">Din salariu / bani proprii:</span>
-                <span className="num font-semibold text-mov">{lei(outOfPocketFood)}</span>
-              </div>
+              <Leader label={<span className="text-ink-soft">Tichete încărcate</span>} value={<span className="font-semibold text-leu">{lei(mealTicketTotal)}</span>} />
+              <Leader label={<span className="text-ink-soft">Alimente, total</span>} value={<span className="font-semibold">{lei(foodTotal)}</span>} />
+              <div className="rule-dashed" aria-hidden />
+              <Leader label={<span className="text-ink-soft">Din bani proprii</span>} value={<span className="font-semibold text-mov">{lei(outOfPocketFood)}</span>} />
               {foodTotal > 0 ? (
-                <div className="mt-1 rounded bg-paper p-2 text-[12px] text-ink-soft border border-line">
+                <div className="mt-1 rounded-sm border border-dashed border-line-strong p-2 text-[12px] text-ink-soft">
                   {mealTicketTotal >= foodTotal ? (
                     <span className="text-leu font-medium">✓ Tichetele acoperă 100% din cheltuielile cu alimentele!</span>
                   ) : (
@@ -444,12 +460,16 @@ export default function MonthPage() {
 
 function Row({ label, value, color, rate }: { label: string; value: number; color: string; rate: number }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <span className="flex items-center gap-2 text-[14px]">
-        <span className="h-2.5 w-2.5 rounded-sm" style={{ background: color }} />
-        {label}
-      </span>
-      <Money value={value} rate={rate} size="sm" />
-    </div>
+    <Leader
+      className="text-[14px]"
+      label={
+        <span className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: color }} />
+          {label}
+        </span>
+      }
+      value={lei(value)}
+      sub={eur(value / rate)}
+    />
   );
 }

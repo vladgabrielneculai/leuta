@@ -249,9 +249,9 @@ export default function SavingsPage() {
                     </div>
                     <button className="btn-ghost -mr-2 -mt-1 px-2" onClick={() => openGoalEditor(g)}>Editează</button>
                   </div>
-                  <div className="num mt-3 flex items-baseline justify-between">
-                    <span className="font-display text-[24px] font-semibold">{lei(g.saved)}</span>
-                    <span className="text-ink-soft">din {lei(g.target)}</span>
+                  <div className="num mt-3 flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span className="num font-display text-[20px] font-semibold sm:text-[22px]">{lei(g.saved)}</span>
+                    <span className="whitespace-nowrap text-ink-soft">din {lei(g.target)}</span>
                   </div>
                   <div className="mt-2"><Bar value={g.pct} color={g.color} /></div>
                   <dl className="num mt-3 grid grid-cols-2 gap-2 text-[13px]">

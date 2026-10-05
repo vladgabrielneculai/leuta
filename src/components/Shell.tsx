@@ -7,6 +7,7 @@ import { addMonths, currentMonth, monthLabel } from "@/lib/util";
 import { api, useApp } from "./ui";
 import Logo from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
+import { ReceiptFooter } from "./receipt";
 
 const NAV = [
   { href: "/", label: "Panou", color: "var(--c-albastru)" },
@@ -27,11 +28,11 @@ function MonthPicker() {
   const { month, setMonth } = useApp();
   const isNow = month === currentMonth();
   return (
-    <div className="rounded-[10px] border border-line bg-sheet p-3 shadow-sm transition-all duration-150 hover:shadow">
-      <div className="text-[12px] font-medium text-ink-soft">Luna analizată</div>
+    <div className="panel p-3">
+      <div className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ink-faint">Luna analizată</div>
       <div className="mt-1 flex items-center justify-between gap-1">
         <button className="btn-ghost px-2 active:scale-95" onClick={() => setMonth(addMonths(month, -1))} aria-label="Luna anterioară">‹</button>
-        <span className="whitespace-nowrap font-display text-[15px] font-semibold capitalize text-ink">{monthLabel(month)}</span>
+        <span className="whitespace-nowrap font-display text-[14.5px] font-semibold capitalize text-ink">{monthLabel(month)}</span>
         <button className="btn-ghost px-2 active:scale-95" onClick={() => setMonth(addMonths(month, 1))} aria-label="Luna următoare">›</button>
       </div>
       {!isNow && (
@@ -48,14 +49,14 @@ function MonthPickerCompact() {
   const { month, setMonth } = useApp();
   const isNow = month === currentMonth();
   return (
-    <div className="mt-2 flex items-center justify-between gap-2 rounded-[10px] border border-line bg-sheet p-0.5">
+    <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-line bg-sheet p-0.5">
       <button className="h-10 w-11 rounded-lg text-[20px] text-ink-soft active:scale-95 active:bg-paper" onClick={() => setMonth(addMonths(month, -1))} aria-label="Luna anterioară">‹</button>
       <button
         className="flex min-w-0 flex-col items-center leading-tight"
         onClick={() => !isNow && setMonth(currentMonth())}
         title={isNow ? undefined : "Înapoi la luna curentă"}
       >
-        <span className="font-display text-[15px] font-semibold capitalize text-ink">{monthLabel(month)}</span>
+        <span className="font-display text-[14.5px] font-semibold capitalize text-ink">{monthLabel(month)}</span>
         {!isNow && <span className="text-[11px] font-medium text-albastru">atinge pentru luna curentă</span>}
       </button>
       <button className="h-10 w-11 rounded-lg text-[20px] text-ink-soft active:scale-95 active:bg-paper" onClick={() => setMonth(addMonths(month, 1))} aria-label="Luna următoare">›</button>
@@ -86,8 +87,8 @@ function MarketIndicators() {
   const formattedPeriod = inflationPeriod ? monthLabel(inflationPeriod) : "an curent";
 
   return (
-    <div className="rounded-[10px] border border-line bg-sheet/90 p-3 shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-md">
-      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+    <div className="panel p-3">
+      <div className="flex items-center justify-between font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
         <div className="flex items-center gap-1.5">
           <span className="live-dot" />
           <span>Piețe & Indicatori RO</span>
@@ -117,7 +118,8 @@ function MarketIndicators() {
         </div>
 
         {/* Rata Inflației România */}
-        <div className="flex items-baseline justify-between text-[12px] border-t border-line/60 pt-2">
+        <div className="relative flex items-baseline justify-between pt-2 text-[12px]">
+          <span className="rule-dashed absolute inset-x-0 top-0" aria-hidden />
           <div className="flex flex-col">
             <span className="text-ink-soft font-medium">Inflație RO (INS)</span>
             <span className="text-[10px] text-ink-faint capitalize">{formattedPeriod}</span>
@@ -127,7 +129,7 @@ function MarketIndicators() {
       </div>
 
       {(fxError || inflationError) && (
-        <div className="mt-2 border-t border-line/60 pt-1 text-[11px] text-rosu">
+        <div className="mt-2 border-t border-dashed border-line-strong pt-1 text-[11px] text-rosu">
           <button
             onClick={() => {
               if (fxError) refreshFx();
@@ -218,9 +220,9 @@ export default function Shell({ children }: { children: ReactNode }) {
             key={n.href}
             href={n.href}
             onClick={() => setOpen(false)}
-            className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] font-medium transition-all duration-150 active:scale-[0.99] ${
+            className={`group flex items-center gap-2.5 rounded-md px-3 py-2 text-[14px] font-medium transition-all duration-150 active:scale-[0.99] ${
               isCurrent
-                ? "bg-sheet text-ink shadow-[inset_0_0_0_1px_var(--c-line),0_1px_3px_rgba(0,0,0,0.03)]"
+                ? "bg-sheet text-ink shadow-[0_1px_2px_rgb(var(--shadow)/0.12)]"
                 : "text-ink-soft hover:bg-sheet/60 hover:text-ink"
             }`}
           >
@@ -231,6 +233,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               style={{ background: n.color }}
             />
             <span>{n.label}</span>
+            {isCurrent && <span className="ml-auto font-mono text-[11px] text-ink-faint" aria-hidden>◂</span>}
           </Link>
         );
       })}
@@ -244,7 +247,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <Link href="/" className="group flex items-center gap-2.5">
             <Logo className="h-10 w-10 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105" />
             <div>
-              <div className="font-display text-[23px] font-bold leading-none tracking-tight text-ink transition-colors group-hover:text-leu">
+              <div className="font-display text-[22px] font-bold leading-none tracking-[-0.03em] text-ink transition-colors group-hover:text-leu">
                 Leuța
               </div>
               <div className="mt-1.5 flex gap-1" aria-hidden>
@@ -284,7 +287,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         <div className="flex items-center justify-between gap-2">
           <Link href="/" className="flex min-w-0 items-center gap-2">
             <Logo className="h-8 w-8 shrink-0" />
-            <span className="font-display text-[20px] font-bold">Leuța</span>
+            <span className="font-display text-[19px] font-bold tracking-[-0.03em]">Leuța</span>
           </Link>
           <div className="flex shrink-0 items-center gap-1.5">
             <ThemeToggle className="h-9 w-9" />
@@ -339,9 +342,9 @@ export default function Shell({ children }: { children: ReactNode }) {
                 href={t.href}
                 onClick={() => setOpen(false)}
                 aria-current={on ? "page" : undefined}
-                className={`flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] font-medium transition-colors ${on ? "text-albastru" : "text-ink-soft"}`}
+                className={`flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] font-medium transition-colors ${on ? "text-ink" : "text-ink-faint"}`}
               >
-                <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${on ? "bg-albastru-tint" : ""}`}>
+                <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${on ? "bg-ink/[0.08]" : ""}`}>
                   <svg viewBox="0 0 24 24" className="h-[21px] w-[21px]" fill="none" stroke="currentColor" strokeWidth={on ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d={t.icon} />
                   </svg>
@@ -353,9 +356,9 @@ export default function Shell({ children }: { children: ReactNode }) {
           <button
             onClick={() => setOpen(!open)}
             aria-expanded={open}
-            className={`flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] font-medium transition-colors ${open || !TABS.some((t) => active(t.href)) ? "text-albastru" : "text-ink-soft"}`}
+            className={`flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] font-medium transition-colors ${open || !TABS.some((t) => active(t.href)) ? "text-ink" : "text-ink-faint"}`}
           >
-            <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${open || !TABS.some((t) => active(t.href)) ? "bg-albastru-tint" : ""}`}>
+            <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${open || !TABS.some((t) => active(t.href)) ? "bg-ink/[0.08]" : ""}`}>
               <svg viewBox="0 0 24 24" className="h-[21px] w-[21px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
                 {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />}
               </svg>
@@ -381,6 +384,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           </Link>
         )}
         {children}
+        <ReceiptFooter seed={path} />
       </main>
     </div>
   );

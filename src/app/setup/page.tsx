@@ -80,7 +80,7 @@ export default function SetupPage() {
   return (
     <div className="guilloche guilloche-full relative flex min-h-screen items-center justify-center bg-canvas p-4">
       <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))]"><ThemeToggle /></div>
-      <div className="animate-modal-pop w-full max-w-md rounded-xl border border-line bg-sheet p-6 shadow-sm sm:p-8">
+      <div className="animate-modal-pop w-full max-w-md panel p-6 sm:p-8">
         <div className="mb-6">
           <div className="flex items-center gap-3">
             <Logo className="h-12 w-12 drop-shadow-md" />
@@ -156,7 +156,7 @@ export default function SetupPage() {
           </button>
         </form>
 
-        <div className="mt-6 border-t border-line pt-4 text-center text-[12px] text-ink-soft">
+        <div className="mt-6 border-t border-dashed border-line-strong pt-4 text-center text-[12px] text-ink-soft">
           Datele sunt păstrate privat în baza de date Supabase a aplicației.
         </div>
       </div>

@@ -140,7 +140,7 @@ export default function ProfilePage() {
 
       {/* Telefon: butonul de salvare apare deasupra barei de jos doar când ai modificări. */}
       {dirty && (
-        <div className="sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex items-center justify-between gap-3 rounded-xl border border-line bg-sheet p-2 pl-4 shadow-xl sm:hidden">
+        <div className="sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 flex items-center justify-between gap-3 rounded-md border border-line bg-sheet p-2 pl-4 shadow-xl sm:hidden">
           <span className="text-[13px] text-ink-soft">Modificări nesalvate</span>
           <button className="btn-primary" onClick={save} disabled={busy}>{busy ? "Se salvează…" : "Salvează"}</button>
         </div>

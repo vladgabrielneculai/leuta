@@ -66,7 +66,7 @@ function RegisterForm() {
   };
 
   return (
-    <div className="animate-modal-pop w-full max-w-sm rounded-xl border border-line bg-sheet p-6 shadow-sm sm:p-8">
+    <div className="animate-modal-pop w-full max-w-sm panel p-6 sm:p-8">
       <div className="mb-6 flex flex-col items-center text-center">
         <Logo className="h-16 w-16 drop-shadow-md" />
         <h1 className="mt-3 font-display text-[26px] font-bold tracking-tight">Bun venit în Leuța</h1>
