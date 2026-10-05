@@ -317,7 +317,7 @@ async function release(userId: number, kind: string, keys: string[]) {
   }
 }
 
-const SUBJECT_PREFIX = "Banii mei · ";
+const SUBJECT_PREFIX = "Leuța · ";
 
 export async function deliver(m: Message, channels: Channel[], target: Target, appUrl: string): Promise<Channel[]> {
   const sent: Channel[] = [];

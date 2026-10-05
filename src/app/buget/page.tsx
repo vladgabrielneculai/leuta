@@ -6,11 +6,11 @@ import {
 } from "recharts";
 import type { MethodView, Summary } from "@/lib/analytics";
 import { BUCKET_LABEL, lei, monthLabel, pct, type Bucket } from "@/lib/util";
-import { api, chartTooltipStyle, Empty, Field, PageHeader, Panel, Toast, useApi, useApp } from "@/components/ui";
+import { api, chartTooltipStyle, Empty, Field, PageHeader, Panel, Skeleton, Toast, useApi, useApp } from "@/components/ui";
 
 const BUCKETS: Bucket[] = ["needs", "wants", "savings"];
-const BUCKET_COLOR: Record<Bucket, string> = { needs: "#2E5C8A", wants: "#B5456A", savings: "#C99A1E" };
-const METHOD_COLOR: Record<string, string> = { "503020": "#3D7A4E", custom: "#6A4E99", zero: "#8A989C", smart: "#1C2B30" };
+const BUCKET_COLOR: Record<Bucket, string> = { needs: "var(--c-albastru)", wants: "var(--c-rosu)", savings: "var(--c-galben)" };
+const METHOD_COLOR: Record<string, string> = { "503020": "var(--c-leu)", custom: "var(--c-mov)", zero: "var(--c-ink-faint)", smart: "var(--c-ink)" };
 
 function scoreWord(score: number) {
   if (score >= 90) return "Foarte aproape";
@@ -83,7 +83,7 @@ export default function BudgetPage() {
     if (s) setCustom({ needs: s.settings.custom_needs, wants: s.settings.custom_wants, savings: s.settings.custom_savings });
   }, [s]);
 
-  if (!s) return <p className="text-ink-soft">Se încarcă…</p>;
+  if (!s) return <Skeleton />;
   const t = s.totals;
 
   const sum = Number(custom.needs) + Number(custom.wants) + Number(custom.savings);
@@ -138,12 +138,12 @@ export default function BudgetPage() {
               <div className="h-[300px]">
                 <ResponsiveContainer>
                   <BarChart data={compareData} margin={{ top: 6, right: 8, left: -4, bottom: 0 }}>
-                    <CartesianGrid stroke="#D5DDD8" vertical={false} />
+                    <CartesianGrid stroke="var(--c-line)" vertical={false} />
                     <XAxis dataKey="grup" tick={{ fontSize: 13 }} />
                     <YAxis tickFormatter={(v) => `${Math.round(v / 1000)}k`} tick={{ fontSize: 12 }} />
                     <Tooltip {...chartTooltipStyle} formatter={(v: number) => lei(v)} />
                     <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
-                    <RBar dataKey="Situația ta" fill="#C99A1E" radius={[3, 3, 0, 0]} />
+                    <RBar dataKey="Situația ta" fill="var(--c-galben)" radius={[3, 3, 0, 0]} />
                     {s.methods.map((m) => (
                       <RBar key={m.key} dataKey={m.name} fill={METHOD_COLOR[m.key]} fillOpacity={0.75} radius={[3, 3, 0, 0]} />
                     ))}
@@ -159,14 +159,14 @@ export default function BudgetPage() {
                 <div className="h-[300px]">
                   <ResponsiveContainer>
                     <AreaChart data={trendData} margin={{ top: 6, right: 8, left: -10, bottom: 0 }}>
-                      <CartesianGrid stroke="#D5DDD8" vertical={false} />
+                      <CartesianGrid stroke="var(--c-line)" vertical={false} />
                       <XAxis dataKey="luna" tick={{ fontSize: 12 }} />
                       <YAxis unit="%" tick={{ fontSize: 12 }} />
                       <Tooltip {...chartTooltipStyle} formatter={(v: number) => `${v}%`} />
                       <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
-                      <Area dataKey="Nevoi" stackId="1" stroke="#2E5C8A" fill="#2E5C8A" fillOpacity={0.8} />
-                      <Area dataKey="Dorințe" stackId="1" stroke="#B5456A" fill="#B5456A" fillOpacity={0.8} />
-                      <Area dataKey="Economii" stackId="1" stroke="#C99A1E" fill="#C99A1E" fillOpacity={0.8} />
+                      <Area dataKey="Nevoi" stackId="1" stroke="var(--c-albastru)" fill="var(--c-albastru)" fillOpacity={0.8} />
+                      <Area dataKey="Dorințe" stackId="1" stroke="var(--c-rosu)" fill="var(--c-rosu)" fillOpacity={0.8} />
+                      <Area dataKey="Economii" stackId="1" stroke="var(--c-galben)" fill="var(--c-galben)" fillOpacity={0.8} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>

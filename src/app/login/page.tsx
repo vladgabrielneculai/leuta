@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Logo from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { api, Field } from "@/components/ui";
 import { loginWithPasskey, passkeyErrorMessage, passkeysSupported } from "@/lib/passkeyClient";
 
@@ -81,14 +83,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas p-4">
-      <div className="w-full max-w-sm rounded-xl border border-line bg-sheet p-6 shadow-sm sm:p-8">
-        <div className="mb-6 text-center">
-          <div className="inline-flex items-center gap-2">
-            <span className="h-4 w-2 rounded-sm bg-leu" />
-            <h1 className="font-display text-[24px] font-bold">Banii mei</h1>
-          </div>
-          <p className="mt-1 text-[13px] text-ink-soft">Autentificare securizată</p>
+    <div className="guilloche guilloche-full relative flex min-h-screen items-center justify-center bg-canvas p-4">
+      <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))]"><ThemeToggle /></div>
+      <div className="animate-modal-pop w-full max-w-sm rounded-xl border border-line bg-sheet p-6 shadow-sm sm:p-8">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <Logo className="h-16 w-16 drop-shadow-md" />
+          <h1 className="mt-3 font-display text-[28px] font-bold tracking-tight">Leuța</h1>
+          <p className="mt-0.5 text-[13px] text-ink-soft">Bugetul tău, ban cu ban</p>
         </div>
 
         {error && <div className="mb-4 rounded-md bg-rosu-tint p-3 text-[13px] font-medium text-rosu">{error}</div>}

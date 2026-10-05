@@ -215,15 +215,15 @@ export default function AffordabilityPage() {
 
       {/* 1. Profil financiar actual de bază */}
       <div className="panel mb-6 grid grid-cols-2 gap-5 p-5 sm:grid-cols-4">
-        <Stat label="Venit lunar de bază" accent="#2E5C8A" hint="media lunii analizate">
+        <Stat label="Venit lunar de bază" accent="var(--c-albastru)" hint="media lunii analizate">
           <Money value={income} size="lg" />
         </Stat>
-        <Stat label="Bani liberi lunari" accent="#3D7A4E" hint="cash flow net rămas">
+        <Stat label="Bani liberi lunari" accent="var(--c-leu)" hint="cash flow net rămas">
           <Money value={unallocated} size="lg" tone={unallocated > 0 ? "leu" : "rosu"} />
         </Stat>
         <Stat
           label="Grad îndatorare actual (DTI)"
-          accent="#6A4E99"
+          accent="var(--c-mov)"
           hint={s?.totals.dti && s.totals.dti > 40 ? "Peste plafonul BNR" : "Sub limita legală (40%)"}
         >
           <span className="num font-display text-[24px] font-bold">
@@ -232,7 +232,7 @@ export default function AffordabilityPage() {
         </Stat>
         <Stat
           label="Economii disponibile"
-          accent="#C99A1E"
+          accent="var(--c-galben)"
           hint={`acoperă ${(profile.totalSavings / Math.max(500, needs + currentLoans)).toFixed(1)} luni`}
         >
           <Money value={totalSavings} size="lg" />
@@ -447,7 +447,7 @@ export default function AffordabilityPage() {
                 <h3 className="font-display text-[20px] font-bold">
                   {financingType === "cash" ? cash.title : loan.title}
                 </h3>
-                <span className="num text-[18px] font-bold px-2.5 py-0.5 rounded-full bg-white/80 dark:bg-black/30">
+                <span className="num text-[18px] font-bold px-2.5 py-0.5 rounded-full bg-field/80 dark:bg-black/30">
                   Scor: {overallScore}/100
                 </span>
               </div>

@@ -5,15 +5,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { addMonths, currentMonth, monthLabel } from "@/lib/util";
 import { api, useApp } from "./ui";
+import Logo from "./Logo";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
-  { href: "/", label: "Panou", color: "#2E5C8A" },
-  { href: "/luna", label: "Luna curentă", color: "#3D7A4E" },
-  { href: "/credite", label: "Credite", color: "#6A4E99" },
-  { href: "/economii", label: "Economii", color: "#C99A1E" },
-  { href: "/achizitii", label: "Îmi permit?", color: "#2E5C8A" },
-  { href: "/buget", label: "Metode de buget", color: "#B5456A" },
-  { href: "/setari", label: "Setări", color: "#8A989C" },
+  { href: "/", label: "Panou", color: "var(--c-albastru)" },
+  { href: "/luna", label: "Luna curentă", color: "var(--c-leu)" },
+  { href: "/credite", label: "Credite", color: "var(--c-mov)" },
+  { href: "/economii", label: "Economii", color: "var(--c-galben)" },
+  { href: "/achizitii", label: "Îmi permit?", color: "var(--c-albastru)" },
+  { href: "/buget", label: "Metode de buget", color: "var(--c-rosu)" },
+  { href: "/setari", label: "Setări", color: "var(--c-ink-faint)" },
 ];
 
 function MonthPicker() {
@@ -182,11 +184,9 @@ export default function Shell({ children }: { children: ReactNode }) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-canvas">
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-leu/15 text-leu shadow-inner">
-            <span className="font-display text-[22px] font-bold">B</span>
-          </div>
+          <Logo className="h-14 w-14 animate-pulse" />
           <div className="flex gap-1" aria-hidden>
-            {["#3D7A4E", "#6A4E99", "#B5456A", "#C99A1E", "#2E5C8A"].map((c) => (
+            {["var(--c-leu)", "var(--c-mov)", "var(--c-rosu)", "var(--c-galben)", "var(--c-albastru)"].map((c) => (
               <span key={c} className="h-1 w-5 rounded-full animate-pulse" style={{ background: c }} />
             ))}
           </div>
@@ -207,7 +207,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             onClick={() => setOpen(false)}
             className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] font-medium transition-all duration-150 active:scale-[0.99] ${
               isCurrent
-                ? "bg-sheet text-ink shadow-[inset_0_0_0_1px_#D5DDD8,0_1px_3px_rgba(0,0,0,0.03)]"
+                ? "bg-sheet text-ink shadow-[inset_0_0_0_1px_var(--c-line),0_1px_3px_rgba(0,0,0,0.03)]"
                 : "text-ink-soft hover:bg-sheet/60 hover:text-ink"
             }`}
           >
@@ -227,16 +227,22 @@ export default function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[256px_1fr]">
       <aside className="hidden lg:flex lg:flex-col lg:gap-6 lg:sticky lg:top-0 lg:h-screen border-r border-line bg-canvas/60 px-4 py-6">
-        <Link href="/" className="px-2.5 group">
-          <div className="font-display text-[22px] font-bold leading-none tracking-tight text-ink group-hover:text-albastru transition-colors">
-            Banii mei
-          </div>
-          <div className="mt-1.5 flex gap-1" aria-hidden>
-            {["#3D7A4E", "#6A4E99", "#B5456A", "#C99A1E", "#2E5C8A"].map((c) => (
-              <span key={c} className="h-1 w-6 rounded-full" style={{ background: c }} />
-            ))}
-          </div>
-        </Link>
+        <div className="flex items-start justify-between gap-2 px-1.5">
+          <Link href="/" className="group flex items-center gap-2.5">
+            <Logo className="h-10 w-10 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105" />
+            <div>
+              <div className="font-display text-[23px] font-bold leading-none tracking-tight text-ink transition-colors group-hover:text-leu">
+                Leuța
+              </div>
+              <div className="mt-1.5 flex gap-1" aria-hidden>
+                {["var(--c-leu)", "var(--c-mov)", "var(--c-rosu)", "var(--c-galben)", "var(--c-albastru)"].map((c) => (
+                  <span key={c} className="h-1 w-4 rounded-full" style={{ background: c }} />
+                ))}
+              </div>
+            </div>
+          </Link>
+          <ThemeToggle />
+        </div>
         <MonthPicker />
         {nav}
         <div className="mt-auto flex flex-col gap-3 px-1">
@@ -264,7 +270,8 @@ export default function Shell({ children }: { children: ReactNode }) {
       <div className="lg:hidden sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-display text-[20px] font-bold">Banii mei</span>
+            <Logo className="h-8 w-8" />
+            <span className="font-display text-[20px] font-bold">Leuța</span>
             {user && (
               <span className="rounded bg-line/60 px-1.5 py-0.5 text-[11px] text-ink-soft">
                 {user.username}
@@ -272,6 +279,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle className="h-8 w-8" />
             {user && (
               <button onClick={handleLogout} className="px-1 py-2 text-[13px] text-rosu hover:underline">
                 Ieșire

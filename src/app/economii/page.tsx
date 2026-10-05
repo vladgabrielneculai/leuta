@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { celebrateOnce } from "@/lib/confetti";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { GoalView, InvestmentView, Summary } from "@/lib/analytics";
 import { lei, monthLabel, pct } from "@/lib/util";
-import { api, Bar, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Stat, Toast, useApi, useApp } from "@/components/ui";
+import { api, Bar, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Skeleton, Stat, Toast, useApi, useApp } from "@/components/ui";
 
 const GOAL_COLORS = ["#C99A1E", "#3D7A4E", "#2E5C8A", "#B5456A", "#6A4E99"];
 
@@ -67,6 +68,11 @@ export default function SavingsPage() {
   const { month, bump } = useApp();
   const { data: s, reload } = useApi<Summary>(`/api/summary?month=${month}`);
   const [goal, setGoal] = useState<GoalDraft | null>(null);
+
+  // Obiectiv atins (100%) → confetti, o singură dată pentru fiecare obiectiv.
+  useEffect(() => {
+    for (const g of s?.goals ?? []) if (g.pct >= 100 && g.target > 0) celebrateOnce(`obiectiv:${g.id}:${g.target}`);
+  }, [s]);
   const [inv, setInv] = useState<InvDraft | null>(null);
   const [valueFor, setValueFor] = useState<{ inv: InvestmentView; value: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -94,7 +100,7 @@ export default function SavingsPage() {
   const finalP = projData[projData.length - 1];
   const realValue = finalP ? finalP.Valoare / Math.pow(1 + inflation / 100, Number(p.years) || 0) : 0;
 
-  if (!s) return <p className="text-ink-soft">Se încarcă…</p>;
+  if (!s) return <Skeleton />;
 
   const emergency = s.goals.find((g) => g.type === "emergency");
   const goals = s.goals.filter((g) => g.type === "goal");
@@ -268,9 +274,9 @@ export default function SavingsPage() {
           ) : (
             <>
               <div className="mb-5 grid grid-cols-2 gap-6 md:grid-cols-3">
-                <Stat label="Valoare totală" accent="#C99A1E"><Money value={invested} rate={s.fx.rate} size="lg" /></Stat>
-                <Stat label="Contribuit" accent="#2E5C8A"><Money value={contributed} rate={s.fx.rate} size="lg" /></Stat>
-                <Stat label="Câștig" accent="#3D7A4E" hint={contributed > 0 ? pct(((invested - contributed) / contributed) * 100) : undefined}>
+                <Stat label="Valoare totală" accent="var(--c-galben)"><Money value={invested} rate={s.fx.rate} size="lg" /></Stat>
+                <Stat label="Contribuit" accent="var(--c-albastru)"><Money value={contributed} rate={s.fx.rate} size="lg" /></Stat>
+                <Stat label="Câștig" accent="var(--c-leu)" hint={contributed > 0 ? pct(((invested - contributed) / contributed) * 100) : undefined}>
                   <Money value={invested - contributed} rate={s.fx.rate} size="lg" tone={invested >= contributed ? "leu" : "rosu"} />
                 </Stat>
               </div>
@@ -334,13 +340,13 @@ export default function SavingsPage() {
             <div className="h-[300px]">
               <ResponsiveContainer>
                 <AreaChart data={projData} margin={{ top: 6, right: 8, left: -4, bottom: 0 }}>
-                  <CartesianGrid stroke="#D5DDD8" vertical={false} />
+                  <CartesianGrid stroke="var(--c-line)" vertical={false} />
                   <XAxis dataKey="an" minTickGap={20} tick={{ fontSize: 12 }} />
                   <YAxis tickFormatter={(v) => `${Math.round(v / 1000)}k`} tick={{ fontSize: 12 }} />
                   <Tooltip {...chartTooltipStyle} formatter={(v: number) => lei(v)} />
                   <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
-                  <Area dataKey="Valoare" stroke="#C99A1E" fill="#F6ECCB" strokeWidth={2} />
-                  <Area dataKey="Contribuții" stroke="#2E5C8A" fill="#DCE6F1" strokeWidth={2} />
+                  <Area dataKey="Valoare" stroke="var(--c-galben)" fill="var(--c-galben-tint)" strokeWidth={2} />
+                  <Area dataKey="Contribuții" stroke="var(--c-albastru)" fill="var(--c-albastru-tint)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

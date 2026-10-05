@@ -1,6 +1,6 @@
-# Banii mei
+# Leuța
 
-Aplicație personală de buget: venituri, costuri fixe, cheltuieli variabile, economii, investiții și credite (scadențar de la bancă, recalculare automată, plăți anticipate), cu curs BNR și inflație România preluate automat.
+*Bugetul tău, ban cu ban.* Aplicație personală de buget: venituri, costuri fixe, cheltuieli variabile, economii, investiții și credite (scadențar de la bancă, recalculare automată, plăți anticipate), cu curs BNR și inflație România preluate automat.
 
 **Rulează online** — se deschide din orice browser, de pe calculator sau telefon. Nu mai e nevoie de `npm install` / `npm run dev`.
 
@@ -11,6 +11,12 @@ Aplicație personală de buget: venituri, costuri fixe, cheltuieli variabile, ec
 | Codul | GitHub `vladgabrielneculai/buget-personal` — orice push pe `main` se publică automat |
 
 ---
+
+## 🎨 Aspect
+
+- Temă de zi și de noapte („bancnotă pe catifea”): *Auto* urmează setarea telefonului/calculatorului, iar butonul ☀️/🌙 din bara aplicației (sau *Setări → Aspect*) o forțează. Alegerea se ține minte pe dispozitiv; schimbarea e animată.
+- Paleta e inspirată din bancnotele românești (1 leu verde, 5 lei mov, 10 lei roșu, 50 lei galben, 100 lei albastru); culorile sunt variabile CSS în `src/app/globals.css`, folosite de clasele Tailwind și de grafice.
+- Sigla: o monedă verde cu chenar guilloche și un „L” cu piciorul ascendent (`src/components/Logo.tsx`, `src/app/icon.svg`).
 
 ## 📱 Pe telefon
 

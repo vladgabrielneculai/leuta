@@ -179,7 +179,7 @@ async function linkChat(msg: TgMessage, code: string) {
   await sys
     .prepare("INSERT INTO telegram_links (user_id, chat_id, username) VALUES (?, ?, ?)")
     .run(row.user_id, msg.chat.id, (msg.from?.username ?? msg.from?.first_name ?? "").slice(0, 60));
-  return sendTelegram(msg.chat.id, `✅ <b>Telegram conectat la Banii mei.</b>\n\nPrimești aici reminderul de seară (21:00) și alertele.\n\n${HELP}`);
+  return sendTelegram(msg.chat.id, `✅ <b>Telegram conectat la Leuța.</b>\n\nPrimești aici reminderul de seară (21:00) și alertele.\n\n${HELP}`);
 }
 
 async function userForChat(chatId: number) {
@@ -195,7 +195,7 @@ async function onMessage(msg: TgMessage) {
 
   const userId = await userForChat(msg.chat.id);
   if (!userId) {
-    return sendTelegram(msg.chat.id, "Bun venit! Ca să folosești botul, deschide aplicația <b>Banii mei</b> → Setări → Notificări → <b>Conectează Telegram</b>.");
+    return sendTelegram(msg.chat.id, "Bun venit! Ca să folosești botul, deschide aplicația <b>Leuța</b> → Setări → Notificări → <b>Conectează Telegram</b>.");
   }
   return runAsUser(userId, async () => {
     const cmd = text.split(/\s|@/)[0].toLowerCase();

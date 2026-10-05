@@ -321,7 +321,7 @@ export default function LoanScheduleManager({
             </p>
           </div>
           {appliedToast && (
-            <span className="rounded-md bg-leu px-3 py-1 text-[13px] font-semibold text-white animate-fade">
+            <span className="rounded-md bg-leu px-3 py-1 text-[13px] font-semibold text-on-accent animate-fade">
               Plata a fost adăugată în credit!
             </span>
           )}
@@ -404,7 +404,7 @@ export default function LoanScheduleManager({
           <div className="flex flex-wrap border-b border-line gap-2 pb-2">
             <button
               className={`px-3 py-1.5 text-[13px] font-semibold rounded-md ${
-                importMode === "file" ? "bg-leu text-white" : "bg-paper text-ink-soft hover:text-ink"
+                importMode === "file" ? "bg-leu text-on-accent" : "bg-paper text-ink-soft hover:text-ink"
               }`}
               onClick={() => setImportMode("file")}
             >
@@ -412,7 +412,7 @@ export default function LoanScheduleManager({
             </button>
             <button
               className={`px-3 py-1.5 text-[13px] font-semibold rounded-md ${
-                importMode === "status" ? "bg-leu text-white" : "bg-paper text-ink-soft hover:text-ink"
+                importMode === "status" ? "bg-leu text-on-accent" : "bg-paper text-ink-soft hover:text-ink"
               }`}
               onClick={() => setImportMode("status")}
             >
@@ -420,7 +420,7 @@ export default function LoanScheduleManager({
             </button>
             <button
               className={`px-3 py-1.5 text-[13px] font-semibold rounded-md ${
-                importMode === "contract" ? "bg-leu text-white" : "bg-paper text-ink-soft hover:text-ink"
+                importMode === "contract" ? "bg-leu text-on-accent" : "bg-paper text-ink-soft hover:text-ink"
               }`}
               onClick={() => setImportMode("contract")}
             >
@@ -428,7 +428,7 @@ export default function LoanScheduleManager({
             </button>
             <button
               className={`px-3 py-1.5 text-[13px] font-semibold rounded-md ${
-                importMode === "manual" ? "bg-leu text-white" : "bg-paper text-ink-soft hover:text-ink"
+                importMode === "manual" ? "bg-leu text-on-accent" : "bg-paper text-ink-soft hover:text-ink"
               }`}
               onClick={() => setImportMode("manual")}
             >

@@ -131,7 +131,7 @@ export function toEmailHtml(m: Message, appUrl: string): string {
         <tr><td style="padding:0 4px 14px;">
           <table role="presentation" cellspacing="0" cellpadding="0"><tr>
             <td style="background:#3D7A4E;width:8px;border-radius:2px;">&nbsp;</td>
-            <td style="${font}font-size:18px;font-weight:800;color:#1C2B30;padding-left:8px;">Banii mei</td>
+            <td style="${font}font-size:18px;font-weight:800;color:#1C2B30;padding-left:8px;">Leuța</td>
           </tr></table>
           <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:6px;"><tr>
             ${["#3D7A4E", "#6A4E99", "#B5456A", "#C99A1E", "#2E5C8A"].map((c) => `<td style="background:${c};width:22px;height:3px;font-size:0;line-height:0;border-right:3px solid #EDF1EE;">&nbsp;</td>`).join("")}
@@ -153,7 +153,7 @@ export function toEmailHtml(m: Message, appUrl: string): string {
           </table>
         </td></tr>
         <tr><td style="${font}font-size:12px;color:#8A989C;text-align:center;padding:16px 8px;">
-          Primești acest email pentru că l-ai activat în Banii mei → Setări → Notificări.
+          Primești acest email pentru că l-ai activat în Leuța → Setări → Notificări.
         </td></tr>
       </table>
     </td></tr>

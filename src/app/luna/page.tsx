@@ -23,10 +23,10 @@ type Entry = {
 };
 
 const KIND_INFO: Record<Kind, { color: string; help: string }> = {
-  income: { color: "#3D7A4E", help: "Salariu, bonusuri, chirii încasate, orice intră în cont." },
-  fixed: { color: "#2E5C8A", help: "Plăți care se repetă cu aceeași sumă. Ratele creditelor se adaugă automat, nu le introduce aici." },
-  variable: { color: "#B5456A", help: "Tot ce variază de la o lună la alta: mâncare, benzină, ieșiri, neprevăzute." },
-  saving: { color: "#C99A1E", help: "Bani mutați spre un obiectiv, fondul de urgență sau o investiție. Plățile anticipate se înregistrează la credit." },
+  income: { color: "var(--c-leu)", help: "Salariu, bonusuri, chirii încasate, orice intră în cont." },
+  fixed: { color: "var(--c-albastru)", help: "Plăți care se repetă cu aceeași sumă. Ratele creditelor se adaugă automat, nu le introduce aici." },
+  variable: { color: "var(--c-rosu)", help: "Tot ce variază de la o lună la alta: mâncare, benzină, ieșiri, neprevăzute." },
+  saving: { color: "var(--c-galben)", help: "Bani mutați spre un obiectiv, fondul de urgență sau o investiție. Plățile anticipate se înregistrează la credit." },
 };
 
 type Draft = {
@@ -219,7 +219,7 @@ function KindSection({
               </li>
             ) : (
               <li key={e.id} className="group flex items-center gap-3 py-2">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "#8A989C" }} />
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate">
                     {kind === "saving" ? nameOfDest(e) : catMap.get(e.category_id ?? 0)?.name ?? "Fără categorie"}
@@ -352,18 +352,18 @@ export default function MonthPage() {
           <Panel title="Bilanțul lunii">
             {t ? (
               <div className="flex flex-col gap-4">
-                <Row label="Venituri" value={t.income} color="#3D7A4E" rate={rate} />
-                <Row label="Costuri fixe" value={t.fixed} color="#2E5C8A" rate={rate} />
+                <Row label="Venituri" value={t.income} color="var(--c-leu)" rate={rate} />
+                <Row label="Costuri fixe" value={t.fixed} color="var(--c-albastru)" rate={rate} />
                 <div>
-                  <Row label="Rate credite" value={t.loanPayments + t.loanInsurance} color="#6A4E99" rate={rate} />
+                  <Row label="Rate credite" value={t.loanPayments + t.loanInsurance} color="var(--c-mov)" rate={rate} />
                   {s!.loans.length > 0 && (
                     <Link href="/credite" className="ml-4 text-[12px] text-albastru hover:underline">calculate automat</Link>
                   )}
                 </div>
-                <Row label="Cheltuieli variabile" value={t.variable} color="#B5456A" rate={rate} />
-                <Row label={investmentsEnabled ? "Economii și investiții" : "Economii"} value={t.savings + (investmentsEnabled ? t.investments : 0)} color="#C99A1E" rate={rate} />
-                {t.prepayments > 0 && <Row label="Plăți anticipate" value={t.prepayments} color="#C99A1E" rate={rate} />}
-                {t.prepayFees > 0 && <Row label="Comisioane rambursare" value={t.prepayFees} color="#6A4E99" rate={rate} />}
+                <Row label="Cheltuieli variabile" value={t.variable} color="var(--c-rosu)" rate={rate} />
+                <Row label={investmentsEnabled ? "Economii și investiții" : "Economii"} value={t.savings + (investmentsEnabled ? t.investments : 0)} color="var(--c-galben)" rate={rate} />
+                {t.prepayments > 0 && <Row label="Plăți anticipate" value={t.prepayments} color="var(--c-galben)" rate={rate} />}
+                {t.prepayFees > 0 && <Row label="Comisioane rambursare" value={t.prepayFees} color="var(--c-mov)" rate={rate} />}
                 <div className="border-t border-line pt-3">
                   <div className="text-[13px] text-ink-soft">{t.unallocated >= 0 ? "Rămas nealocat" : "Depășire"}</div>
                   <Money value={t.unallocated} rate={rate} size="lg" tone={t.unallocated < 0 ? "rosu" : "leu"} />

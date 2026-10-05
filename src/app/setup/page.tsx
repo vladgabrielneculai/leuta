@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Logo from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "next/navigation";
 import { api, Field } from "@/components/ui";
 
@@ -76,12 +78,13 @@ export default function SetupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas p-4">
-      <div className="w-full max-w-md rounded-xl border border-line bg-sheet p-6 shadow-sm sm:p-8">
+    <div className="guilloche guilloche-full relative flex min-h-screen items-center justify-center bg-canvas p-4">
+      <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))]"><ThemeToggle /></div>
+      <div className="animate-modal-pop w-full max-w-md rounded-xl border border-line bg-sheet p-6 shadow-sm sm:p-8">
         <div className="mb-6">
-          <div className="flex items-center gap-2">
-            <span className="h-4 w-2 rounded-sm bg-leu" />
-            <h1 className="font-display text-[24px] font-bold">Banii mei</h1>
+          <div className="flex items-center gap-3">
+            <Logo className="h-12 w-12 drop-shadow-md" />
+            <h1 className="font-display text-[26px] font-bold tracking-tight">Leuța</h1>
           </div>
           <p className="mt-2 text-[14px] text-ink-soft">
             Bun venit! Aceasta este prima deschidere a aplicației. Configurează-ți utilizatorul și parola — aplicația e online, deci alege o parolă puternică (minim 12 caractere).
