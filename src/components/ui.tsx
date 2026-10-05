@@ -2,7 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { currentMonth, eur, lei, money } from "@/lib/util";
+import { currentMonth, eur, lei, monthLabel, money } from "@/lib/util";
+import { ReceiptMeta } from "./receipt";
 import ReauthDialog from "./ReauthDialog";
 import { watchSystemTheme } from "@/lib/theme";
 
@@ -153,7 +154,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-md rounded-2xl border border-line bg-sheet p-6 shadow-2xl animate-modal-pop relative overflow-hidden"
+            className="w-full max-w-md rounded-[6px] border border-line bg-sheet p-6 shadow-2xl animate-modal-pop relative overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Bandă decorativă în stil desktop */}
@@ -161,13 +162,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
               className={`absolute top-0 left-0 right-0 h-1 ${
                 confirmState.options.danger
                   ? "bg-gradient-to-r from-rosu via-rosu-soft to-rosu"
-                  : "bg-gradient-to-r from-verde via-albastru to-violet"
+                  : "bg-ink"
               }`}
             />
 
             <div className="flex items-start gap-4">
               <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm border ${
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md shadow-sm border ${
                   confirmState.options.danger
                     ? "bg-rosu/10 border-rosu/25 text-rosu"
                     : "bg-albastru/10 border-albastru/25 text-albastru"
@@ -185,7 +186,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-display text-[17px] font-bold text-ink leading-tight">
+                  <h3 className="receipt-title text-[14.5px] text-ink leading-tight">
                     {confirmState.options.title || (confirmState.options.danger ? "Confirmare acțiune" : "Confirmare")}
                   </h3>
                   <button
@@ -369,8 +370,8 @@ export function Money({
   const sizes = {
     sm: "text-[14px]",
     md: "text-[17px] font-medium",
-    lg: "font-display text-[19px] sm:text-[23px] font-semibold leading-tight tracking-tight",
-    xl: "font-display text-[34px] sm:text-[40px] font-semibold leading-none tracking-tight",
+    lg: "font-display text-[18px] sm:text-[22px] font-semibold leading-tight tracking-[-0.03em]",
+    xl: "font-display text-[32px] sm:text-[40px] font-bold leading-none tracking-[-0.04em]",
   };
   const tones: Record<string, string> = {
     leu: "text-leu", rosu: "text-rosu", galben: "text-galben", albastru: "text-albastru", mov: "text-mov", soft: "text-ink-soft",
@@ -395,14 +396,20 @@ export function Money({
 
 // ---------- Structură ----------
 
+/** Antetul paginii, ca începutul unui bon: numărul bonului și ora, titlul, apoi o linie dublă. */
 export function PageHeader({ title, intro, actions }: { title: string; intro?: ReactNode; actions?: ReactNode }) {
+  const { month } = useApp();
   return (
-    <header className="guilloche -mx-4 mb-5 flex flex-wrap items-end justify-between gap-3 rounded-2xl px-4 py-3 sm:-mx-5 sm:mb-8 sm:gap-4 sm:px-5 sm:py-4">
-      <div className="max-w-2xl">
-        <h1 className="text-[27px] font-semibold leading-tight tracking-tight sm:text-[34px]">{title}</h1>
-        {intro && <p className="mt-1.5 text-[14px] text-ink-soft sm:text-[15px]">{intro}</p>}
+    <header className="mb-6 sm:mb-8">
+      <ReceiptMeta month={month} label={monthLabel(month, true)} />
+      <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+        <div className="max-w-2xl">
+          <h1 className="text-[24px] font-bold leading-tight sm:text-[31px]">{title}</h1>
+          {intro && <p className="mt-1.5 text-[14px] text-ink-soft sm:text-[15px]">{intro}</p>}
+        </div>
+        {actions && <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap [&>*]:w-full sm:[&>*]:w-auto [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}
       </div>
-      {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">{actions}</div>}
+      <div className="rule-double mt-4" aria-hidden />
     </header>
   );
 }
@@ -424,9 +431,10 @@ export function Panel({
     <section className={`panel ${className}`}>
       {(title || aside) && (
         // Pe telefon, butoanele „fantomă” din antet primesc contur, ca să se vadă că sunt butoane când trec sub titlu.
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-4 py-3 sm:px-5 [&_.btn-ghost]:border [&_.btn-ghost]:border-line [&_.btn-ghost]:bg-field/60 sm:[&_.btn-ghost]:border-0 sm:[&_.btn-ghost]:bg-transparent">
-          {title && <h2 className="min-w-0 text-[16px] font-semibold sm:text-[17px]">{title}</h2>}
+        <div className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 pb-3 pt-3.5 sm:px-5 [&_.btn-ghost]:border [&_.btn-ghost]:border-line [&_.btn-ghost]:bg-field/60 sm:[&_.btn-ghost]:border-0 sm:[&_.btn-ghost]:bg-transparent">
+          {title && <h2 className="receipt-title min-w-0">{title}</h2>}
           {aside}
+          <span className="rule-dashed absolute inset-x-4 bottom-0 sm:inset-x-5" aria-hidden />
         </div>
       )}
       <div className={pad ? "p-4 sm:p-5" : ""}>{children}</div>
@@ -448,7 +456,7 @@ export function Stat({
   return (
     <div className="relative pl-3.5">
       <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full" style={{ background: accent ?? "var(--c-line)" }} />
-      <div className="text-[13px] text-ink-soft">{label}</div>
+      <div className="font-mono text-[11.5px] font-medium uppercase tracking-[0.06em] text-ink-soft">{label}</div>
       <div className="mt-0.5">{children}</div>
       {hint && <div className="mt-1 text-[12px] text-ink-soft">{hint}</div>}
     </div>
@@ -491,8 +499,8 @@ export function Delta({ now, before, invert = false }: { now: number; before: nu
 
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="rounded-[10px] border border-dashed border-line px-6 py-10 text-center">
-      <p className="font-display text-[18px] font-semibold">{title}</p>
+    <div className="rounded-[4px] border border-dashed border-line-strong px-6 py-10 text-center">
+      <p className="font-display text-[16px] font-semibold uppercase tracking-[0.04em]">{title}</p>
       {children && <div className="mx-auto mt-2 max-w-md text-ink-soft">{children}</div>}
     </div>
   );
@@ -533,12 +541,12 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
         role="dialog"
         aria-modal
         aria-label={title}
-        className="sheet-up flex max-h-[92dvh] w-full flex-col rounded-t-[20px] border border-line bg-sheet shadow-2xl sm:max-h-none sm:max-w-xl sm:rounded-[12px]"
+        className="sheet-up flex max-h-[92dvh] w-full flex-col rounded-t-[18px] border border-line bg-sheet shadow-2xl sm:max-h-none sm:max-w-xl sm:rounded-[6px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line sm:hidden" aria-hidden />
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-5 sm:py-3">
-          <h2 className="min-w-0 text-[17px] font-semibold sm:text-[18px]">{title}</h2>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-dashed border-line-strong px-4 py-2.5 sm:px-5 sm:py-3">
+          <h2 className="receipt-title min-w-0 text-[14px] sm:text-[14.5px]">{title}</h2>
           <button className="btn-ghost h-10 w-10 shrink-0 px-0 text-[16px]" onClick={onClose} aria-label="Închide">✕</button>
         </div>
         <div className="overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:overflow-visible sm:p-5">
@@ -562,7 +570,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 
 /** Schelet de încărcare: forma paginii, cu o strălucire care trece peste ea. */
 export function Skeleton({ variant = "page" }: { variant?: "page" | "block" }) {
-  const block = (cls: string) => <div className={`shimmer rounded-xl bg-line/50 ${cls}`} />;
+  const block = (cls: string) => <div className={`shimmer rounded-[4px] bg-line/50 ${cls}`} />;
   if (variant === "block") return block("h-40 w-full");
   return (
     <div className="flex flex-col gap-6" aria-busy="true" aria-label="Se încarcă">
@@ -594,7 +602,7 @@ export function Toast({ message, onDone }: { message: string | null; onDone: () 
   return createPortal(
     <div
       role="status"
-      className="sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[90] rounded-lg bg-ink px-4 py-3 text-center text-[14px] text-on-accent shadow-lg sm:inset-x-auto sm:right-5 sm:rounded-md sm:py-2.5 sm:text-left lg:bottom-5"
+      className="sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[90] rounded-md bg-ink px-4 py-3 text-center text-[14px] text-sheet shadow-lg sm:inset-x-auto sm:right-5 sm:rounded-md sm:py-2.5 sm:text-left lg:bottom-5"
     >
       {message}
     </div>,
@@ -628,6 +636,6 @@ export const LEVEL_STYLE = {
 } as const;
 
 export const chartTooltipStyle = {
-  contentStyle: { background: "var(--c-sheet)", border: "1px solid var(--c-line)", borderRadius: 8, fontSize: 13 },
+  contentStyle: { background: "var(--c-sheet)", border: "1px dashed var(--c-ink-faint)", borderRadius: 2, fontSize: 12.5, fontFamily: '"IBM Plex Mono", ui-monospace, monospace' },
   labelStyle: { color: "var(--c-ink)", fontWeight: 600 },
 };

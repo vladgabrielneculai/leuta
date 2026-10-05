@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
+import { Barcode } from "./receipt";
 
 const BANDS = ["var(--c-leu)", "var(--c-mov)", "var(--c-rosu)", "var(--c-galben)", "var(--c-albastru)"];
-const WORD = "Leuța";
 // Momentul în care animația începe să se estompeze, apoi dispare cu totul (ms).
-const EXIT_AT = 2300;
-const GONE_AT = 2850;
+const EXIT_AT = 2800;
+const GONE_AT = 3300;
 
 // Animația rulează la fiecare încărcare (sau reîmprospătare) a paginii. Momentul pornirii se reține
 // la nivel de modul, deci o singură dată per încărcare: în dezvoltare React montează componentele de
@@ -23,10 +23,10 @@ function decide(): number {
 }
 
 /**
- * Animația de început de pe ecranul de autentificare: moneda-siglă cade rotindu-se, primește
- * luciul de monedă, benzile în culorile bancnotelor (1, 5, 10, 50, 100 lei) se umplu pe rând,
- * apoi apare numele. Se vede la fiecare încărcare a paginii, se poate sări cu o atingere și nu
- * rulează deloc dacă sistemul cere mișcare redusă.
+ * Animația de început de pe ecranul de autentificare: moneda-siglă cade rotindu-se pe o casă de marcat,
+ * primește luciul de monedă și intră în fantă; din fantă se tipărește apoi un bon cu numele aplicației,
+ * benzile în culorile bancnotelor (1, 5, 10, 50, 100 lei) și un cod de bare. Se vede la fiecare încărcare
+ * a paginii, se poate sări cu o atingere și nu rulează deloc dacă sistemul cere mișcare redusă.
  */
 export default function IntroSplash() {
   // Pornește vizibilă, ca formularul să nu apară o clipă înaintea ei; efectul de mai jos o ascunde
@@ -65,33 +65,35 @@ export default function IntroSplash() {
       <div className="guilloche guilloche-full intro-backdrop absolute inset-0" />
 
       <div className="relative flex flex-col items-center">
-        {/* Moneda: cade, se rotește ca o monedă aruncată, apoi o trece o lumină */}
-        <div className="intro-coin-wrap">
-          <div className="intro-coin relative h-28 w-28 sm:h-32 sm:w-32">
-            <Logo className="h-full w-full drop-shadow-xl" />
+        {/* Moneda: cade rotindu-se, o trece o lumină, apoi intră în fantă */}
+        <div className="intro-coin-insert relative z-[1]">
+          <div className="intro-coin relative h-24 w-24 sm:h-28 sm:w-28">
+            <Logo className="h-full w-full" />
             <span className="absolute inset-0 overflow-hidden rounded-full">
               <span className="intro-shine" />
             </span>
           </div>
-          <span className="intro-coin-shadow" />
         </div>
 
-        {/* Benzile în culorile bancnotelor */}
-        <div className="mt-7 flex gap-1.5">
-          {BANDS.map((c, i) => (
-            <span key={c} className="intro-band h-1.5 w-8 rounded-full sm:w-10" style={{ background: c, animationDelay: `${900 + i * 90}ms` }} />
-          ))}
-        </div>
+        {/* Fanta casei de marcat */}
+        <span className="intro-slot relative z-[2] block h-3 w-64 rounded-full bg-[#14120f] ring-1 ring-line-strong/60 sm:w-72" />
 
-        {/* Numele, literă cu literă */}
-        <div className="mt-5 flex font-display text-[44px] font-bold leading-none tracking-tight text-ink sm:text-[52px]">
-          {WORD.split("").map((ch, i) => (
-            <span key={i} className="intro-letter inline-block" style={{ animationDelay: `${1250 + i * 70}ms` }}>
-              {ch}
-            </span>
-          ))}
+        {/* Bonul tipărit din fantă */}
+        <div className="-mt-1.5 w-56 overflow-hidden px-3 pb-3 sm:w-64">
+          <div className="intro-paper panel !mt-0 px-4 pb-4 pt-5 text-center font-mono">
+            <div className="text-[34px] font-bold leading-none tracking-[-0.04em] text-ink sm:text-[38px]">Leuța</div>
+            <div className="mt-2 whitespace-nowrap text-[10px] uppercase tracking-[0.06em] text-ink-soft">Bugetul tău, ban cu ban</div>
+            <div className="rule-dashed my-3" />
+            <div className="flex justify-center gap-1">
+              {BANDS.map((c) => (
+                <span key={c} className="h-1.5 w-7 rounded-full" style={{ background: c }} />
+              ))}
+            </div>
+            <div className="rule-dashed my-3" />
+            <Barcode seed="Leuța" className="mx-auto h-8 w-40 text-ink" />
+            <div className="mt-1.5 text-[9.5px] tracking-[0.22em] text-ink-faint" suppressHydrationWarning>LEU 0001 {new Date().getFullYear()}</div>
+          </div>
         </div>
-        <p className="intro-tagline mt-3 text-[15px] text-ink-soft">Bugetul tău, ban cu ban</p>
       </div>
 
       <span className="intro-hint absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] text-[12px] text-ink-faint">

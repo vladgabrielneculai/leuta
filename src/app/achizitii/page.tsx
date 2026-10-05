@@ -425,17 +425,10 @@ export default function AffordabilityPage() {
         <div className="lg:col-span-6 flex flex-col gap-4">
           <Panel
             title="Verdict financiar & Analiză de decizie"
-            className={`border-2 ${
-              overallVerdict === "safe"
-                ? "border-leu/50 bg-leu-tint/10"
-                : overallVerdict === "caution"
-                ? "border-galben/60 bg-galben-tint/10"
-                : "border-rosu/50 bg-rosu-tint/10"
-            }`}
           >
             {/* Banner verdict mare */}
             <div
-              className={`rounded-xl p-4 sm:p-5 mb-4 ${
+              className={`rounded-[4px] p-4 sm:p-5 mb-4 ${
                 overallVerdict === "safe"
                   ? "bg-leu-tint text-leu"
                   : overallVerdict === "caution"
@@ -529,7 +522,7 @@ export default function AffordabilityPage() {
       <Panel title="Cum impactează această achiziție venitul și bugetul tău" className="mb-6">
         <div className="grid gap-6 md:grid-cols-2">
           {/* Card: Impactul pe Regula 50/30/20 & Venit */}
-          <div className="rounded-xl border border-line bg-paper p-3.5 sm:p-5">
+          <div className="rounded-md border border-line bg-paper p-3.5 sm:p-5">
             <h4 className="font-semibold text-[15px] text-ink mb-2">
               📊 Impactul asupra venitului tău lunar ({lei(income)})
             </h4>
@@ -627,7 +620,7 @@ export default function AffordabilityPage() {
           </div>
 
           {/* Card: Comparație Directă Plată Cash vs Credit */}
-          <div className="rounded-xl border border-line bg-paper p-3.5 sm:p-5 flex flex-col justify-between">
+          <div className="rounded-md border border-line bg-paper p-3.5 sm:p-5 flex flex-col justify-between">
             <div>
               <h4 className="font-semibold text-[15px] text-ink mb-2">
                 ⚖️ Comparație directă: Plată Integrală vs Credit Bancar
@@ -746,7 +739,7 @@ export default function AffordabilityPage() {
               return (
                 <div
                   key={p.id}
-                  className="rounded-xl border border-line bg-paper p-4 flex flex-col justify-between hover:border-albastru transition-all shadow-sm hover:shadow"
+                  className="rounded-md border border-line bg-paper p-4 flex flex-col justify-between hover:border-albastru transition-all shadow-sm hover:shadow"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-2">

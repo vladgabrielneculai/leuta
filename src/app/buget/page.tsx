@@ -21,7 +21,9 @@ function scoreWord(score: number) {
 
 function MethodCard({ m, income, best }: { m: MethodView; income: number; best: boolean }) {
   return (
-    <div className={`panel flex flex-col p-5 ${best ? "outline outline-2 outline-ink" : ""}`}>
+    <div className="panel flex flex-col p-5">
+      {/* Metoda care ți se potrivește cel mai bine primește o „ștampilă”, ca pe un bon vizat. */}
+      {best && <span className="stamp mb-3 self-start">✓ Cea mai potrivită</span>}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-[20px] font-semibold">{m.name}</h3>

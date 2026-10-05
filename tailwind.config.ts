@@ -29,7 +29,9 @@ const config: Config = {
         "rosu-soft": token("rosu"),
       },
       fontFamily: {
-        display: ['"Bricolage Grotesque Variable"', "system-ui", "sans-serif"],
+        // Titluri și cifre: monospace, ca pe bonul lunar (PDF-ul folosește același font).
+        display: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
+        mono: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
         sans: ['"IBM Plex Sans"', "system-ui", "sans-serif"],
       },
     },

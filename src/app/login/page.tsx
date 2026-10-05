@@ -96,10 +96,10 @@ function LoginScreen() {
   return (
     <div className="guilloche guilloche-full relative flex min-h-screen items-center justify-center bg-canvas p-4">
       <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))]"><ThemeToggle /></div>
-      <div className="animate-modal-pop w-full max-w-sm rounded-xl border border-line bg-sheet p-6 shadow-sm sm:p-8">
+      <div className="animate-modal-pop w-full max-w-sm panel p-6 sm:p-8">
         <div className="mb-6 flex flex-col items-center text-center">
           <Logo className="h-16 w-16 drop-shadow-md" />
-          <h1 className="mt-3 font-display text-[28px] font-bold tracking-tight">Leuța</h1>
+          <h1 className="mt-3 font-display text-[28px] font-bold tracking-[-0.03em]">Leuța</h1>
           <p className="mt-0.5 text-[13px] text-ink-soft">Bugetul tău, ban cu ban</p>
         </div>
 
@@ -125,7 +125,7 @@ function LoginScreen() {
             Intră cu parola (sau cu un cod de recuperare)
           </button>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4 border-t border-line pt-5">
+          <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4 border-t border-dashed border-line-strong pt-5">
             <Field label="Utilizator">
               <input className="field" type="text" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
             </Field>
@@ -143,7 +143,7 @@ function LoginScreen() {
           </form>
         )}
 
-        <div className="mt-6 border-t border-line pt-3 text-center text-[12px] text-ink-soft">
+        <div className="mt-6 border-t border-dashed border-line-strong pt-3 text-center text-[12px] text-ink-soft">
           Datele tale sunt stocate privat, într-o bază de date Supabase protejată.
           <span className="mt-1.5 block">
             Nu ai cont? Conturile noi se creează din <strong>linkul de invitație</strong> primit de la administrator.

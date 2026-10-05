@@ -8,7 +8,7 @@ export type ThemePref = "auto" | "light" | "dark";
 export type Theme = "light" | "dark";
 
 export const THEME_KEY = "leuta-tema";
-export const THEME_COLORS: Record<Theme, string> = { light: "#EDF1EE", dark: "#0B1417" };
+export const THEME_COLORS: Record<Theme, string> = { light: "#EAE5DB", dark: "#100F0D" };
 
 /** Rulat inline în <head>, înainte de CSS/React. Fără dependențe; erorile → tema deschisă. */
 export const THEME_BOOT_SCRIPT = `(function(){try{var p=localStorage.getItem("${THEME_KEY}")||"auto";var d=p==="dark"||(p==="auto"&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.setAttribute("data-theme",d?"dark":"light");}catch(e){document.documentElement.setAttribute("data-theme","light");}})();`;

@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import type { Summary } from "@/lib/analytics";
 import { celebrateOnce } from "@/lib/confetti";
 import { currentMonth, eur, lei, monthLabel, pct, r2 } from "@/lib/util";
+import { Leader, ReceiptMeta } from "@/components/receipt";
 import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Skeleton, Stat, useApi, useApp } from "@/components/ui";
 
 type S = Summary & { fxError: string | null };
@@ -30,9 +31,10 @@ function LeuBand({ s }: { s: S }) {
 
   return (
     <section className="mb-10">
+      <ReceiptMeta month={s.month} label={monthLabel(s.month, true)} />
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
-          {s.profile.firstName && <p className="mb-1 font-display text-[18px] font-semibold text-ink">Bună, {s.profile.firstName}!</p>}
+          {s.profile.firstName && <p className="mb-1 font-display text-[17px] font-semibold text-ink">Bună, {s.profile.firstName}!</p>}
           <p className="text-ink-soft">
             Venit în {monthLabel(s.month)}
           </p>
@@ -154,12 +156,13 @@ export default function Dashboard() {
       <LeuBand s={s} />
 
       {/* Simulator rapid de decizie achiziții */}
-      <div className="mb-6 rounded-xl border border-albastru/30 bg-gradient-to-r from-albastru-tint/50 via-mov-tint/30 to-paper p-4 sm:p-5 shadow-sm">
+      {/* Ca un cupon decupat: chenar punctat. */}
+      <div className="mb-6 rounded-[4px] border-2 border-dashed border-line-strong bg-sheet/50 p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="text-[30px]">🎯</span>
             <div>
-              <h3 className="font-semibold text-[16px] text-ink">
+              <h3 className="text-[15px] font-semibold text-ink">
                 Urmează o investiție sau o achiziție dorită?
               </h3>
               <p className="text-[13px] text-ink-soft">
@@ -254,13 +257,15 @@ export default function Dashboard() {
                   const diff = c.avg3 > 0 ? ((c.amount - c.avg3) / c.avg3) * 100 : null;
                   return (
                     <li key={c.id}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: c.color }} />
-                          {c.name}
-                        </span>
-                        <span className="num font-medium">{lei(c.amount)}</span>
-                      </div>
+                      <Leader
+                        label={
+                          <span className="flex items-center gap-2">
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: c.color }} />
+                            {c.name}
+                          </span>
+                        }
+                        value={lei(c.amount)}
+                      />
                       {diff !== null && Math.abs(diff) >= 10 && (
                         <div className={`ml-[18px] text-[12px] ${diff > 0 ? "text-rosu" : "text-leu"}`}>
                           {diff > 0 ? "+" : ""}{diff.toFixed(0)}% față de media de {lei(c.avg3)}

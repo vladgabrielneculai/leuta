@@ -221,7 +221,7 @@ export default function OnboardingPage() {
 
           {current.key === "done" && (
             <div className="flex flex-col gap-4">
-              <div className="rounded-xl border border-leu/40 bg-leu-tint/40 p-4 sm:p-5">
+              <div className="rounded-md border border-leu/40 bg-leu-tint/40 p-4 sm:p-5">
                 <p className="font-display text-[20px] font-semibold">
                   {draft.first_name ? `Mulțumim, ${draft.first_name}!` : "Mulțumim!"} Contul tău e pregătit.
                 </p>
