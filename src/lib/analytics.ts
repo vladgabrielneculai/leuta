@@ -1,7 +1,11 @@
 import { getDb, getSettings, num } from "./db";
 import { loadRates, rateForMonthFrom, type RateInfo } from "./fx";
 import { monthCashflow, simulate, statusAt, variableRate, type Loan, type LoanStatus, type Prepayment, type ScheduleRow } from "./loan";
-import { addMonths, lastMonths, lei, monthDiff, monthLabel, pct, type Bucket, type Kind } from "./util";
+import { addMonths, currentMonth, lastMonths, lei, monthDiff, monthLabel, pct, type Bucket, type Kind } from "./util";
+import {
+  ageFrom, daysUntilPayday, hasFinancialProfile, profileSavingsAdjustment, recommendedEmergencyMonths, type Profile,
+} from "./profile";
+import { loadProfile } from "./profileServer";
 
 type EntryRow = {
   id: number;
@@ -108,7 +112,13 @@ export type Summary = {
   categories: CategoryView[];
   loans: LoanView[];
   goals: GoalView[];
-  emergency: { target: number; saved: number; months: number; monthsCovered: number; avgEssential: number; hasGoal: boolean };
+  emergency: {
+    target: number; saved: number; months: number; monthsCovered: number; avgEssential: number; hasGoal: boolean;
+    /** Numărul de luni vine din profil (nu din setarea manuală), cu motivele lui. */
+    fromProfile: boolean; reasons: string[];
+  };
+  /** Ce din profil contează pentru afișare: prenumele și ziua salariului. */
+  profile: { firstName: string; payday: number | null; daysToPayday: number | null; age: number | null; complete: boolean };
   investments: InvestmentView[];
   netWorth: { month: string; assets: number; debt: number; net: number }[];
   methods: MethodView[];
@@ -154,7 +164,7 @@ export async function buildSummary(month: string): Promise<Summary> {
   const trendMonths = lastMonths(month, 12);
 
   // Toate citirile pornesc în paralel: pe un server online fiecare round-trip costă, așa că nu le înlănțuim.
-  const [settings, entries, rates, loans, catsRaw, goalsRawQ, invRawQ, invValuesQ] = await Promise.all([
+  const [settings, entries, rates, loans, catsRaw, goalsRawQ, invRawQ, invValuesQ, profile] = await Promise.all([
     getSettings(),
     db
       .prepare(
@@ -168,7 +178,9 @@ export async function buildSummary(month: string): Promise<Summary> {
     db.prepare("SELECT * FROM goals ORDER BY type DESC, id").all(),
     db.prepare("SELECT * FROM investments ORDER BY id").all(),
     db.prepare("SELECT * FROM investment_values ORDER BY month").all(),
+    loadProfile().catch(() => null),
   ]);
+  const age = profile ? ageFrom(profile.birth_date) : null;
 
   const fxCache = new Map<string, number>();
   const fx = (m: string) => {
@@ -262,7 +274,11 @@ export async function buildSummary(month: string): Promise<Summary> {
   const goalsRaw = goalsRawQ as unknown as {
     id: number; name: string; type: "emergency" | "goal"; target: number; initial: number; deadline: string | null; color: string;
   }[];
-  const emergencyMonths = num(settings.emergency_months, 6);
+  // Fondul de urgență: din profil (venit stabil/variabil, ocupație, familie, prudență) cât timp
+  // utilizatorul n-a fixat manual numărul de luni în Setări.
+  const fromProfile = !!profile && settings.emergency_auto !== "0" && hasFinancialProfile(profile);
+  const rec = profile ? recommendedEmergencyMonths(profile) : null;
+  const emergencyMonths = fromProfile && rec ? rec.months : num(settings.emergency_months, 6);
   const essentialSample = [...prior, ...(totals.hasData ? [totals] : [])].slice(-3);
   const avgEssential = essentialSample.length
     ? essentialSample.reduce((s, t) => s + t.needs, 0) / essentialSample.length
@@ -298,6 +314,8 @@ export async function buildSummary(month: string): Promise<Summary> {
     monthsCovered: avgEssential > 0 ? (eg?.saved ?? 0) / avgEssential : 0,
     avgEssential,
     hasGoal: !!eg,
+    fromProfile,
+    reasons: fromProfile && rec ? rec.reasons : [],
   };
 
   // ---------- Investiții ----------
@@ -333,7 +351,7 @@ export async function buildSummary(month: string): Promise<Summary> {
   });
 
   // ---------- Metode de buget ----------
-  const methods = buildMethods(totals, emergency, loanViews, settings);
+  const methods = buildMethods(totals, emergency, loanViews, settings, profile, age);
 
   // ---------- Rambursare vs investiție ----------
   const expected = num(settings.expected_invest_return, 7);
@@ -359,8 +377,10 @@ export async function buildSummary(month: string): Promise<Summary> {
     };
   }
 
+  // „Zile până la salariu” are sens doar pentru luna în curs.
+  const daysToPayday = profile?.payday && month === currentMonth() ? daysUntilPayday(profile.payday) : null;
   const suggestions = buildSuggestions({
-    month, totals, prev, categories, emergency, goals, loanViews, investments, prepay, prior, settings,
+    month, totals, prev, categories, emergency, goals, loanViews, investments, prepay, prior, settings, profile, age, daysToPayday,
   });
 
   return {
@@ -379,6 +399,13 @@ export async function buildSummary(month: string): Promise<Summary> {
     suggestions,
     prepay,
     settings,
+    profile: {
+      firstName: profile?.first_name ?? "",
+      payday: profile?.payday ?? null,
+      daysToPayday,
+      age,
+      complete: !!profile && hasFinancialProfile(profile) && !!profile.risk_tolerance,
+    },
   };
 }
 
@@ -391,6 +418,8 @@ function buildMethods(
   emergency: Summary["emergency"],
   loans: LoanView[],
   settings: Record<string, string>,
+  profile: Profile | null,
+  age: number | null,
 ): MethodView[] {
   const income = t.income;
   const actual: Record<Bucket, number> = { needs: t.needs, wants: t.wants, savings: t.savedTotal };
@@ -457,8 +486,20 @@ function buildMethods(
     wants = 10;
     savings = 100 - needs - wants;
   }
+  // Obiectivele și etapa de viață din profil mută câteva procente între dorințe și economii.
+  if (profile) {
+    const adj = profileSavingsAdjustment(profile, age);
+    if (adj.delta !== 0) {
+      const target = Math.max(10, Math.min(40, savings + adj.delta));
+      wants = Math.max(10, wants - (target - savings));
+      savings = 100 - needs - wants;
+      if (adj.note) notes.push(adj.note);
+    }
+  }
   if (t.dti > 40) notes.push(`Ratele reprezintă ${pct(t.dti)} din venit, peste pragul de 40% folosit de BNR.`);
-  list.push(make("smart", "Recomandat pentru tine", "Calculat din situația ta: fond de urgență, credite și nivelul cheltuielilor.", {
+  list.push(make("smart", "Recomandat pentru tine", profile && hasFinancialProfile(profile)
+    ? "Calculat din situația și profilul tău: fond de urgență, credite, cheltuieli și obiective."
+    : "Calculat din situația ta: fond de urgență, credite și nivelul cheltuielilor.", {
     needs, wants, savings,
   }, notes));
 
@@ -477,8 +518,11 @@ function buildSuggestions(ctx: {
   prepay: Summary["prepay"];
   prior: MonthTotals[];
   settings?: Record<string, string>;
+  profile?: Profile | null;
+  age?: number | null;
+  daysToPayday?: number | null;
 }): Suggestion[] {
-  const { totals: t, prev, categories, emergency, goals, loanViews, investments, prepay, settings } = ctx;
+  const { totals: t, prev, categories, emergency, goals, loanViews, investments, prepay, settings, profile, age } = ctx;
   const enableInvestments = settings?.enable_investments === "1";
   const out: Suggestion[] = [];
 
@@ -554,13 +598,13 @@ function buildSuggestions(ctx: {
       title: "Creează fondul de urgență",
       text: `Pentru cheltuielile tale esențiale, ${emergency.months} luni înseamnă aproximativ ${lei(emergency.target)}. Îl poți adăuga din pagina Economii.`,
     });
-  } else if (emergency.monthsCovered < 3) {
+  } else if (emergency.avgEssential > 0 && emergency.monthsCovered < 3) {
     out.push({
       level: "critic",
       title: `Fondul de urgență acoperă ${emergency.monthsCovered.toLocaleString("ro-RO", { maximumFractionDigits: 1 })} luni`,
       text: "Până la 3 luni, fondul de urgență ar trebui să primească prioritate înaintea plăților anticipate și investițiilor.",
     });
-  } else if (emergency.saved < emergency.target) {
+  } else if (emergency.avgEssential > 0 && emergency.saved < emergency.target) {
     out.push({
       level: "atentie",
       title: `Fondul de urgență acoperă ${emergency.monthsCovered.toLocaleString("ro-RO", { maximumFractionDigits: 1 })} luni din ${emergency.months}`,
@@ -652,6 +696,56 @@ function buildSuggestions(ctx: {
       level: "idee",
       title: "Fondul e complet: poți începe să investești",
       text: "Adaugă o investiție în pagina Economii ca să urmărești contribuțiile și valoarea în timp.",
+    });
+  }
+
+  // ---------- Sfaturi din profil ----------
+  if (profile) {
+    if (!hasFinancialProfile(profile)) {
+      out.push({
+        level: "idee",
+        title: "Completează-ți profilul",
+        text: "Cu ocupația, tipul venitului și obiectivele tale, fondul de urgență și bugetul recomandat se adaptează situației tale. Durează un minut, în pagina Profilul meu.",
+      });
+    }
+    if (emergency.fromProfile && emergency.months > 3 && emergency.saved < emergency.target) {
+      out.push({
+        level: "idee",
+        title: `Pentru tine, fondul de urgență înseamnă ${emergency.months} luni`,
+        text: `Am mărit ținta pentru că ${emergency.reasons.join(", ")}. Un venit mai puțin previzibil are nevoie de o plasă de siguranță mai mare.`,
+      });
+    }
+    const fundOk = emergency.hasGoal && emergency.saved >= emergency.target;
+    if (profile.goals.includes("retirement") && age !== null && age !== undefined && age >= 30 && fundOk) {
+      out.push({
+        level: "idee",
+        title: "Pensia e printre obiectivele tale",
+        text: enableInvestments
+          ? "Cu fondul de urgență complet, poți începe contribuții lunare pe termen lung (Pilon III, ETF-uri). Contribuțiile la Pilon III sunt deductibile până la 400 € pe an."
+          : "Cu fondul de urgență complet, poți începe contribuții lunare pe termen lung (ex. Pilon III, deductibil până la 400 € pe an). Activează modulul de investiții din Setări ca să le urmărești.",
+      });
+    }
+    if (profile.goals.includes("debt_free") && loanViews.some((l) => l.status.balance > 0) && prepay?.verdict !== "prepay" && fundOk) {
+      const top = [...loanViews].filter((l) => l.status.balance > 0).sort((a, b) => b.status.currentRate - a.status.currentRate)[0];
+      out.push({
+        level: "idee",
+        title: "Vrei să scapi de datorii",
+        text: `Pune surplusul lunar ca plată anticipată la ${top.loan.name} (dobânda cea mai mare, ${pct(top.status.currentRate)}). Metoda „avalanșă” economisește cea mai multă dobândă.`,
+      });
+    }
+    if (enableInvestments && profile.risk_tolerance === "low" && profile.horizon === "short") {
+      out.push({
+        level: "idee",
+        title: "Orizont scurt și profil prudent",
+        text: "Pentru bani de care ai nevoie în sub 3 ani, depozitele și titlurile de stat (Tezaur, Fidelis) sunt mai potrivite decât acțiunile.",
+      });
+    }
+  }
+  if (ctx.daysToPayday !== null && ctx.daysToPayday !== undefined && ctx.daysToPayday > 0 && t.unallocated > 0) {
+    out.push({
+      level: "idee",
+      title: `${lei(t.unallocated / ctx.daysToPayday)} pe zi până la salariu`,
+      text: `Mai ai ${lei(t.unallocated)} nealocați și ${ctx.daysToPayday} ${ctx.daysToPayday === 1 ? "zi" : "zile"} până la următorul salariu.`,
     });
   }
 

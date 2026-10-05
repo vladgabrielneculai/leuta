@@ -43,8 +43,10 @@ export async function POST(req: NextRequest) {
     await db
       .prepare("UPDATE webauthn_credentials SET counter = ?, last_used_at = now() WHERE id = ?")
       .run(result.authenticationInfo.newCounter, credential.id);
-    const user = await db.prepare("SELECT id, username FROM users WHERE id = ?").get<{ id: number; username: string }>(credential.userId);
-    if (!user) return fail("utilizator inexistent");
+    const user = await db
+      .prepare("SELECT id, username FROM users WHERE id = ? AND disabled_at IS NULL")
+      .get<{ id: number; username: string }>(credential.userId);
+    if (!user) return fail("utilizator inexistent sau dezactivat");
 
     await clearFailedLogins(meta.ip, user.id);
     await logAuthEvent(user.id, true, "passkey", meta);

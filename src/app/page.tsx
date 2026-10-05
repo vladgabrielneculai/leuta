@@ -32,6 +32,7 @@ function LeuBand({ s }: { s: S }) {
     <section className="mb-10">
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
+          {s.profile.firstName && <p className="mb-1 font-display text-[18px] font-semibold text-ink">Bună, {s.profile.firstName}!</p>}
           <p className="text-ink-soft">
             Venit în {monthLabel(s.month)}
           </p>

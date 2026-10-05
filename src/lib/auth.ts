@@ -10,6 +10,7 @@ export type SafeUser = {
   id: number;
   username: string;
   created_at: string;
+  is_admin: boolean;
 };
 
 export type CurrentSession = SafeUser & {
@@ -95,7 +96,7 @@ export function requestMeta(headers: Headers): RequestMeta {
 
 // ---------- Sesiuni ----------
 
-export type AuthMethod = "password" | "passkey" | "recovery" | "setup";
+export type AuthMethod = "password" | "passkey" | "recovery" | "setup" | "invite";
 
 export async function createSession(
   userId: number,
@@ -145,16 +146,19 @@ export async function sessionForToken(token: string | undefined): Promise<Curren
     const id = sha256(token);
     const row = await db
       .prepare(
-        `SELECT u.id, u.username, u.created_at, s.id AS session_id, s.last_auth_at,
+        `SELECT u.id, u.username, u.created_at, u.is_admin, s.id AS session_id, s.last_auth_at,
                 (s.last_seen_at IS NULL OR s.last_seen_at < now() - interval '5 minutes') AS stale
          FROM sessions s JOIN users u ON s.user_id = u.id
-         WHERE s.id = ? AND s.expires_at > now()`,
+         WHERE s.id = ? AND s.expires_at > now() AND u.disabled_at IS NULL`,
       )
       .get<SafeUser & { session_id: string; last_auth_at: string | null; stale: boolean }>(id);
     if (!row) return null;
     // „Văzut ultima dată” se actualizează cel mult o dată la 5 minute, nu la fiecare cerere.
     if (row.stale) await db.prepare("UPDATE sessions SET last_seen_at = now() WHERE id = ?").run(id);
-    return { id: row.id, username: row.username, created_at: row.created_at, sessionId: row.session_id, lastAuthAt: row.last_auth_at };
+    return {
+      id: row.id, username: row.username, created_at: row.created_at, is_admin: !!row.is_admin,
+      sessionId: row.session_id, lastAuthAt: row.last_auth_at,
+    };
   } catch {
     return null;
   }
@@ -162,7 +166,7 @@ export async function sessionForToken(token: string | undefined): Promise<Curren
 
 export async function userForToken(token: string | undefined): Promise<SafeUser | null> {
   const s = await sessionForToken(token);
-  return s ? { id: s.id, username: s.username, created_at: s.created_at } : null;
+  return s ? { id: s.id, username: s.username, created_at: s.created_at, is_admin: s.is_admin } : null;
 }
 
 export async function getCurrentSession(): Promise<CurrentSession | null> {
@@ -172,8 +176,24 @@ export async function getCurrentSession(): Promise<CurrentSession | null> {
 
 export async function getCurrentUser(): Promise<SafeUser | null> {
   const s = await getCurrentSession();
-  return s ? { id: s.id, username: s.username, created_at: s.created_at } : null;
+  return s ? { id: s.id, username: s.username, created_at: s.created_at, is_admin: s.is_admin } : null;
 }
+
+/** Doar administratorul (invitații, lista conturilor). Datele financiare ale altora nu sunt accesibile nici lui. */
+export async function requireAdmin(): Promise<{ session: CurrentSession } | { response: NextResponse }> {
+  const session = await getCurrentSession();
+  if (!session) return { response: NextResponse.json({ error: "Neautentificat." }, { status: 401 }) };
+  if (!session.is_admin) return { response: NextResponse.json({ error: "Doar administratorul are acces aici." }, { status: 403 }) };
+  return { session };
+}
+
+/** Contul e dezactivat de administrator (nu se mai poate autentifica). */
+export async function isAccountDisabled(userId: number): Promise<boolean> {
+  const row = await (await getDb()).prepare("SELECT disabled_at IS NOT NULL AS disabled FROM users WHERE id = ?").get<{ disabled: boolean }>(userId);
+  return !!row?.disabled;
+}
+
+export const DISABLED_MESSAGE = "Contul a fost dezactivat de administrator.";
 
 /** Opțiunile cookie-ului de sesiune — `secure` doar în producție (HTTPS), ca local să meargă pe http. */
 export function sessionCookieOptions(expiresAt: string) {
@@ -305,6 +325,39 @@ export async function clearFailedLogins(ip: string, userId?: number) {
 }
 
 export const LOCKOUT_MESSAGE = `Prea multe încercări eșuate. Încearcă din nou peste ${WINDOW_MIN} minute.`;
+
+// ---------- Conturi noi și invitații ----------
+
+/** Numele de utilizator: 3–40 caractere, litere/cifre/punct/liniuță/underscore (fără spații, ușor de tastat la login). */
+export function validateUsername(username: string): string | null {
+  if (username.length < 3 || username.length > 40) return "Numele de utilizator trebuie să aibă între 3 și 40 de caractere.";
+  if (!/^[\p{L}\p{N}._-]+$/u.test(username)) return "Numele de utilizator poate conține doar litere, cifre, punct, liniuță și underscore.";
+  return null;
+}
+
+export const INVITE_DAYS = 7;
+
+/** Creează o invitație și întoarce codul (vizibil o singură dată; în baza de date ajunge doar hash-ul). */
+export async function createInvitation(createdBy: number, note: string): Promise<{ id: number; code: string; expiresAt: string }> {
+  const code = crypto.randomBytes(24).toString("base64url");
+  const expiresAt = new Date(Date.now() + INVITE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const res = await (await getDb())
+    .prepare("INSERT INTO invitations (token_hash, note, created_by, expires_at) VALUES (?, ?, ?, ?)")
+    .run(sha256(code), note.slice(0, 80), createdBy, expiresAt);
+  return { id: res.lastInsertRowid, code, expiresAt };
+}
+
+/** Invitația validă (nefolosită, neanulată, neexpirată) pentru un cod, sau null. */
+export async function findValidInvitation(code: string): Promise<{ id: number; note: string; expires_at: string } | null> {
+  if (!/^[A-Za-z0-9_-]{20,64}$/.test(code)) return null;
+  const row = await (await getDb())
+    .prepare(
+      `SELECT id, note, expires_at FROM invitations
+       WHERE token_hash = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > now()`,
+    )
+    .get<{ id: number; note: string; expires_at: string }>(sha256(code));
+  return row ?? null;
+}
 
 // ---------- Istoric ----------
 

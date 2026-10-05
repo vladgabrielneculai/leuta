@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   const force = req.nextUrl.searchParams.get("force") === "1";
   if (now.hour !== 21 && !force) return NextResponse.json({ skipped: true, localHour: now.hour });
 
-  const users = await (await getSystemDb()).prepare("SELECT id FROM users ORDER BY id").all<{ id: number }>();
+  const users = await (await getSystemDb()).prepare("SELECT id FROM users WHERE disabled_at IS NULL ORDER BY id").all<{ id: number }>();
   const results: Record<number, unknown> = {};
   for (const u of users) {
     try {

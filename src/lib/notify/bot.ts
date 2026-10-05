@@ -183,7 +183,10 @@ async function linkChat(msg: TgMessage, code: string) {
 }
 
 async function userForChat(chatId: number) {
-  const row = await (await getSystemDb()).prepare("SELECT user_id FROM telegram_links WHERE chat_id = ?").get<{ user_id: number }>(chatId);
+  // Un cont dezactivat de administrator nu mai poate adăuga cheltuieli nici din Telegram.
+  const row = await (await getSystemDb())
+    .prepare("SELECT t.user_id FROM telegram_links t JOIN users u ON u.id = t.user_id WHERE t.chat_id = ? AND u.disabled_at IS NULL")
+    .get<{ user_id: number }>(chatId);
   return row?.user_id ?? null;
 }
 

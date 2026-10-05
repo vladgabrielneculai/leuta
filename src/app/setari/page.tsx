@@ -150,7 +150,7 @@ export default function SettingsPage() {
   };
 
   const saveParams = async () => {
-    const body = Object.fromEntries(PARAMS.map((p) => [p.key, params[p.key]]));
+    const body = { ...Object.fromEntries(PARAMS.map((p) => [p.key, params[p.key]])), emergency_auto: params.emergency_auto ?? "1" };
     await api("/api/settings", "PUT", body);
     changed("Parametrii au fost salvați");
   };
@@ -283,11 +283,22 @@ export default function SettingsPage() {
 
           <Panel title="Parametri">
             <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); saveParams(); }}>
-              {PARAMS.filter((p) => !p.investmentOnly || params.enable_investments === "1").map((p) => (
-                <Field key={p.key} label={p.label} hint={p.hint}>
-                  <input className="field num" type="number" step={p.step} min={0} value={params[p.key] ?? ""} onChange={(e) => setParams({ ...params, [p.key]: e.target.value })} />
-                </Field>
-              ))}
+              {PARAMS.filter((p) => !p.investmentOnly || params.enable_investments === "1").map((p) => {
+                const auto = p.key === "emergency_months" && params.emergency_auto !== "0";
+                return (
+                  <div key={p.key}>
+                    <Field label={p.label} hint={auto ? "Calculat din profilul tău (ocupație, tipul venitului, familie, prudență)." : p.hint}>
+                      <input className="field num disabled:opacity-60" type="number" step={p.step} min={0} disabled={auto} value={params[p.key] ?? ""} onChange={(e) => setParams({ ...params, [p.key]: e.target.value })} />
+                    </Field>
+                    {p.key === "emergency_months" && (
+                      <label className="mt-2 flex min-h-[40px] items-center gap-2 text-[13px] text-ink-soft sm:min-h-0">
+                        <input type="checkbox" className="h-[18px] w-[18px] sm:h-4 sm:w-4" checked={params.emergency_auto !== "0"} onChange={(e) => setParams({ ...params, emergency_auto: e.target.checked ? "1" : "0" })} />
+                        Automat, din <a href="/profil" className="text-albastru hover:underline">profilul meu</a>
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
               <button className="btn-primary self-start" type="submit">Salvează parametrii</button>
             </form>
           </Panel>

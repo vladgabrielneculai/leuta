@@ -245,6 +245,7 @@ async function ensureConnected() {
 
 const DEFAULT_SETTINGS: Record<string, string> = {
   emergency_months: "6",
+  emergency_auto: "1", // numărul de luni al fondului de urgență vine din profil, cât timp profilul e completat
   expected_invest_return: "7",
   invest_tax_pct: "10",
   inflation_pct: "5",

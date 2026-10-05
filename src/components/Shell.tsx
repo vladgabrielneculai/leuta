@@ -15,8 +15,13 @@ const NAV = [
   { href: "/economii", label: "Economii", color: "var(--c-galben)" },
   { href: "/achizitii", label: "Îmi permit?", color: "var(--c-albastru)" },
   { href: "/buget", label: "Metode de buget", color: "var(--c-rosu)" },
+  { href: "/profil", label: "Profilul meu", color: "var(--c-leu)" },
   { href: "/setari", label: "Setări", color: "var(--c-ink-faint)" },
 ];
+// Vizibil doar administratorului: invitații și lista conturilor.
+const ADMIN_NAV = { href: "/admin", label: "Administrare", color: "var(--c-mov)" };
+
+type StatusUser = { id: number; username: string; isAdmin: boolean; firstName: string };
 
 function MonthPicker() {
   const { month, setMonth } = useApp();
@@ -138,13 +143,19 @@ function MarketIndicators() {
   );
 }
 
+function initials(u: StatusUser) {
+  return (u.firstName || u.username).slice(0, 2);
+}
+
 export default function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<{ id: number; username: string } | null>(null);
+  const [user, setUser] = useState<StatusUser | null>(null);
   const [hasPasskey, setHasPasskey] = useState(true);
-  const isAuthPage = path === "/login" || path === "/setup";
+  const isAuthPage = path === "/login" || path === "/setup" || path === "/inregistrare";
+  // Ghidul de început ocupă tot ecranul, fără meniul aplicației.
+  const isFocusPage = path === "/bun-venit";
   // Paginile protejate ajung în browser doar cu sesiune validă (verificată pe server în proxy.ts),
   // deci nu mai blocăm randarea cu ecranul de încărcare: datele paginii pornesc imediat,
   // în paralel cu cererea de status (care aduce doar numele utilizatorului).
@@ -152,16 +163,18 @@ export default function Shell({ children }: { children: ReactNode }) {
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   useEffect(() => {
-    api<{ setupNeeded: boolean; authenticated: boolean; user: { id: number; username: string } | null; hasPasskey?: boolean }>("/api/auth/status")
+    api<{ setupNeeded: boolean; authenticated: boolean; user: StatusUser | null; hasPasskey?: boolean; onboardingPending?: boolean }>("/api/auth/status")
       .then((res) => {
         if (res.setupNeeded) {
           if (path !== "/setup") window.location.replace("/setup");
         } else if (!res.authenticated) {
-          if (path !== "/login") window.location.replace("/login");
+          if (path !== "/login" && path !== "/inregistrare") window.location.replace("/login");
         } else {
           setUser(res.user);
           setHasPasskey(res.hasPasskey !== false);
-          if (isAuthPage) window.location.replace("/");
+          if (isAuthPage) window.location.replace(res.onboardingPending ? "/bun-venit" : "/");
+          // Un cont nou trece întâi prin ghidul de început (îl poate amâna de acolo).
+          else if (res.onboardingPending && path !== "/bun-venit") window.location.replace("/bun-venit");
         }
       })
       .catch(() => undefined)
@@ -176,7 +189,7 @@ export default function Shell({ children }: { children: ReactNode }) {
     }
   };
 
-  if (isAuthPage) {
+  if (isAuthPage || isFocusPage) {
     return <main className="page-enter">{children}</main>;
   }
 
@@ -198,7 +211,7 @@ export default function Shell({ children }: { children: ReactNode }) {
 
   const nav = (
     <nav className="flex flex-col gap-1" aria-label="Navigare principală">
-      {NAV.map((n) => {
+      {(user?.isAdmin ? [...NAV, ADMIN_NAV] : NAV).map((n) => {
         const isCurrent = active(n.href);
         return (
           <Link
@@ -248,12 +261,12 @@ export default function Shell({ children }: { children: ReactNode }) {
         <div className="mt-auto flex flex-col gap-3 px-1">
           {user && (
             <div className="flex items-center justify-between border-t border-line/80 pt-3 text-[13px]">
-              <div className="flex items-center gap-2 truncate">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-leu/15 font-semibold text-leu text-[11px] uppercase shadow-sm">
-                  {user.username.slice(0, 2)}
+              <Link href="/profil" className="flex min-w-0 items-center gap-2 truncate hover:text-leu" title="Profilul meu">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-leu/15 font-semibold text-leu text-[11px] uppercase shadow-sm">
+                  {initials(user)}
                 </span>
-                <span className="truncate font-medium text-ink" title={user.username}>{user.username}</span>
-              </div>
+                <span className="truncate font-medium text-ink">{user.firstName || user.username}</span>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="text-[12px] font-medium text-rosu hover:underline transition-colors"
@@ -276,16 +289,16 @@ export default function Shell({ children }: { children: ReactNode }) {
           <div className="flex shrink-0 items-center gap-1.5">
             <ThemeToggle className="h-9 w-9" />
             {user && (
-              <button
-                onClick={handleLogout}
-                className="flex h-9 items-center gap-1.5 rounded-full border border-line bg-sheet pl-1 pr-3 text-[13px] font-medium text-ink-soft active:scale-95"
-                title={`Deconectare (${user.username})`}
+              <Link
+                href="/profil"
+                className="flex h-9 max-w-[9.5rem] items-center gap-1.5 rounded-full border border-line bg-sheet pl-1 pr-3 text-[13px] font-medium text-ink-soft active:scale-95"
+                title="Profilul meu"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-leu/15 text-[11px] font-semibold uppercase text-leu">
-                  {user.username.slice(0, 2)}
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-leu/15 text-[11px] font-semibold uppercase text-leu">
+                  {initials(user)}
                 </span>
-                Ieșire
-              </button>
+                <span className="truncate">{user.firstName || user.username}</span>
+              </Link>
             )}
           </div>
         </div>
@@ -303,6 +316,11 @@ export default function Shell({ children }: { children: ReactNode }) {
             <div className="flex flex-col gap-4">
               {nav}
               <MarketIndicators />
+              {user && (
+                <button onClick={handleLogout} className="btn-danger w-full border border-rosu/30">
+                  Ieșire din cont ({user.username})
+                </button>
+              )}
             </div>
           </div>
         </div>
