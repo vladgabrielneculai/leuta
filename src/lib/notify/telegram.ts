@@ -36,6 +36,19 @@ export function sendTelegram(chatId: number | string, html: string, keyboard?: K
   });
 }
 
+/** Trimite un fișier (ex. bonul lunar PDF). Bot API cere multipart/form-data pentru încărcări. */
+export async function sendTelegramDocument(chatId: number | string, filename: string, content: Uint8Array, caption?: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) throw new Error("Botul Telegram nu e configurat (lipsește TELEGRAM_BOT_TOKEN).");
+  const form = new FormData();
+  form.append("chat_id", String(chatId));
+  if (caption) form.append("caption", caption);
+  form.append("document", new Blob([Buffer.from(content)], { type: "application/pdf" }), filename);
+  const r = await fetch(`${API}/bot${token}/sendDocument`, { method: "POST", body: form, signal: AbortSignal.timeout(15000) });
+  const j = (await r.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+  if (!j.ok) throw new Error(`Telegram: ${j.description ?? r.status}`);
+}
+
 export function editTelegram(chatId: number | string, messageId: number, html: string, keyboard?: Keyboard) {
   return tg("editMessageText", {
     chat_id: chatId,

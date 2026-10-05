@@ -44,6 +44,7 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 
 - **Telegram**: reminder la 21:00 („Ai trecut cheltuielile de azi?”), scadențe de credit și alerte de buget. Îi poți scrie botului `45 mâncare`, `120,50 benzină`, `+5000 salariu` și cheltuiala intră în aplicație (categoria se alege automat și se poate schimba din butoane). Comenzi: `/azi`, `/luna`, `/sold`, `/anuleaza`.
 - **Email** (Resend): rezumatul săptămânal (duminică) și bilanțul lunii (pe 1), cu design, plus scadențele.
+- **Bonul lunii (PDF)**: veniturile și cheltuielile unei luni, în stilul unui bon de casă (hârtie îngustă, linii punctate, total mare, cod de bare). Se descarcă din *Luna curentă → 🧾 Bonul lunii (PDF)* pentru orice lună și vine automat atașat la bilanțul lunii (pe 1), pe Telegram și/sau email. Fontul IBM Plex Mono (licență OFL, în `src/lib/receipt/fonts`) asigură diacriticele.
 - În *Setări → Notificări* alegi pentru fiecare tip de mesaj pe ce canal vine și poți trimite mesaje de test.
 - Rulează din Vercel Cron (`vercel.json`): două rulări pe zi, 18:00 și 19:00 UTC, ca să prindă 21:00 în România și vara, și iarna.
 

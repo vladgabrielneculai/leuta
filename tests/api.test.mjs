@@ -193,3 +193,14 @@ test("invitații: cont nou dintr-un link de o singură folosire, fără acces de
   assert.equal((await call(`/api/admin/users?id=${created.id}`, { method: "DELETE" })).status, 200);
   assert.equal((await asNew("/api/auth/status").then((r) => r.json())).authenticated, false, "sesiunea contului șters nu mai e validă");
 });
+
+test("bonul lunii: PDF pentru o lună validă, 400 pentru o lună invalidă", async () => {
+  const res = await fetch(BASE + "/api/receipt?month=1999-01", { headers: { cookie } });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("content-type"), "application/pdf");
+  assert.match(res.headers.get("content-disposition") ?? "", /Leuta-bon-1999-01\.pdf/);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  assert.equal(bytes.subarray(0, 5).toString(), "%PDF-");
+  assert.equal((await call("/api/receipt?month=1999-13")).status, 400);
+  assert.equal((await call("/api/receipt?month=1999-01", { auth: false })).status, 401);
+});

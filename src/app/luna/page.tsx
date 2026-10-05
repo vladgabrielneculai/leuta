@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Summary } from "@/lib/analytics";
 import { addMonths, eur, KIND_LABEL, lei, monthLabel, type Currency, type Kind } from "@/lib/util";
-import { api, Money, PageHeader, Panel, PencilIcon, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
+import { api, downloadFile, Money, PageHeader, Panel, PencilIcon, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
 
 type Category = { id: number; name: string; kind: Kind; bucket: string; color: string };
 type Goal = { id: number; name: string; type: string };
@@ -303,6 +303,18 @@ export default function MonthPage() {
     bump();
   };
 
+  const [downloading, setDownloading] = useState(false);
+  const downloadReceipt = async () => {
+    setDownloading(true);
+    try {
+      await downloadFile(`/api/receipt?month=${month}`, `Leuta-bon-${month}.pdf`);
+    } catch (e) {
+      setToast((e as Error).message);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const kinds: Kind[] = ["income", "fixed", "variable", "saving"];
   const t = s?.totals;
 
@@ -335,7 +347,14 @@ export default function MonthPage() {
       <PageHeader
         title={`Luna ${monthLabel(month)}`}
         intro="Introdu ce a intrat și ce a ieșit. Utilitățile (apă, curent, gaze, întreținere) sunt variabile și se trec conform facturilor."
-        actions={<button className="btn-primary" onClick={copyPrev}>Copiază intrările lunare din {monthLabel(addMonths(month, -1))}</button>}
+        actions={
+          <>
+            <button className="btn-primary basis-full sm:basis-auto" onClick={copyPrev}>Copiază intrările lunare din {monthLabel(addMonths(month, -1))}</button>
+            <button className="btn-ghost basis-full border border-line bg-field/60 sm:basis-auto" onClick={downloadReceipt} disabled={downloading}>
+              {downloading ? "Se generează…" : "🧾 Bonul lunii (PDF)"}
+            </button>
+          </>
+        }
       />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_300px]">

@@ -22,6 +22,8 @@ export type Message = {
   sections?: Section[];
   footer?: string; // ex. „Răspunde cu «45 mâncare»…” (doar Telegram)
   cta?: { label: string; url: string };
+  /** Fișier atașat (ex. bonul lunar în PDF): document pe Telegram, atașament pe email. */
+  attachment?: { filename: string; content: Uint8Array; caption?: string };
 };
 
 const C: Record<Tone, string> = {
