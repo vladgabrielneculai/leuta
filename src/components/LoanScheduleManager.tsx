@@ -310,8 +310,8 @@ export default function LoanScheduleManager({
       }
       className="mb-6"
     >
-      <div className="mb-6 rounded-lg border border-mov/30 bg-mov-tint/30 p-5">
-        <div className="flex items-center justify-between gap-4 mb-3">
+      <div className="mb-6 rounded-lg border border-mov/30 bg-mov-tint/30 p-3.5 sm:p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div>
             <h4 className="font-semibold text-[15px] text-ink">
               Simulator rapid de recalculare pe schema actuală

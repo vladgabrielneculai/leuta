@@ -54,7 +54,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
 export function ThemeChooser() {
   const { pref } = useTheme();
   const opts: { v: ThemePref; label: string; hint: string }[] = [
-    { v: "auto", label: "🖥️ Auto", hint: "ca telefonul / calculatorul" },
+    { v: "auto", label: "🖥️ Auto", hint: "ca dispozitivul" },
     { v: "light", label: "☀️ Zi", hint: "mereu deschisă" },
     { v: "dark", label: "🌙 Noapte", hint: "mereu închisă" },
   ];
@@ -67,7 +67,7 @@ export function ThemeChooser() {
           role="radio"
           aria-checked={pref === o.v}
           onClick={(e) => savePref(o.v, originOf(e))}
-          className={`rounded-lg border px-3 py-2.5 text-left transition-all duration-150 active:scale-[0.98] ${
+          className={`min-w-0 rounded-lg border px-2.5 py-2.5 text-left transition-all sm:px-3 duration-150 active:scale-[0.98] ${
             pref === o.v ? "border-albastru bg-albastru-tint text-ink shadow-sm" : "border-line bg-field text-ink-soft hover:border-line-strong hover:text-ink"
           }`}
         >

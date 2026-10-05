@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { currentMonth, eur, lei, money } from "@/lib/util";
 import ReauthDialog from "./ReauthDialog";
 import { watchSystemTheme } from "@/lib/theme";
@@ -146,7 +147,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       <ReauthDialog />
       {confirmState && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink/55 backdrop-blur-md animate-backdrop-fade"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-ink/55 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md animate-backdrop-fade sm:items-center sm:p-4"
           onClick={() => handleConfirmClose(false)}
         >
           <div
@@ -204,10 +205,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-2.5 pt-3 border-t border-line/50">
+            <div className="mt-6 flex flex-col-reverse gap-2 border-t border-line/50 pt-3 sm:flex-row sm:items-center sm:justify-end sm:gap-2.5">
               <button
                 type="button"
-                className="btn-ghost px-4 py-2 text-[13px] font-medium"
+                className="btn-ghost min-h-[44px] px-4 py-2 text-[14px] font-medium sm:min-h-0 sm:text-[13px]"
                 onClick={() => handleConfirmClose(false)}
               >
                 {confirmState.options.cancelText || "Renunță"}
@@ -217,8 +218,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 autoFocus
                 className={
                   confirmState.options.danger
-                    ? "btn-danger px-4 py-2 text-[13px] font-semibold shadow-sm"
-                    : "btn-primary px-4 py-2 text-[13px] font-semibold shadow-sm"
+                    ? "btn-danger min-h-[44px] bg-rosu-tint/60 px-4 py-2 text-[14px] font-semibold shadow-sm sm:min-h-0 sm:bg-transparent sm:text-[13px]"
+                    : "btn-primary min-h-[44px] px-4 py-2 text-[14px] font-semibold shadow-sm sm:min-h-0 sm:text-[13px]"
                 }
                 onClick={() => handleConfirmClose(true)}
               >
@@ -368,8 +369,8 @@ export function Money({
   const sizes = {
     sm: "text-[14px]",
     md: "text-[17px] font-medium",
-    lg: "font-display text-[21px] sm:text-[23px] font-semibold leading-tight tracking-tight",
-    xl: "font-display text-[40px] font-semibold leading-none tracking-tight",
+    lg: "font-display text-[19px] sm:text-[23px] font-semibold leading-tight tracking-tight",
+    xl: "font-display text-[34px] sm:text-[40px] font-semibold leading-none tracking-tight",
   };
   const tones: Record<string, string> = {
     leu: "text-leu", rosu: "text-rosu", galben: "text-galben", albastru: "text-albastru", mov: "text-mov", soft: "text-ink-soft",
@@ -378,8 +379,8 @@ export function Money({
     <span className="num inline-flex flex-col">
       {size === "lg" || size === "xl" ? (
         // Cifrele mari: „lei” mai mic, lângă sumă, ca să încapă pe un rând chiar și cu zecimale.
-        <span className={`${sizes[size]} ${tone ? tones[tone] : ""}`}>
-          <span className="whitespace-nowrap">{money(v)}</span>
+        <span className={`whitespace-nowrap ${sizes[size]} ${tone ? tones[tone] : ""}`}>
+          {money(v)}
           <span className="ml-1 inline-block text-[0.55em] font-semibold opacity-70">lei</span>
         </span>
       ) : (
@@ -396,12 +397,12 @@ export function Money({
 
 export function PageHeader({ title, intro, actions }: { title: string; intro?: ReactNode; actions?: ReactNode }) {
   return (
-    <header className="guilloche -mx-4 mb-8 flex flex-wrap items-end justify-between gap-4 rounded-2xl px-4 py-4 sm:-mx-5 sm:px-5">
+    <header className="guilloche -mx-4 mb-5 flex flex-wrap items-end justify-between gap-3 rounded-2xl px-4 py-3 sm:-mx-5 sm:mb-8 sm:gap-4 sm:px-5 sm:py-4">
       <div className="max-w-2xl">
-        <h1 className="text-[34px] font-semibold leading-tight tracking-tight">{title}</h1>
-        {intro && <p className="mt-1.5 text-ink-soft">{intro}</p>}
+        <h1 className="text-[27px] font-semibold leading-tight tracking-tight sm:text-[34px]">{title}</h1>
+        {intro && <p className="mt-1.5 text-[14px] text-ink-soft sm:text-[15px]">{intro}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">{actions}</div>}
     </header>
   );
 }
@@ -422,12 +423,13 @@ export function Panel({
   return (
     <section className={`panel ${className}`}>
       {(title || aside) && (
-        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
-          {title && <h2 className="text-[17px] font-semibold">{title}</h2>}
+        // Pe telefon, butoanele „fantomă” din antet primesc contur, ca să se vadă că sunt butoane când trec sub titlu.
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-4 py-3 sm:px-5 [&_.btn-ghost]:border [&_.btn-ghost]:border-line [&_.btn-ghost]:bg-field/60 sm:[&_.btn-ghost]:border-0 sm:[&_.btn-ghost]:bg-transparent">
+          {title && <h2 className="min-w-0 text-[16px] font-semibold sm:text-[17px]">{title}</h2>}
           {aside}
         </div>
       )}
-      <div className={pad ? "p-5" : ""}>{children}</div>
+      <div className={pad ? "p-4 sm:p-5" : ""}>{children}</div>
     </section>
   );
 }
@@ -496,6 +498,23 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
   );
 }
 
+/** Blochează scroll-ul paginii din spate cât timp e deschisă o fereastră (altfel pe telefon „fuge” fundalul). */
+function useScrollLock(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [active]);
+}
+
+/**
+ * Fereastră de dialog. Pe telefon apare ca un panou care urcă de jos, pe toată lățimea, cu titlul fix sus
+ * și conținutul derulabil; pe ecrane mari, centrată. E randată direct în <body> (portal), ca să stea
+ * mereu peste barele de navigare, indiferent unde e folosită în pagină.
+ */
 export function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   useEffect(() => {
     if (!open) return;
@@ -503,17 +522,31 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [open, onClose]);
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 p-4 sm:p-10" onClick={onClose}>
-      <div role="dialog" aria-modal className="panel w-full max-w-xl bg-sheet shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-line px-5 py-3">
-          <h2 className="text-[18px] font-semibold">{title}</h2>
-          <button className="btn-ghost" onClick={onClose} aria-label="Închide">✕</button>
+  useScrollLock(open);
+  if (!open || typeof document === "undefined") return null;
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-ink/40 backdrop-blur-[2px] animate-backdrop-fade sm:items-start sm:overflow-y-auto sm:p-10"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal
+        aria-label={title}
+        className="sheet-up flex max-h-[92dvh] w-full flex-col rounded-t-[20px] border border-line bg-sheet shadow-2xl sm:max-h-none sm:max-w-xl sm:rounded-[12px]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line sm:hidden" aria-hidden />
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-5 sm:py-3">
+          <h2 className="min-w-0 text-[17px] font-semibold sm:text-[18px]">{title}</h2>
+          <button className="btn-ghost h-10 w-10 shrink-0 px-0 text-[16px]" onClick={onClose} aria-label="Închide">✕</button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:overflow-visible sm:p-5">
+          {children}
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -556,11 +589,34 @@ export function Toast({ message, onDone }: { message: string | null; onDone: () 
     const t = setTimeout(onDone, 3200);
     return () => clearTimeout(t);
   }, [message, onDone]);
-  if (!message) return null;
-  return (
-    <div role="status" className="fixed bottom-5 right-5 z-50 rounded-md bg-ink px-4 py-2.5 text-[14px] text-on-accent shadow-lg">
+  if (!message || typeof document === "undefined") return null;
+  // Pe telefon, centrat deasupra barei de navigare de jos; pe ecrane mari, în colțul din dreapta.
+  return createPortal(
+    <div
+      role="status"
+      className="sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[90] rounded-lg bg-ink px-4 py-3 text-center text-[14px] text-on-accent shadow-lg sm:inset-x-auto sm:right-5 sm:rounded-md sm:py-2.5 sm:text-left lg:bottom-5"
+    >
       {message}
-    </div>
+    </div>,
+    document.body,
+  );
+}
+
+// ---------- Iconițe mici pentru acțiuni (pe telefon înlocuiesc textul butoanelor) ----------
+
+export function PencilIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-4-4L4 16v4zM13.5 6.5l4 4" />
+    </svg>
+  );
+}
+
+export function TrashIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+    </svg>
   );
 }
 

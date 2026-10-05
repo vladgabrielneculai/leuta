@@ -84,7 +84,7 @@ export default function LoanForm({
         submit();
       }}
     >
-      <fieldset className="grid grid-cols-2 gap-3">
+      <fieldset className="grid gap-3 sm:grid-cols-2">
         <Field label="Nume">
           <input className="field" value={d.name} onChange={(e) => set("name", e.target.value)} required />
         </Field>
@@ -212,7 +212,7 @@ export default function LoanForm({
 
       <fieldset className="rounded-md border border-line p-4">
         <legend className="px-1 text-[14px] font-medium">Dobânda</legend>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Dobândă fixă (% pe an)">
             <input className="field num" type="number" min="0" step="0.01" value={d.fixed_rate || ""} onChange={(e) => set("fixed_rate", n(e.target.value))} />
           </Field>
@@ -230,7 +230,7 @@ export default function LoanForm({
 
       <fieldset className="rounded-md border border-line p-4">
         <legend className="px-1 text-[14px] font-medium">Costuri și plăți anticipate</legend>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Comision în perioada fixă (%)">
             <input className="field num" type="number" min="0" step="0.1" value={d.fee_fixed_pct} onChange={(e) => set("fee_fixed_pct", n(e.target.value))} />
           </Field>
@@ -265,7 +265,7 @@ export default function LoanForm({
       </fieldset>
 
       {err && <p className="text-[13px] text-rosu">{err}</p>}
-      <div className="flex justify-end gap-2">
+      <div className="form-actions">
         <button type="button" className="btn-ghost" onClick={onCancel}>Renunță</button>
         <button type="submit" className="btn-primary" disabled={busy}>{initial ? "Salvează creditul" : "Adaugă creditul"}</button>
       </div>

@@ -12,7 +12,7 @@ import { addMonths, currentMonth, lei, monthDiff, monthLabel, pct, r2, termLabel
 import { confetti } from "@/lib/confetti";
 import LoanForm from "@/components/LoanForm";
 import LoanScheduleManager from "@/components/LoanScheduleManager";
-import { api, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Skeleton, Stat, Toast, useApi, useApp } from "@/components/ui";
+import { api, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Skeleton, Stat, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
 
 type SimWithStatus = SimResult & { status: LoanStatus };
 type SimResponse = {
@@ -335,31 +335,31 @@ export default function LoanDetail() {
           </div>
         }
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 [&>div]:p-3 sm:[&>div]:p-4">
           <div className="rounded-lg border border-leu/30 bg-leu-tint/30 p-4">
             <div className="text-[12px] font-medium text-ink-soft">Total plătit până în prezent</div>
-            <div className="num font-display text-[22px] font-bold text-leu mt-0.5">{lei(st.totalPaidSoFar)}</div>
+            <div className="num font-display text-[18px] sm:text-[22px] font-bold text-leu mt-0.5">{lei(st.totalPaidSoFar)}</div>
             <div className="text-[12px] text-ink-soft mt-1">
               {st.installmentsPaidCount} rate achitate ({pct(st.paidPct, 1)} din principal)
             </div>
           </div>
           <div className="rounded-lg border border-line bg-paper p-4">
             <div className="text-[12px] font-medium text-ink-soft">Principal restituit băncii</div>
-            <div className="num font-semibold text-[18px] text-ink mt-0.5">{lei(st.principalPaid)}</div>
+            <div className="num font-semibold text-[16px] sm:text-[18px] text-ink mt-0.5">{lei(st.principalPaid)}</div>
             <div className="text-[12px] text-ink-soft mt-1">
               Din totalul împrumutat de {lei(loan.principal)}
             </div>
           </div>
           <div className="rounded-lg border border-line bg-paper p-4">
             <div className="text-[12px] font-medium text-ink-soft">Dobândă plătită băncii</div>
-            <div className="num font-semibold text-[18px] text-ink mt-0.5">{lei(st.interestPaid)}</div>
+            <div className="num font-semibold text-[16px] sm:text-[18px] text-ink mt-0.5">{lei(st.interestPaid)}</div>
             <div className="text-[12px] text-ink-soft mt-1">
               Cost al creditului suportat până acum
             </div>
           </div>
           <div className="rounded-lg border border-mov/30 bg-mov-tint/30 p-4">
             <div className="text-[12px] font-medium text-ink-soft">Sold curent datorat</div>
-            <div className="num font-display text-[22px] font-bold text-mov mt-0.5">{lei(st.balance)}</div>
+            <div className="num font-display text-[18px] sm:text-[22px] font-bold text-mov mt-0.5">{lei(st.balance)}</div>
             <div className="text-[12px] text-ink-soft mt-1">
               {st.remainingMonths} luni rămase din contract
             </div>
@@ -368,7 +368,7 @@ export default function LoanDetail() {
 
         {/* Progresie vizuală plată principal */}
         <div className="mt-4 pt-4 border-t border-line">
-          <div className="flex justify-between text-[13px] mb-1.5">
+          <div className="mb-1.5 flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-[13px]">
             <span className="font-medium text-ink">Progres rambursare principal: <strong className="text-leu">{pct(st.paidPct, 1)}</strong></span>
             <span className="text-ink-soft">{lei(st.principalPaid)} achitați din {lei(loan.principal)} total</span>
           </div>
@@ -431,19 +431,31 @@ export default function LoanDetail() {
                   onChange={(e) => setSc({ ...sc, extraMonthly: Number(e.target.value) })} />
               </Field>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <input className="field num" type="number" min={0} step={50} value={sc.extraMonthly} aria-label="Sumă lunară"
-                  onChange={(e) => setSc({ ...sc, extraMonthly: Number(e.target.value) || 0 })} />
-                <input className="field" type="month" value={sc.extraFrom} aria-label="Începând cu"
-                  onChange={(e) => setSc({ ...sc, extraFrom: e.target.value })} />
+                <label className="block">
+                  <span className="mb-1 block text-[12px] text-ink-faint">Sumă lunară (lei)</span>
+                  <input className="field num" type="number" inputMode="decimal" min={0} step={50} value={sc.extraMonthly}
+                    onChange={(e) => setSc({ ...sc, extraMonthly: Number(e.target.value) || 0 })} />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[12px] text-ink-faint">Începând cu</span>
+                  <input className="field" type="month" value={sc.extraFrom}
+                    onChange={(e) => setSc({ ...sc, extraFrom: e.target.value })} />
+                </label>
               </div>
             </div>
             <div>
               <span className="label">Plată unică</span>
               <div className="grid grid-cols-2 gap-2">
-                <input className="field num" type="number" min={0} step={1000} value={sc.oneTimeAmount} aria-label="Sumă unică"
-                  onChange={(e) => setSc({ ...sc, oneTimeAmount: Number(e.target.value) || 0 })} />
-                <input className="field" type="month" value={sc.oneTimeMonth} aria-label="Luna plății unice"
-                  onChange={(e) => setSc({ ...sc, oneTimeMonth: e.target.value })} />
+                <label className="block">
+                  <span className="mb-1 block text-[12px] text-ink-faint">Sumă (lei)</span>
+                  <input className="field num" type="number" inputMode="decimal" min={0} step={1000} value={sc.oneTimeAmount}
+                    onChange={(e) => setSc({ ...sc, oneTimeAmount: Number(e.target.value) || 0 })} />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[12px] text-ink-faint">În luna</span>
+                  <input className="field" type="month" value={sc.oneTimeMonth}
+                    onChange={(e) => setSc({ ...sc, oneTimeMonth: e.target.value })} />
+                </label>
               </div>
             </div>
             <div>
@@ -596,12 +608,12 @@ export default function LoanDetail() {
           >
             <input className="field" type="month" value={pre.month} onChange={(e) => setPre({ ...pre, month: e.target.value })} aria-label="Luna" required />
             <input className="field num" type="number" min={1} step="0.01" placeholder="Sumă (lei)" value={pre.amount} onChange={(e) => setPre({ ...pre, amount: e.target.value })} aria-label="Sumă" required />
-            <select className="field" value={pre.strategy} onChange={(e) => setPre({ ...pre, strategy: e.target.value as Strategy | "" })} aria-label="Efect">
+            <select className="field col-span-2 sm:col-span-1" value={pre.strategy} onChange={(e) => setPre({ ...pre, strategy: e.target.value as Strategy | "" })} aria-label="Efect">
               <option value="">{loan.strategy === "term" ? "Reduce perioada" : "Reduce rata"} (implicit)</option>
               <option value="term">Reduce perioada</option>
               <option value="installment">Reduce rata</option>
             </select>
-            <button className="btn-primary" type="submit">Înregistrează</button>
+            <button className="btn-primary col-span-2 sm:col-span-1" type="submit">Înregistrează</button>
           </form>
           {prepayments.length === 0 ? (
             <p className="text-ink-soft">Nicio plată anticipată încă. Ce înregistrezi aici intră automat în bugetul lunii ca bani puși deoparte.</p>
@@ -618,9 +630,17 @@ export default function LoanDetail() {
                         {row && row.fee > 0 && ` · comision ${lei(row.fee)}`}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="num font-medium">{lei(p.amount)}</span>
-                      <button className="btn-danger px-2 opacity-60 group-hover:opacity-100" onClick={() => deletePrepayment(p)}>Șterge</button>
+                    <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                      <span className="num whitespace-nowrap font-medium">{lei(p.amount)}</span>
+                      <button
+                        className="btn-danger h-10 w-10 px-0 sm:h-auto sm:w-auto sm:px-2 sm:opacity-60 sm:group-hover:opacity-100"
+                        onClick={() => deletePrepayment(p)}
+                        aria-label="Șterge"
+                        title="Șterge"
+                      >
+                        <TrashIcon className="h-[18px] w-[18px] sm:hidden" />
+                        <span className="hidden sm:inline">Șterge</span>
+                      </button>
                     </div>
                   </li>
                 );
@@ -662,7 +682,7 @@ export default function LoanDetail() {
           </ResponsiveContainer>
         </div>
         <div className="max-h-[420px] overflow-auto">
-          <table className="num w-full min-w-[640px] text-[13px]">
+          <table className="num w-full min-w-[640px] whitespace-nowrap text-[13px]">
             <thead className="sticky top-0 bg-sheet text-left text-ink-soft">
               <tr className="border-b border-line">
                 <th className="py-2 pr-3 font-medium">{tableMode === "years" ? "An" : "Luna"}</th>

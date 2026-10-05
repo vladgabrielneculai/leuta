@@ -84,7 +84,7 @@ export default function LoanStatusForm({
         la maturitate, cu rate egale pe soldul rămas.
       </p>
 
-      <fieldset className="grid grid-cols-2 gap-3">
+      <fieldset className="grid gap-3 sm:grid-cols-2">
         {money("current_balance", "Sold curent (credit actual)", "Lasă gol și îl estimez din rată și maturitate", "ex. 195316,76")}
         <Field label="Rata dobânzii (% pe an)">
           <input className="field num" type="number" min="0" step="0.01" value={d.current_rate || ""} onChange={(e) => set("current_rate", n(e.target.value))} required />
@@ -107,7 +107,7 @@ export default function LoanStatusForm({
 
       <fieldset className="rounded-md border border-line p-4">
         <legend className="px-1 text-[14px] font-medium">Asigurări anuale</legend>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           {money("pad_amount", "Asigurare PAD (lei/an)")}
           <Field label="Scadența PAD">
             <input className="field" type="date" value={d.pad_due_date} onChange={(e) => set("pad_due_date", e.target.value)} />
