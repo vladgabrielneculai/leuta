@@ -11,7 +11,7 @@ import { getSystemDb as getDb } from "./db";
  * nu funcționează — acolo rămân codurile de recuperare.
  */
 
-export const RP_NAME = "Banii mei";
+export const RP_NAME = "Leuța";
 const CHALLENGE_COOKIE = "bp_wa";
 const CHALLENGE_TTL_MIN = 5;
 

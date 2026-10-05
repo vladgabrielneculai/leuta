@@ -6,6 +6,7 @@ import { api, downloadFile, Field, PageHeader, Panel, Toast, useApi, useApp } fr
 import AccountSecurity from "@/components/AccountSecurity";
 import SecurityCenter from "@/components/SecurityCenter";
 import NotificationSettings from "@/components/NotificationSettings";
+import { ThemeChooser } from "@/components/ThemeToggle";
 import DatabaseManager from "@/components/DatabaseManager";
 
 type Category = { id: number; name: string; kind: Kind; bucket: Bucket; color: string };
@@ -35,7 +36,7 @@ function CategoryRow({
   const dirty = d.name !== c.name || d.bucket !== c.bucket || d.color !== c.color;
   return (
     <li className="flex flex-wrap items-center gap-2 py-2">
-      <input type="color" value={d.color} onChange={(e) => setD({ ...d, color: e.target.value })} className="h-8 w-8 cursor-pointer rounded border border-line bg-white p-0.5" aria-label="Culoare" />
+      <input type="color" value={d.color} onChange={(e) => setD({ ...d, color: e.target.value })} className="h-8 w-8 cursor-pointer rounded border border-line bg-field p-0.5" aria-label="Culoare" />
       <input className="field min-w-[160px] flex-1" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} aria-label="Nume categorie" />
       {c.kind !== "income" && c.kind !== "saving" && (
         <select className="field w-auto" value={d.bucket} onChange={(e) => setD({ ...d, bucket: e.target.value as Bucket })} aria-label="Tip pentru buget">
@@ -219,6 +220,14 @@ export default function SettingsPage() {
         </Panel>
 
         <div className="flex flex-col gap-6">
+          <Panel title="Aspect">
+            <p className="mb-3 text-[13px] text-ink-soft">
+              Tema de zi sau de noapte. „Auto” o schimbă singură după setarea telefonului sau a calculatorului. Alegerea se
+              păstrează pe fiecare dispozitiv; o poți schimba rapid și din butonul ☀️/🌙 din bara aplicației.
+            </p>
+            <ThemeChooser />
+          </Panel>
+
           <NotificationSettings onToast={(msg) => setToast(msg)} />
 
           <SecurityCenter onToast={(msg) => setToast(msg)} />

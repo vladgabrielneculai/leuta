@@ -47,7 +47,7 @@ export async function DELETE() {
       .prepare("DELETE FROM telegram_links WHERE user_id = ? RETURNING chat_id")
       .get<{ chat_id: string }>(session.id);
     if (row && telegramConfigured()) {
-      await sendTelegram(Number(row.chat_id), "Contul Banii mei a fost deconectat de la acest chat.").catch(() => undefined);
+      await sendTelegram(Number(row.chat_id), "Contul Leuța a fost deconectat de la acest chat.").catch(() => undefined);
     }
     return NextResponse.json({ ok: true });
   } catch (err) {

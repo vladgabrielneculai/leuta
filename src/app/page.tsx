@@ -5,9 +5,11 @@ import {
   Area, Bar as RBar, CartesianGrid, Cell, ComposedChart, Legend, Line, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import { useEffect } from "react";
 import type { Summary } from "@/lib/analytics";
-import { eur, lei, monthLabel, pct } from "@/lib/util";
-import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Stat, useApi, useApp } from "@/components/ui";
+import { celebrateOnce } from "@/lib/confetti";
+import { currentMonth, eur, lei, monthLabel, pct } from "@/lib/util";
+import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Skeleton, Stat, useApi, useApp } from "@/components/ui";
 
 type S = Summary & { fxError: string | null };
 
@@ -17,11 +19,11 @@ function LeuBand({ s }: { s: S }) {
   const t = s.totals;
   const enableInvestments = s.settings?.enable_investments === "1";
   const segments = [
-    { key: "fixed", label: "Costuri fixe", value: t.fixed, color: "#2E5C8A" },
-    { key: "loans", label: "Rate credite", value: t.loanPayments + t.loanInsurance + t.prepayFees, color: "#6A4E99" },
-    { key: "variable", label: "Cheltuieli variabile", value: t.variable, color: "#B5456A" },
-    { key: "saved", label: enableInvestments ? "Economii, investiții și rambursări" : "Economii și rambursări", value: t.savedTotal, color: "#C99A1E" },
-    { key: "free", label: "Nealocat", value: Math.max(0, t.unallocated), color: "#3D7A4E" },
+    { key: "fixed", label: "Costuri fixe", value: t.fixed, color: "var(--c-albastru)" },
+    { key: "loans", label: "Rate credite", value: t.loanPayments + t.loanInsurance + t.prepayFees, color: "var(--c-mov)" },
+    { key: "variable", label: "Cheltuieli variabile", value: t.variable, color: "var(--c-rosu)" },
+    { key: "saved", label: enableInvestments ? "Economii, investiții și rambursări" : "Economii și rambursări", value: t.savedTotal, color: "var(--c-galben)" },
+    { key: "free", label: "Nealocat", value: Math.max(0, t.unallocated), color: "var(--c-leu)" },
   ].filter((x) => x.value > 0);
   const base = Math.max(t.income, t.spent + t.savedTotal);
   const over = t.unallocated < 0;
@@ -58,9 +60,9 @@ function LeuBand({ s }: { s: S }) {
             className="band-grow h-full"
             style={{
               width: `${(seg.value / base) * 100}%`,
-              background: seg.key === "free" ? `repeating-linear-gradient(135deg, ${seg.color} 0 6px, #4E8C60 6px 12px)` : seg.color,
+              background: seg.key === "free" ? `repeating-linear-gradient(135deg, ${seg.color} 0 6px, var(--c-leu-soft) 6px 12px)` : seg.color,
               animationDelay: `${i * 90}ms`,
-              borderRight: "2px solid #EDF1EE",
+              borderRight: "2px solid var(--c-paper)",
             }}
             title={`${seg.label}: ${lei(seg.value)}`}
           />
@@ -87,8 +89,13 @@ export default function Dashboard() {
   const { month } = useApp();
   const { data: s, error } = useApi<S>(`/api/summary?month=${month}`);
 
+  // Luna trecută s-a încheiat pe plus → confetti, o singură dată pe lună.
+  useEffect(() => {
+    if (s && month === currentMonth() && s.prev?.hasData && s.prev.unallocated > 0) celebrateOnce(`luna-plus:${s.prev.month}`);
+  }, [s, month]);
+
   if (error) return <Empty title="Panoul nu s-a putut încărca">{error}</Empty>;
-  if (!s) return <p className="text-ink-soft">Se calculează situația lunii…</p>;
+  if (!s) return <Skeleton />;
 
   const t = s.totals;
   const debt = s.loans.reduce((a, l) => a + l.status.balance, 0);
@@ -102,10 +109,10 @@ export default function Dashboard() {
         <PageHeader title="Bun venit" intro="Aplicația e goală. În patru pași ai prima imagine completă a banilor tăi." />
         <ol className="grid gap-4 md:grid-cols-2">
           {[
-            ["Adaugă creditul ipotecar", "Suma, perioada, dobânda fixă și marja + IRCC pentru perioada variabilă.", "/credite", "#6A4E99"],
-            ["Completează luna curentă", "Venituri, costuri fixe și cheltuieli. Ratele creditelor apar automat.", "/luna", "#3D7A4E"],
-            ["Creează fondul de urgență", "Aplicația îți calculează ținta din cheltuielile esențiale.", "/economii", "#C99A1E"],
-            ["Revino lunar", "Marchează intrările recurente și copiază-le cu un clic în luna următoare.", "/luna", "#2E5C8A"],
+            ["Adaugă creditul ipotecar", "Suma, perioada, dobânda fixă și marja + IRCC pentru perioada variabilă.", "/credite", "var(--c-mov)"],
+            ["Completează luna curentă", "Venituri, costuri fixe și cheltuieli. Ratele creditelor apar automat.", "/luna", "var(--c-leu)"],
+            ["Creează fondul de urgență", "Aplicația îți calculează ținta din cheltuielile esențiale.", "/economii", "var(--c-galben)"],
+            ["Revino lunar", "Marchează intrările recurente și copiază-le cu un clic în luna următoare.", "/luna", "var(--c-albastru)"],
           ].map(([title, text, href, color], i) => (
             <li key={title} className="panel p-5">
               <div className="font-display text-[32px] font-bold leading-none" style={{ color }}>{i + 1}</div>
@@ -166,19 +173,19 @@ export default function Dashboard() {
       </div>
 
       <div className="panel mb-6 grid grid-cols-2 gap-6 p-5 md:grid-cols-3 xl:grid-cols-5">
-        <Stat label="Cheltuit" accent="#B5456A" hint={<Delta now={t.spent} before={s.prev?.spent} invert />}>
+        <Stat label="Cheltuit" accent="var(--c-rosu)" hint={<Delta now={t.spent} before={s.prev?.spent} invert />}>
           <Money value={t.spent} rate={s.fx.rate} size="lg" />
         </Stat>
-        <Stat label="Pus deoparte" accent="#C99A1E" hint={`${pct(t.savingsRate)} din venit`}>
+        <Stat label="Pus deoparte" accent="var(--c-galben)" hint={`${pct(t.savingsRate)} din venit`}>
           <Money value={t.savedTotal} rate={s.fx.rate} size="lg" />
         </Stat>
-        <Stat label="Rate / venit" accent="#6A4E99" hint={t.dti > 40 ? "Peste pragul BNR de 40%" : "Pragul BNR este 40%"}>
+        <Stat label="Rate / venit" accent="var(--c-mov)" hint={t.dti > 40 ? "Peste pragul BNR de 40%" : "Pragul BNR este 40%"}>
           <span className={`num font-display text-[26px] font-semibold ${t.dti > 40 ? "text-rosu" : ""}`}>{pct(t.dti)}</span>
         </Stat>
-        <Stat label="Datorii rămase" accent="#6A4E99" hint={s.loans.length ? `${s.loans.length} ${s.loans.length === 1 ? "credit" : "credite"}` : "Niciun credit"}>
+        <Stat label="Datorii rămase" accent="var(--c-mov)" hint={s.loans.length ? `${s.loans.length} ${s.loans.length === 1 ? "credit" : "credite"}` : "Niciun credit"}>
           <Money value={debt} rate={s.fx.rate} size="lg" />
         </Stat>
-        <Stat label="Avere netă" accent="#3D7A4E" hint={<Delta now={nw.net} before={nwPrev?.net} />}>
+        <Stat label="Avere netă" accent="var(--c-leu)" hint={<Delta now={nw.net} before={nwPrev?.net} />}>
           <Money value={nw.net} rate={s.fx.rate} size="lg" tone={nw.net < 0 ? "rosu" : undefined} />
         </Stat>
       </div>
@@ -188,16 +195,16 @@ export default function Dashboard() {
           <div className="h-[300px]">
             <ResponsiveContainer>
               <ComposedChart data={trendData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-                <CartesianGrid stroke="#D5DDD8" vertical={false} />
-                <XAxis dataKey="luna" tick={{ fontSize: 12, fill: "#4E5E63" }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="l" tickFormatter={kLei} tick={{ fontSize: 12, fill: "#4E5E63" }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="r" orientation="right" unit="%" tick={{ fontSize: 12, fill: "#8A989C" }} axisLine={false} tickLine={false} />
+                <CartesianGrid stroke="var(--c-line)" vertical={false} />
+                <XAxis dataKey="luna" tick={{ fontSize: 12, fill: "var(--c-ink-soft)" }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="l" tickFormatter={kLei} tick={{ fontSize: 12, fill: "var(--c-ink-soft)" }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="r" orientation="right" unit="%" tick={{ fontSize: 12, fill: "var(--c-ink-faint)" }} axisLine={false} tickLine={false} />
                 <Tooltip {...chartTooltipStyle} formatter={(v: number, n: string) => (n === "Rata de economisire" ? `${v}%` : lei(v))} />
                 <Legend wrapperStyle={{ fontSize: 13 }} iconType="circle" iconSize={8} />
-                <RBar yAxisId="l" dataKey="Venit" fill="#3D7A4E" radius={[3, 3, 0, 0]} maxBarSize={18} />
-                <RBar yAxisId="l" dataKey="Cheltuit" fill="#B5456A" radius={[3, 3, 0, 0]} maxBarSize={18} />
-                <RBar yAxisId="l" dataKey="Economisit" fill="#C99A1E" radius={[3, 3, 0, 0]} maxBarSize={18} />
-                <Line yAxisId="r" dataKey="rata" name="Rata de economisire" stroke="#1C2B30" strokeWidth={2} dot={{ r: 2.5 }} connectNulls />
+                <RBar yAxisId="l" dataKey="Venit" fill="var(--c-leu)" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                <RBar yAxisId="l" dataKey="Cheltuit" fill="var(--c-rosu)" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                <RBar yAxisId="l" dataKey="Economisit" fill="var(--c-galben)" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                <Line yAxisId="r" dataKey="rata" name="Rata de economisire" stroke="var(--c-ink)" strokeWidth={2} dot={{ r: 2.5 }} connectNulls />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -270,14 +277,14 @@ export default function Dashboard() {
           <div className="h-[240px]">
             <ResponsiveContainer>
               <ComposedChart data={nwData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }} stackOffset="sign">
-                <CartesianGrid stroke="#D5DDD8" vertical={false} />
-                <XAxis dataKey="luna" tick={{ fontSize: 12, fill: "#4E5E63" }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={kLei} tick={{ fontSize: 12, fill: "#4E5E63" }} axisLine={false} tickLine={false} />
+                <CartesianGrid stroke="var(--c-line)" vertical={false} />
+                <XAxis dataKey="luna" tick={{ fontSize: 12, fill: "var(--c-ink-soft)" }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={kLei} tick={{ fontSize: 12, fill: "var(--c-ink-soft)" }} axisLine={false} tickLine={false} />
                 <Tooltip {...chartTooltipStyle} formatter={(v: number) => lei(v)} />
                 <Legend wrapperStyle={{ fontSize: 13 }} iconType="circle" iconSize={8} />
-                <Area dataKey="Active" stroke="#C99A1E" fill="#F6ECCB" strokeWidth={2} />
-                <Area dataKey="Datorii" stroke="#6A4E99" fill="#E6DFF1" strokeWidth={2} />
-                <Line dataKey="Avere netă" stroke="#1C2B30" strokeWidth={2} dot={false} />
+                <Area dataKey="Active" stroke="var(--c-galben)" fill="var(--c-galben-tint)" strokeWidth={2} />
+                <Area dataKey="Datorii" stroke="var(--c-mov)" fill="var(--c-mov-tint)" strokeWidth={2} />
+                <Line dataKey="Avere netă" stroke="var(--c-ink)" strokeWidth={2} dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -302,7 +309,7 @@ export default function Dashboard() {
                     </span>
                   </div>
                   <div className="mt-2">
-                    <Bar value={l.status.paidPct} color="#6A4E99" />
+                    <Bar value={l.status.paidPct} color="var(--c-mov)" />
                   </div>
                   <div className="num mt-1.5 flex flex-wrap justify-between gap-2 text-[13px] text-ink-soft">
                     <span>Rămas {lei(l.status.balance)} · {pct(l.status.paidPct, 0)} achitat</span>

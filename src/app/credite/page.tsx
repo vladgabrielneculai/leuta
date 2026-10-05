@@ -8,7 +8,7 @@ import type { Summary } from "@/lib/analytics";
 import { addMonths, lei, monthLabel, pct, termLabel } from "@/lib/util";
 import BankScheduleImport, { type BankImportResult } from "@/components/BankScheduleImport";
 import LoanForm, { emptyLoan } from "@/components/LoanForm";
-import { api, Bar, chartTooltipStyle, Empty, Modal, Money, PageHeader, Panel, Stat, useApi, useApp } from "@/components/ui";
+import { api, Bar, chartTooltipStyle, Empty, Modal, Money, PageHeader, Panel, Skeleton, Stat, useApi, useApp } from "@/components/ui";
 import { loanFieldsFromSchedule, loanNameFromMeta } from "@/lib/loanImport";
 
 export default function LoansPage() {
@@ -74,7 +74,7 @@ export default function LoansPage() {
       />
 
       {!s ? (
-        <p className="text-ink-soft">Se încarcă…</p>
+        <Skeleton />
       ) : loans.length === 0 ? (
         <Empty title="Niciun credit adăugat">
           Adaugă creditul ipotecar ca să vezi graficul de rambursare, efectul plăților anticipate și trecerea la dobânda variabilă.
@@ -85,17 +85,17 @@ export default function LoansPage() {
           <div className="panel mb-6 grid grid-cols-2 gap-6 p-5 lg:grid-cols-5">
             <Stat
               label="Bani deja achitați"
-              accent="#3D7A4E"
+              accent="var(--c-leu)"
               hint={`${lei(totalPrincipalPaid)} principal restituit`}
             >
               <Money value={totalPaid} rate={s.fx.rate} size="lg" tone="leu" />
             </Stat>
-            <Stat label="Datorie rămasă (Sold)" accent="#6A4E99"><Money value={totalDebt} rate={s.fx.rate} size="lg" /></Stat>
-            <Stat label="Rate lunare" accent="#6A4E99" hint={`${pct(s.totals.dti)} din venitul lunii`}>
+            <Stat label="Datorie rămasă (Sold)" accent="var(--c-mov)"><Money value={totalDebt} rate={s.fx.rate} size="lg" /></Stat>
+            <Stat label="Rate lunare" accent="var(--c-mov)" hint={`${pct(s.totals.dti)} din venitul lunii`}>
               <Money value={totalPayment} rate={s.fx.rate} size="lg" />
             </Stat>
-            <Stat label="Dobândă de plătit" accent="#B5456A"><Money value={interestLeft} rate={s.fx.rate} size="lg" /></Stat>
-            <Stat label="Dobândă economisită" accent="#3D7A4E" hint="prin plăți anticipate"><Money value={saved} rate={s.fx.rate} size="lg" tone="leu" /></Stat>
+            <Stat label="Dobândă de plătit" accent="var(--c-rosu)"><Money value={interestLeft} rate={s.fx.rate} size="lg" /></Stat>
+            <Stat label="Dobândă economisită" accent="var(--c-leu)" hint="prin plăți anticipate"><Money value={saved} rate={s.fx.rate} size="lg" tone="leu" /></Stat>
           </div>
 
           <div className="mb-6 grid gap-6 md:grid-cols-2">
@@ -111,12 +111,12 @@ export default function LoansPage() {
                   </div>
                   <span
                     className="shrink-0 rounded px-2 py-0.5 text-[12px] font-medium"
-                    style={l.status.balance <= 0 ? { background: "#DCEBDF", color: "#3D7A4E" } : l.status.inFixed ? { background: "#DCE6F1", color: "#2E5C8A" } : { background: "#E6DFF1", color: "#6A4E99" }}
+                    style={l.status.balance <= 0 ? { background: "var(--c-leu-tint)", color: "var(--c-leu)" } : l.status.inFixed ? { background: "var(--c-albastru-tint)", color: "var(--c-albastru)" } : { background: "var(--c-mov-tint)", color: "var(--c-mov)" }}
                   >
                     {l.status.balance <= 0 ? "Achitat complet" : l.status.inFixed ? "Dobândă fixă" : "Dobândă variabilă"}
                   </span>
                 </div>
-                <div className="mt-4"><Bar value={l.status.paidPct} color="#3D7A4E" /></div>
+                <div className="mt-4"><Bar value={l.status.paidPct} color="var(--c-leu)" /></div>
                 <dl className="num mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-[13px]">
                   <div><dt className="text-ink-soft">Bani deja plătiți</dt><dd className="font-semibold text-leu">{lei(l.status.totalPaidSoFar)}</dd></div>
                   <div><dt className="text-ink-soft">Sold rămas</dt><dd className="font-medium text-mov">{lei(l.status.balance)}</dd></div>
@@ -135,14 +135,14 @@ export default function LoansPage() {
               <div className="h-[280px]">
                 <ResponsiveContainer>
                   <BarChart data={chartData} layout="vertical" margin={{ left: 40 }}>
-                    <CartesianGrid stroke="#D5DDD8" horizontal={false} />
+                    <CartesianGrid stroke="var(--c-line)" horizontal={false} />
                     <XAxis type="number" tickFormatter={(v) => `${Math.round(v / 1000)}k`} tick={{ fontSize: 12 }} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 13 }} width={120} />
                     <Tooltip {...chartTooltipStyle} formatter={(v: number) => lei(v)} />
                     <Legend wrapperStyle={{ fontSize: 13 }} iconType="circle" iconSize={8} />
-                    <RBar dataKey="Achitat" stackId="a" fill="#3D7A4E" />
-                    <RBar dataKey="Rămas" stackId="a" fill="#6A4E99" />
-                    <RBar dataKey="Dobândă de plătit" stackId="a" fill="#B5456A" />
+                    <RBar dataKey="Achitat" stackId="a" fill="var(--c-leu)" />
+                    <RBar dataKey="Rămas" stackId="a" fill="var(--c-mov)" />
+                    <RBar dataKey="Dobândă de plătit" stackId="a" fill="var(--c-rosu)" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

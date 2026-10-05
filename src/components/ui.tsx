@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { currentMonth, eur, lei } from "@/lib/util";
 import ReauthDialog from "./ReauthDialog";
+import { watchSystemTheme } from "@/lib/theme";
 
 // ---------- Context aplicație: luna selectată și cursul EUR ----------
 
@@ -50,6 +51,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   } | null>(null);
 
   const [version, setVersion] = useState(0);
+
+  useEffect(() => watchSystemTheme(), []);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("luna");
@@ -315,6 +318,36 @@ export async function downloadFile(url: string, fallbackName: string) {
 
 // ---------- Afișare sume ----------
 
+/**
+ * Valoarea „numără” lin până la cifra nouă (la încărcare de la 0, apoi de la valoarea anterioară),
+ * ca schimbarea lunii să se vadă. Fără animație dacă utilizatorul a cerut mișcare redusă.
+ */
+export function useCountUp(value: number, duration = 750) {
+  const [shown, setShown] = useState(0);
+  const from = useRef(0);
+  useEffect(() => {
+    if (!Number.isFinite(value)) return setShown(value);
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      from.current = value;
+      return setShown(value);
+    }
+    const start = performance.now();
+    const a = from.current;
+    let raf = 0;
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - k, 3);
+      const v = a + (value - a) * eased;
+      from.current = v;
+      setShown(v);
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return shown;
+}
+
 export function Money({
   value,
   rate,
@@ -330,6 +363,8 @@ export function Money({
 }) {
   const { eurRate } = useApp();
   const r = rate ?? eurRate;
+  const animated = useCountUp(value);
+  const v = size === "sm" ? value : animated;
   const sizes = {
     sm: "text-[14px]",
     md: "text-[17px] font-medium",
@@ -341,9 +376,9 @@ export function Money({
   };
   return (
     <span className="num inline-flex flex-col">
-      <span className={`${sizes[size]} ${tone ? tones[tone] : ""}`}>{lei(value, decimals)}</span>
+      <span className={`${sizes[size]} ${tone ? tones[tone] : ""}`}>{lei(v, decimals)}</span>
       <span className={`text-ink-faint ${size === "xl" || size === "lg" ? "text-[13px] mt-1" : "text-[12px]"}`}>
-        {eur(value / r)}
+        {eur(v / r)}
       </span>
     </span>
   );
@@ -353,9 +388,9 @@ export function Money({
 
 export function PageHeader({ title, intro, actions }: { title: string; intro?: ReactNode; actions?: ReactNode }) {
   return (
-    <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <header className="guilloche -mx-4 mb-8 flex flex-wrap items-end justify-between gap-4 rounded-2xl px-4 py-4 sm:-mx-5 sm:px-5">
       <div className="max-w-2xl">
-        <h1 className="text-[34px] font-semibold leading-tight">{title}</h1>
+        <h1 className="text-[34px] font-semibold leading-tight tracking-tight">{title}</h1>
         {intro && <p className="mt-1.5 text-ink-soft">{intro}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -402,7 +437,7 @@ export function Stat({
 }) {
   return (
     <div className="relative pl-3.5">
-      <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full" style={{ background: accent ?? "#D5DDD8" }} />
+      <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full" style={{ background: accent ?? "var(--c-line)" }} />
       <div className="text-[13px] text-ink-soft">{label}</div>
       <div className="mt-0.5">{children}</div>
       {hint && <div className="mt-1 text-[12px] text-ink-soft">{hint}</div>}
@@ -410,11 +445,17 @@ export function Stat({
   );
 }
 
-export function Bar({ value, max = 100, color = "#2E5C8A", marker }: { value: number; max?: number; color?: string; marker?: number }) {
-  const w = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+export function Bar({ value, max = 100, color = "var(--c-albastru)", marker }: { value: number; max?: number; color?: string; marker?: number }) {
+  const target = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  // Bara se umple de la 0 la prima afișare, apoi alunecă la valoarea nouă.
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setW(target));
+    return () => cancelAnimationFrame(id);
+  }, [target]);
   return (
-    <div className="relative h-2 w-full rounded-full bg-line/70">
-      <div className="h-2 rounded-full" style={{ width: `${w}%`, background: color }} />
+    <div className="relative h-2 w-full overflow-hidden rounded-full bg-line/70">
+      <div className="h-2 rounded-full transition-[width] duration-700 ease-out" style={{ width: `${w}%`, background: color }} />
       {marker !== undefined && max > 0 && (
         <span
           className="absolute -top-1 h-4 w-[2px] bg-ink"
@@ -478,6 +519,29 @@ export function Field({ label, children, hint }: { label: string; children: Reac
   );
 }
 
+/** Schelet de încărcare: forma paginii, cu o strălucire care trece peste ea. */
+export function Skeleton({ variant = "page" }: { variant?: "page" | "block" }) {
+  const block = (cls: string) => <div className={`shimmer rounded-xl bg-line/50 ${cls}`} />;
+  if (variant === "block") return block("h-40 w-full");
+  return (
+    <div className="flex flex-col gap-6" aria-busy="true" aria-label="Se încarcă">
+      <div className="flex flex-col gap-2">
+        {block("h-9 w-64")}
+        {block("h-4 w-96 max-w-full")}
+      </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i}>{block("h-24 w-full")}</div>
+        ))}
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {block("h-72 w-full")}
+        {block("h-72 w-full")}
+      </div>
+    </div>
+  );
+}
+
 export function Toast({ message, onDone }: { message: string | null; onDone: () => void }) {
   useEffect(() => {
     if (!message) return;
@@ -486,20 +550,20 @@ export function Toast({ message, onDone }: { message: string | null; onDone: () 
   }, [message, onDone]);
   if (!message) return null;
   return (
-    <div role="status" className="fixed bottom-5 right-5 z-50 rounded-md bg-ink px-4 py-2.5 text-[14px] text-white shadow-lg">
+    <div role="status" className="fixed bottom-5 right-5 z-50 rounded-md bg-ink px-4 py-2.5 text-[14px] text-on-accent shadow-lg">
       {message}
     </div>
   );
 }
 
 export const LEVEL_STYLE = {
-  critic: { color: "#B5456A", bg: "#F4DDE5", label: "Urgent" },
-  atentie: { color: "#C99A1E", bg: "#F6ECCB", label: "Atenție" },
-  idee: { color: "#2E5C8A", bg: "#DCE6F1", label: "Sugestie" },
-  bine: { color: "#3D7A4E", bg: "#DCEBDF", label: "Merge bine" },
+  critic: { color: "var(--c-rosu)", bg: "var(--c-rosu-tint)", label: "Urgent" },
+  atentie: { color: "var(--c-galben)", bg: "var(--c-galben-tint)", label: "Atenție" },
+  idee: { color: "var(--c-albastru)", bg: "var(--c-albastru-tint)", label: "Sugestie" },
+  bine: { color: "var(--c-leu)", bg: "var(--c-leu-tint)", label: "Merge bine" },
 } as const;
 
 export const chartTooltipStyle = {
-  contentStyle: { background: "#F8FAF8", border: "1px solid #D5DDD8", borderRadius: 8, fontSize: 13 },
-  labelStyle: { color: "#1C2B30", fontWeight: 600 },
+  contentStyle: { background: "var(--c-sheet)", border: "1px solid var(--c-line)", borderRadius: 8, fontSize: 13 },
+  labelStyle: { color: "var(--c-ink)", fontWeight: 600 },
 };

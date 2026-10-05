@@ -9,9 +9,10 @@ import {
 import { annualInsuranceMonthly, type Loan, type LoanStatus, type Prepayment, type SimResult } from "@/lib/loan";
 import type { Strategy } from "@/lib/util";
 import { addMonths, currentMonth, lei, monthDiff, monthLabel, pct, termLabel } from "@/lib/util";
+import { confetti } from "@/lib/confetti";
 import LoanForm from "@/components/LoanForm";
 import LoanScheduleManager from "@/components/LoanScheduleManager";
-import { api, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Stat, Toast, useApi, useApp } from "@/components/ui";
+import { api, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Skeleton, Stat, Toast, useApi, useApp } from "@/components/ui";
 
 type SimWithStatus = SimResult & { status: LoanStatus };
 type SimResponse = {
@@ -124,7 +125,7 @@ export default function LoanDetail() {
   }, [data, tableMode, tableSource]);
 
   if (error) return <Empty title="Creditul nu a putut fi încărcat">{error}</Empty>;
-  if (!data) return <p className="text-ink-soft">Se calculează graficul de rambursare…</p>;
+  if (!data) return <Skeleton />;
 
   const { loan, actual, original, term, installment, prepayments } = data;
   const st = actual.status;
@@ -168,6 +169,7 @@ export default function LoanDetail() {
     setReloadKey((k) => k + 1);
     bump();
     setToast("Plata anticipată a fost înregistrată");
+    confetti({ count: 90 });
   };
 
   const deletePrepayment = async (p: Prepayment & { id: number }) => {
@@ -231,9 +233,9 @@ export default function LoanDetail() {
   };
 
   const cards = [
-    { key: "actual", title: "Fără plăți suplimentare", sub: "Doar plățile deja înregistrate", sim: actual, color: "#8A989C" },
-    { key: "term", title: "Reducerea perioadei", sub: "Rata rămâne, creditul se termină mai devreme", sim: term, color: "#6A4E99" },
-    { key: "installment", title: "Reducerea ratei", sub: "Perioada rămâne, rata scade", sim: installment, color: "#2E5C8A" },
+    { key: "actual", title: "Fără plăți suplimentare", sub: "Doar plățile deja înregistrate", sim: actual, color: "var(--c-ink-faint)" },
+    { key: "term", title: "Reducerea perioadei", sub: "Rata rămâne, creditul se termină mai devreme", sim: term, color: "var(--c-mov)" },
+    { key: "installment", title: "Reducerea ratei", sub: "Perioada rămâne, rata scade", sim: installment, color: "var(--c-albastru)" },
   ] as const;
   const bestInterest = Math.min(term.totalInterest, installment.totalInterest);
 
@@ -254,18 +256,18 @@ export default function LoanDetail() {
       />
 
       <div className="panel mb-6 grid grid-cols-2 gap-6 p-5 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Bani deja plătiți" accent="#3D7A4E" hint={`${lei(st.principalPaid)} principal · ${lei(st.interestPaid)} dobândă`}>
+        <Stat label="Bani deja plătiți" accent="var(--c-leu)" hint={`${lei(st.principalPaid)} principal · ${lei(st.interestPaid)} dobândă`}>
           <Money value={st.totalPaidSoFar} size="lg" tone="leu" />
         </Stat>
-        <Stat label="Sold rămas" accent="#6A4E99" hint={`${pct(st.paidPct, 0)} din principal achitat`}><Money value={st.balance} size="lg" /></Stat>
-        <Stat label="Rata următoare" accent="#6A4E99" hint={st.nextInsurance ? `+ ${lei(st.nextInsurance, true)} asigurări = ${lei(st.nextPayment + st.nextInsurance, true)}` : undefined}>
+        <Stat label="Sold rămas" accent="var(--c-mov)" hint={`${pct(st.paidPct, 0)} din principal achitat`}><Money value={st.balance} size="lg" /></Stat>
+        <Stat label="Rata următoare" accent="var(--c-mov)" hint={st.nextInsurance ? `+ ${lei(st.nextInsurance, true)} asigurări = ${lei(st.nextPayment + st.nextInsurance, true)}` : undefined}>
           <Money value={st.nextPayment} size="lg" decimals />
         </Stat>
-        <Stat label="Dobânda acum" accent="#2E5C8A" hint={st.inFixed ? `Fixă încă ${st.monthsToVariable} luni` : "Marjă + IRCC"}>
+        <Stat label="Dobânda acum" accent="var(--c-albastru)" hint={st.inFixed ? `Fixă încă ${st.monthsToVariable} luni` : "Marjă + IRCC"}>
           <span className="num font-display text-[26px] font-semibold">{pct(st.currentRate, 2)}</span>
         </Stat>
-        <Stat label="Dobândă totală" accent="#B5456A" hint={`Inițial: ${lei(original.totalInterest)}`}><Money value={actual.totalInterest} size="lg" /></Stat>
-        <Stat label="Economisit până acum" accent="#3D7A4E" hint={`${original.months - actual.months} luni mai puțin`}>
+        <Stat label="Dobândă totală" accent="var(--c-rosu)" hint={`Inițial: ${lei(original.totalInterest)}`}><Money value={actual.totalInterest} size="lg" /></Stat>
+        <Stat label="Economisit până acum" accent="var(--c-leu)" hint={`${original.months - actual.months} luni mai puțin`}>
           <Money value={original.totalInterest - actual.totalInterest} size="lg" tone="leu" />
         </Stat>
       </div>
@@ -415,6 +417,7 @@ export default function LoanDetail() {
           setReloadKey((k) => k + 1);
           bump();
           setToast("Plata anticipată a fost adăugată");
+          confetti({ count: 90 });
         }}
       />
 
@@ -497,17 +500,17 @@ export default function LoanDetail() {
             <div className="h-[280px]">
               <ResponsiveContainer>
                 <LineChart data={balanceChart} margin={{ top: 6, right: 8, left: -6, bottom: 0 }}>
-                  <CartesianGrid stroke="#D5DDD8" vertical={false} />
+                  <CartesianGrid stroke="var(--c-line)" vertical={false} />
                   <XAxis dataKey="luna" tickFormatter={(m) => m.slice(0, 4)} minTickGap={40} tick={{ fontSize: 12 }} />
                   <YAxis tickFormatter={kLei} tick={{ fontSize: 12 }} />
                   <Tooltip {...chartTooltipStyle} labelFormatter={(m) => monthLabel(String(m))} formatter={(v: number) => lei(v)} />
                   <Legend wrapperStyle={{ fontSize: 12 }} iconType="plainline" />
-                  <ReferenceLine x={now} stroke="#3D7A4E" strokeDasharray="4 3" label={{ value: "azi", fontSize: 11, fill: "#3D7A4E", position: "top" }} />
-                  <ReferenceLine x={fixedEnd} stroke="#2E5C8A" strokeDasharray="2 3" label={{ value: "variabilă", fontSize: 11, fill: "#2E5C8A", position: "top" }} />
-                  <Line dataKey="Inițial" stroke="#8A989C" dot={false} strokeWidth={1.5} strokeDasharray="4 3" />
-                  <Line dataKey="Actual" stroke="#1C2B30" dot={false} strokeWidth={2} />
-                  <Line dataKey="Scenariu: perioadă" stroke="#6A4E99" dot={false} strokeWidth={2} />
-                  <Line dataKey="Scenariu: rată" stroke="#2E5C8A" dot={false} strokeWidth={2} />
+                  <ReferenceLine x={now} stroke="var(--c-leu)" strokeDasharray="4 3" label={{ value: "azi", fontSize: 11, fill: "var(--c-leu)", position: "top" }} />
+                  <ReferenceLine x={fixedEnd} stroke="var(--c-albastru)" strokeDasharray="2 3" label={{ value: "variabilă", fontSize: 11, fill: "var(--c-albastru)", position: "top" }} />
+                  <Line dataKey="Inițial" stroke="var(--c-ink-faint)" dot={false} strokeWidth={1.5} strokeDasharray="4 3" />
+                  <Line dataKey="Actual" stroke="var(--c-ink)" dot={false} strokeWidth={2} />
+                  <Line dataKey="Scenariu: perioadă" stroke="var(--c-mov)" dot={false} strokeWidth={2} />
+                  <Line dataKey="Scenariu: rată" stroke="var(--c-albastru)" dot={false} strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -517,13 +520,13 @@ export default function LoanDetail() {
             <div className="h-[280px]">
               <ResponsiveContainer>
                 <LineChart data={paymentChart} margin={{ top: 6, right: 8, left: -6, bottom: 0 }}>
-                  <CartesianGrid stroke="#D5DDD8" vertical={false} />
+                  <CartesianGrid stroke="var(--c-line)" vertical={false} />
                   <XAxis dataKey="luna" tickFormatter={(m) => m.slice(0, 4)} minTickGap={40} tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip {...chartTooltipStyle} labelFormatter={(m) => monthLabel(String(m))} formatter={(v: number) => lei(v)} />
                   <Legend wrapperStyle={{ fontSize: 12 }} iconType="plainline" />
-                  <Line dataKey="Reducerea perioadei" stroke="#6A4E99" dot={false} strokeWidth={2} connectNulls={false} />
-                  <Line dataKey="Reducerea ratei" stroke="#2E5C8A" dot={false} strokeWidth={2} />
+                  <Line dataKey="Reducerea perioadei" stroke="var(--c-mov)" dot={false} strokeWidth={2} connectNulls={false} />
+                  <Line dataKey="Reducerea ratei" stroke="var(--c-albastru)" dot={false} strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -647,14 +650,14 @@ export default function LoanDetail() {
         <div className="mb-6 h-[220px]">
           <ResponsiveContainer>
             <ComposedChart data={table} margin={{ top: 6, right: 8, left: -6, bottom: 0 }}>
-              <CartesianGrid stroke="#D5DDD8" vertical={false} />
+              <CartesianGrid stroke="var(--c-line)" vertical={false} />
               <XAxis dataKey="label" minTickGap={20} tick={{ fontSize: 12 }} />
               <YAxis tickFormatter={kLei} tick={{ fontSize: 12 }} />
               <Tooltip {...chartTooltipStyle} formatter={(v: number) => lei(v)} />
               <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
-              <RBar dataKey="interest" name="Dobândă" stackId="p" fill="#B5456A" />
-              <RBar dataKey="principal" name="Principal" stackId="p" fill="#6A4E99" />
-              <RBar dataKey="prepayment" name="Plată anticipată" stackId="p" fill="#C99A1E" />
+              <RBar dataKey="interest" name="Dobândă" stackId="p" fill="var(--c-rosu)" />
+              <RBar dataKey="principal" name="Principal" stackId="p" fill="var(--c-mov)" />
+              <RBar dataKey="prepayment" name="Plată anticipată" stackId="p" fill="var(--c-galben)" />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
