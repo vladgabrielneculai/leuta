@@ -151,3 +151,45 @@ test("backup-ul conține toate tabelele financiare", async () => {
     assert.ok(Array.isArray(r.json.data[t]), t);
   }
 });
+
+test("invitații: cont nou dintr-un link de o singură folosire, fără acces de admin, cu profil privat", async (t) => {
+  const me = await call("/api/auth/status");
+  if (!me.json.user?.isAdmin) return t.skip("TEST_USER nu este administrator");
+
+  const inv = await call("/api/admin/invitations", { method: "POST", body: { note: "[test]" } });
+  assert.equal(inv.status, 200);
+  const code = new URL(inv.json.link).searchParams.get("cod");
+  assert.equal((await call(`/api/auth/register?cod=${code}`, { auth: false })).json.valid, true);
+
+  const username = `test_${Date.now()}`;
+  const reg = await fetch(BASE + "/api/auth/register", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ code, username, password: "parola-de-test-123" }),
+  });
+  assert.equal(reg.status, 200, "înregistrare");
+  const cookieNew = reg.headers.get("set-cookie").split(";")[0];
+  const asNew = (p, init = {}) => fetch(BASE + p, { ...init, headers: { "content-type": "application/json", cookie: cookieNew } });
+
+  // Linkul nu mai merge a doua oară.
+  const again = await call("/api/auth/register", { method: "POST", auth: false, body: { code, username: `${username}_2`, password: "parola-de-test-123" } });
+  assert.equal(again.status, 404, "invitația e de o singură folosire");
+
+  // Contul nou: ghidul de început e în curs, nu e admin, nu vede datele nimănui.
+  const status = await (await asNew("/api/auth/status")).json();
+  assert.equal(status.onboardingPending, true);
+  assert.equal(status.user.isAdmin, false);
+  assert.equal((await asNew("/api/admin/users")).status, 403, "fără acces la administrare");
+  assert.deepEqual(await (await asNew("/api/crud/loans")).json(), [], "fără creditele altora");
+
+  // Profilul influențează fondul de urgență.
+  const saved = await (await asNew("/api/profile", { method: "PUT", body: JSON.stringify({ occupation: "freelancer", income_stability: "variable" }) })).json();
+  assert.equal(saved.emergency.months, 6, "venit variabil → 6 luni");
+
+  // Curățenie: adminul șterge contul de test (cu toate datele lui).
+  const users = (await call("/api/admin/users")).json.users;
+  const created = users.find((u) => u.username === username);
+  assert.ok(created, "contul apare în lista adminului");
+  assert.equal((await call(`/api/admin/users?id=${created.id}`, { method: "DELETE" })).status, 200);
+  assert.equal((await asNew("/api/auth/status").then((r) => r.json())).authenticated, false, "sesiunea contului șters nu mai e validă");
+});

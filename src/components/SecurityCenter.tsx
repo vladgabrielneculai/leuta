@@ -25,6 +25,7 @@ const METHOD_LABEL: Record<string, string> = {
   passkey: "passkey",
   recovery: "parolă + cod de recuperare",
   setup: "creare cont",
+  invite: "creare cont din invitație",
   reconfirmare: "reconfirmare",
   "passkey-adaugat": "passkey adăugat",
   "passkey-sters": "passkey șters",

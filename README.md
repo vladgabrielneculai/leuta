@@ -47,6 +47,14 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 - În *Setări → Notificări* alegi pentru fiecare tip de mesaj pe ce canal vine și poți trimite mesaje de test.
 - Rulează din Vercel Cron (`vercel.json`): două rulări pe zi, 18:00 și 19:00 UTC, ca să prindă 21:00 în România și vara, și iarna.
 
+## 👥 Mai mulți utilizatori
+
+- Fiecare cont are datele lui: venituri, cheltuieli, credite, obiective, setări și profil. Separarea o face Postgres (row-level security), nu doar interfața.
+- **Conturi noi doar pe bază de invitație.** Primul cont (cel creat la configurarea inițială) este **administrator**: în *Administrare* creează un link de invitație (o singură folosire, valabil 7 zile) și îl trimite persoanei. Aceasta își alege utilizatorul și parola la `/inregistrare?cod=…`.
+- Administratorul vede lista conturilor (nume, data creării, ultima activitate, passkey), le poate dezactiva/reactiva sau șterge definitiv. **Nu vede** datele financiare sau profilul celorlalți.
+- **Profilul meu**: date personale, ocupație și venit (tip, stabilitate, venit net, ziua salariului), obiective și profil de risc. Un cont nou trece printr-un **ghid de început** în 4 pași (profil, venit, credite, obiective), care poate fi amânat.
+- Profilul influențează calculele: numărul de luni al fondului de urgență (venit variabil / pe cont propriu / familie / prudență → țintă mai mare; se poate fixa manual din Setări), bugetul „Recomandat pentru tine”, sfaturile lunii și „lei pe zi până la salariu”.
+
 ## 🔐 Securitate
 
 - **Passkey obligatoriu** (amprentă / Face ID / Windows Hello): după primul passkey adăugat în *Setări → Passkey-uri & dispozitive*, parola singură nu mai deschide contul. Pentru urgențe: parola + unul din cele 10 **coduri de recuperare** (o singură folosire fiecare).
@@ -75,7 +83,7 @@ Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiec
 
 ## 🗄️ Baza de date
 
-- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite), `0002_multi_user.sql`, `0003_loan_bank_schedule.sql` (graficul băncii ca sursă, situația la zi, asigurări anuale), `0004_security_hardening.sql` (passkey-uri, coduri de recuperare, sesiuni hash-uite, istoric), `0005_notifications.sql` (Telegram, jurnalul notificărilor).
+- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite), `0002_multi_user.sql`, `0003_loan_bank_schedule.sql` (graficul băncii ca sursă, situația la zi, asigurări anuale), `0004_security_hardening.sql` (passkey-uri, coduri de recuperare, sesiuni hash-uite, istoric), `0005_notifications.sql` (Telegram, jurnalul notificărilor), `0006_accounts_profiles.sql` (administrator, invitații, profilul utilizatorului).
 - Backup / restaurare: *Setări → Exportă JSON* / *Restaurează*.
 - Editare directă: Supabase Dashboard → Table Editor.
 
@@ -87,7 +95,7 @@ Teste end-to-end ale API-ului (autentificare, protecția rutelor, CRUD, copiere 
 BASE_URL=https://leuta.vercel.app TEST_USER=<utilizator> TEST_PASS=<parola> npm test
 ```
 
-Testele își creează propriile date (luna `1999-01`) și le șterg la final.
+Testele își creează propriile date (luna `1999-01`) și le șterg la final. Cu `TEST_USER2`/`TEST_PASS2` (un al doilea cont) se verifică și izolarea datelor între conturi; dacă `TEST_USER` e administrator, se testează și fluxul de invitație (contul de test creat e șters la final).
 
 ## 💻 Dezvoltare locală (opțional)
 

@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
     // atomic (două cereri simultane nu pot crea două conturi).
     const info = await (await getSystemDb())
       .prepare(
-        `INSERT INTO users (username, password_hash, salt, created_at)
-         SELECT ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM users)`,
+        `INSERT INTO users (username, password_hash, salt, created_at, is_admin)
+         SELECT ?, ?, ?, ?, true WHERE NOT EXISTS (SELECT 1 FROM users)`,
       )
       .run(username, passwordHash, salt, new Date().toISOString());
     if (!info.changes) {
@@ -40,6 +40,10 @@ export async function POST(req: NextRequest) {
 
     // Categoriile și setările implicite ale noului cont se creează la prima folosire a bazei lui.
     const userDb = await getDbFor(userId);
+    // Profilul gol pornește ghidul de început; cu date demo contul e deja „populat”, deci îl sărim.
+    await userDb
+      .prepare("INSERT INTO user_profiles (onboarding_done_at) VALUES (?) ON CONFLICT DO NOTHING")
+      .run(seedDemo ? new Date().toISOString() : null);
     if (seedDemo) {
       try {
         await seedDemoData(userDb);

@@ -12,6 +12,8 @@ import { SESSION_COOKIE, userForToken } from "@/lib/auth";
 // Rute accesibile fără sesiune: ecranele de login/setup și endpoint-urile lor.
 const PUBLIC_PATHS = [
   "/login", "/setup", "/api/auth/login", "/api/auth/setup", "/api/auth/status",
+  // Crearea unui cont nou dintr-o invitație (codul e verificat în rută).
+  "/inregistrare", "/api/auth/register",
   "/api/auth/passkey/login/options", "/api/auth/passkey/login/verify",
   // Apelate de servicii externe, autentificate în rută: Telegram (secret în header) și Vercel Cron (CRON_SECRET).
   "/api/telegram/webhook", "/api/cron/daily",

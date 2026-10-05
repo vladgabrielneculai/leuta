@@ -134,6 +134,9 @@ export default function LoginPage() {
 
         <div className="mt-6 border-t border-line pt-3 text-center text-[12px] text-ink-soft">
           Datele tale sunt stocate privat, într-o bază de date Supabase protejată.
+          <span className="mt-1.5 block">
+            Nu ai cont? Conturile noi se creează din <strong>linkul de invitație</strong> primit de la administrator.
+          </span>
         </div>
       </div>
     </div>

@@ -44,7 +44,10 @@ function EmergencyGauge({ s }: { s: Summary }) {
       </div>
       <p className="mt-4 text-[14px] text-ink-soft">
         {e.avgEssential > 0
-          ? <>O lună de nevoi esențiale te costă în medie {lei(e.avgEssential)} (inclusiv ratele). Ținta se actualizează automat dacă nu ai setat o sumă fixă.</>
+          ? <>
+              O lună de nevoi esențiale te costă în medie {lei(e.avgEssential)} (inclusiv ratele). Ținta se actualizează automat dacă nu ai setat o sumă fixă.
+              {e.fromProfile && <> Cele {e.months} luni vin din profilul tău: {e.reasons.join(", ")}.</>}
+            </>
           : "Adaugă cheltuieli în Luna curentă ca să calculez ținta din nevoile tale esențiale."}
       </p>
     </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  clearFailedLogins, createSession, dummyPasswordCheck, hashPassword, isAccountLocked, isLockedOut, isSetupComplete,
+  clearFailedLogins, createSession, DISABLED_MESSAGE, dummyPasswordCheck, hashPassword, isAccountLocked, isLockedOut, isSetupComplete,
   LOCKOUT_MESSAGE, logAuthEvent, passkeyCount, recordFailedLogin, requestMeta, sessionCookieOptions, useRecoveryCode,
   verifyPassword,
 } from "@/lib/auth";
@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
 
     const db = await getDb();
     const user = await db
-      .prepare("SELECT id, username, password_hash, salt FROM users WHERE lower(username) = lower(?)")
-      .get<{ id: number; username: string; password_hash: string; salt: string }>(username);
+      .prepare("SELECT id, username, password_hash, salt, disabled_at FROM users WHERE lower(username) = lower(?)")
+      .get<{ id: number; username: string; password_hash: string; salt: string; disabled_at: string | null }>(username);
 
     if (!user) {
       await dummyPasswordCheck(password);
@@ -72,6 +72,12 @@ export async function POST(req: NextRequest) {
     // Hash vechi (mai slab) → îl refacem acum, cât avem parola.
     if (check.rehash) {
       await db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(await hashPassword(password, user.salt), user.id);
+    }
+
+    // Abia după parola corectă spunem că e dezactivat (altfel s-ar putea afla ce conturi există).
+    if (user.disabled_at) {
+      await logAuthEvent(user.id, false, needsPasskey ? "recovery" : "password", meta, "cont dezactivat");
+      return NextResponse.json({ error: DISABLED_MESSAGE }, { status: 403 });
     }
 
     const method = needsPasskey ? "recovery" : "password";
