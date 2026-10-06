@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Summary } from "@/lib/analytics";
-import { addMonths, eur, KIND_LABEL, lei, monthLabel, type Currency, type Kind } from "@/lib/util";
-import { api, downloadFile, Money, PageHeader, Panel, PencilIcon, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
+import { addMonths, eur, KIND_LABEL, lei, money, monthLabel, type Currency, type Kind } from "@/lib/util";
+import { api, downloadFile, Money, PageHeader, Panel, Toast, useApi, useApp } from "@/components/ui";
 import { Leader } from "@/components/receipt";
+import { useQuickAdd } from "@/components/QuickAdd";
 
 type Category = { id: number; name: string; kind: Kind; bucket: string; color: string };
 type Goal = { id: number; name: string; type: string };
@@ -151,6 +152,7 @@ function KindSection({
   const [edit, setEdit] = useState<Draft>(emptyDraft());
   const [err, setErr] = useState<string | null>(null);
   const { confirm } = useApp();
+  const quickAdd = useQuickAdd();
   const info = KIND_INFO[kind];
   const catMap = new Map(cats.map((c) => [c.id, c]));
   const nameOfDest = (e: Entry) =>
@@ -224,7 +226,14 @@ function KindSection({
               </li>
             ) : (
               // Rând de bon: categoria ...... suma; descrierea dedesubt, mai mică.
-              <li key={e.id} className="group flex items-start gap-2.5 py-1.5 sm:gap-3">
+              // Pe telefon tot rândul e un buton: atingerea deschide modificarea (cu ștergerea în aceeași fereastră).
+              <li key={e.id} className="group relative -mx-2 flex items-start gap-2.5 rounded-md px-2 py-2 sm:mx-0 sm:gap-3 sm:px-0 sm:py-1.5">
+                <button
+                  type="button"
+                  className="absolute inset-0 z-[1] rounded-md active:bg-ink/[0.06] sm:hidden"
+                  onClick={() => quickAdd({ entry: e })}
+                  aria-label={`Modifică ${kind === "saving" ? nameOfDest(e) : catMap.get(e.category_id ?? 0)?.name ?? "intrarea"}, ${e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}`}
+                />
                 <span className="mt-[7px] h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
                 <div className="min-w-0 flex-1 pt-px">
                   <Leader
@@ -245,10 +254,10 @@ function KindSection({
                     </div>
                   )}
                 </div>
-                {/* Pe telefon: iconițe (încap lângă sumă, ușor de atins); pe ecran mare: text, vizibil la hover. */}
-                <div className="flex w-20 shrink-0 justify-end sm:w-[8.5rem] sm:opacity-60 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+                {/* Pe ecran mare: butoane text, vizibile la hover. Pe telefon se atinge rândul. */}
+                <div className="hidden shrink-0 justify-end sm:flex sm:w-[8.5rem] sm:opacity-60 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
                   <button
-                    className="btn-ghost h-10 w-10 px-0 sm:h-auto sm:w-auto sm:px-2"
+                    className="btn-ghost px-2"
                     aria-label="Editează"
                     title="Editează"
                     onClick={() => {
@@ -263,12 +272,10 @@ function KindSection({
                       });
                     }}
                   >
-                    <PencilIcon className="h-[18px] w-[18px] sm:hidden" />
-                    <span className="hidden sm:inline">Editează</span>
+                    Editează
                   </button>
-                  <button className="btn-danger h-10 w-10 px-0 sm:h-auto sm:w-auto sm:px-2" onClick={() => remove(e)} aria-label="Șterge" title="Șterge">
-                    <TrashIcon className="h-[18px] w-[18px] sm:hidden" />
-                    <span className="hidden sm:inline">Șterge</span>
+                  <button className="btn-danger px-2" onClick={() => remove(e)} aria-label="Șterge" title="Șterge">
+                    Șterge
                   </button>
                 </div>
               </li>
@@ -283,11 +290,19 @@ function KindSection({
           <div className="flex gap-2.5 pt-2 sm:gap-3">
             <span className="w-2.5 shrink-0" />
             <Leader className="min-w-0 flex-1" strong label={<span className="font-mono text-[13px] uppercase tracking-[0.06em]">Subtotal</span>} value={lei(total)} />
-            <span className="w-20 shrink-0 sm:w-[8.5rem]" />
+            <span className="hidden shrink-0 sm:block sm:w-[8.5rem]" />
           </div>
         </div>
       )}
-      <EntryForm kind={kind} draft={draft} setDraft={setDraft} cats={cats} goals={goals} invs={invs} onSubmit={add} submitLabel="Adaugă" />
+      <div className="hidden sm:block">
+        <EntryForm kind={kind} draft={draft} setDraft={setDraft} cats={cats} goals={goals} invs={invs} onSubmit={add} submitLabel="Adaugă" />
+      </div>
+      <button
+        className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-md border border-dashed border-line-strong text-[14px] font-medium text-ink-soft active:bg-paper sm:hidden"
+        onClick={() => quickAdd({ kind })}
+      >
+        <span className="text-[18px] leading-none" aria-hidden>+</span> Adaugă la {KIND_LABEL[kind].toLowerCase()}
+      </button>
       {err && <p className="mt-2 text-[13px] text-rosu">{err}</p>}
     </Panel>
   );
@@ -370,13 +385,34 @@ export default function MonthPage() {
         intro="Introdu ce a intrat și ce a ieșit. Utilitățile (apă, curent, gaze, întreținere) sunt variabile și se trec conform facturilor."
         actions={
           <>
-            <button className="btn-primary basis-full sm:basis-auto" onClick={copyPrev}>Copiază intrările lunare din {monthLabel(addMonths(month, -1))}</button>
+            {/* Copierea e pasul principal doar într-o lună goală; după aceea devine o acțiune secundară. */}
+            <button className={`${entries && entries.length > 0 ? "btn-ghost" : "btn-primary"} basis-full sm:basis-auto`} onClick={copyPrev}>
+              Copiază intrările lunare din {monthLabel(addMonths(month, -1))}
+            </button>
             <button className="btn-ghost basis-full border border-line bg-field/60 sm:basis-auto" onClick={downloadReceipt} disabled={downloading}>
               {downloading ? "Se generează…" : "🧾 Bonul lunii (PDF)"}
             </button>
           </>
         }
       />
+
+      {/* Pe telefon bilanțul complet e la final; sus rămâne doar esențialul lunii. */}
+      {t && (
+        <div className="panel mb-6 grid grid-cols-3 divide-x divide-dashed divide-line-strong px-1 py-3 text-center xl:hidden">
+          {[
+            { label: "Intrat", value: t.income, cls: "text-ink" },
+            { label: "Ieșit", value: t.income - t.unallocated, cls: "text-ink" },
+            { label: t.unallocated >= 0 ? "Rămas" : "Depășire", value: t.unallocated, cls: t.unallocated < 0 ? "text-rosu" : "text-leu" },
+          ].map((x) => (
+            <div key={x.label} className="min-w-0 px-1.5">
+              <div className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">{x.label}</div>
+              <div className={`num mt-0.5 truncate text-[14px] font-semibold ${x.cls}`}>
+                {money(x.value)}<span className="ml-0.5 text-[10px] font-normal text-ink-faint">lei</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
         <div className="flex flex-col gap-6">
