@@ -2,8 +2,8 @@ import { buildSummary } from "../analytics";
 import { sha256 } from "../auth";
 import { getDb, getSystemDb, runAsUser } from "../db";
 import { eur, lei, monthLabel, type Kind } from "../util";
-import { dailyMessage } from "./notifications";
-import { toTelegram } from "./render";
+import { dailyMessage, sendTelegramMessage } from "./notifications";
+import type { Message } from "./render";
 import { editTelegram, esc, sendTelegram, tg, type Keyboard } from "./telegram";
 import { localNow } from "./time";
 
@@ -125,36 +125,52 @@ async function addEntry(chatId: number, text: string) {
   await sendTelegram(chatId, entryText({ ...p, kind }, cat), entryKeyboard(info.lastInsertRowid));
 }
 
-async function todayText() {
+// Rapoartele (/azi, /luna, /sold) pleacă drept bon-imagine, ca notificările.
+
+async function todayMessage(): Promise<Message> {
   const m = await dailyMessage(localNow());
-  return toTelegram({ ...m, emoji: "📋", title: "Azi", footer: undefined });
+  return { ...m, emoji: "📋", title: "Azi", footer: undefined };
 }
 
-async function monthText() {
+async function monthMessage(): Promise<Message> {
   const now = localNow();
   const s = await buildSummary(now.month);
   const t = s.totals;
   const top = s.categories.filter((c) => c.amount > 0).slice(0, 6);
-  return [
-    `🗓️ <b>${esc(monthLabel(now.month))}</b>`,
-    `Venituri: <b>${lei(t.income)}</b>`,
-    `Cheltuieli: <b>${lei(t.spent)}</b> (fixe ${lei(t.fixed)}, variabile ${lei(t.variable)}, rate ${lei(t.loanPayments + t.loanInsurance)})`,
-    `Economii: <b>${lei(t.savedTotal)}</b>`,
-    `Rămas nealocat: <b>${lei(t.unallocated)}</b>`,
-    ...(top.length ? ["", "<b>Top categorii</b>", ...top.map((c) => `• ${esc(c.name)} — ${lei(c.amount)}${c.avg3 ? ` <i>(media ${lei(c.avg3)})</i>` : ""}`)] : []),
-  ].join("\n");
+  return {
+    emoji: "🗓️",
+    title: `Luna ${monthLabel(now.month)}`,
+    subtitle: "Situația de până acum",
+    kpis: [
+      { label: "Venituri", value: lei(t.income), tone: "leu" },
+      { label: "Cheltuieli", value: lei(t.spent), sub: `fixe ${lei(t.fixed)} · variabile ${lei(t.variable)} · rate ${lei(t.loanPayments + t.loanInsurance)}`, tone: "rosu" },
+      { label: "Economii", value: lei(t.savedTotal), tone: "galben" },
+      { label: "Rămas nealocat", value: lei(t.unallocated), tone: t.unallocated < 0 ? "rosu" : "leu" },
+    ],
+    sections: top.length ? [{ title: "Top categorii", rows: top.map((c) => ({ label: c.name, value: lei(c.amount), sub: c.avg3 ? `media ${lei(c.avg3)}` : undefined })) }] : [],
+  };
 }
 
-async function loansText() {
+async function loansMessage(): Promise<Message | null> {
   const s = await buildSummary(localNow().month);
-  if (!s.loans.length) return "Nu ai credite în aplicație.";
-  return [
-    "💳 <b>Credite</b>",
-    ...s.loans.map(
-      (l) =>
-        `• <b>${esc(l.loan.name)}</b>: sold ${lei(l.status.balance)} · rata următoare ${lei(l.status.nextPayment + l.status.nextInsurance, true)}${l.status.nextMonth ? ` (${monthLabel(l.status.nextMonth)})` : ""} · dobândă ${l.status.currentRate.toLocaleString("ro-RO")}%`,
-    ),
-  ].join("\n");
+  if (!s.loans.length) return null;
+  return {
+    emoji: "💳",
+    title: "Credite",
+    subtitle: "Sold și rata următoare",
+    sections: [
+      {
+        title: "Credite active",
+        rows: s.loans.map((l) => ({
+          label: l.loan.name,
+          value: lei(l.status.balance),
+          sub: `rata următoare ${lei(l.status.nextPayment + l.status.nextInsurance, true)}${l.status.nextMonth ? ` (${monthLabel(l.status.nextMonth)})` : ""} · dobândă ${l.status.currentRate.toLocaleString("ro-RO")}%`,
+          bar: l.status.paidPct,
+          tone: "mov" as const,
+        })),
+      },
+    ],
+  };
 }
 
 async function undoLast(chatId: number) {
@@ -203,9 +219,12 @@ async function onMessage(msg: TgMessage) {
   return runAsUser(userId, async () => {
     const cmd = text.split(/\s|@/)[0].toLowerCase();
     if (cmd === "/start" || cmd === "/ajutor" || cmd === "/help") return sendTelegram(msg.chat.id, HELP);
-    if (cmd === "/azi") return sendTelegram(msg.chat.id, await todayText());
-    if (cmd === "/luna") return sendTelegram(msg.chat.id, await monthText());
-    if (cmd === "/sold") return sendTelegram(msg.chat.id, await loansText());
+    if (cmd === "/azi") return sendTelegramMessage(msg.chat.id, await todayMessage(), process.env.APP_URL);
+    if (cmd === "/luna") return sendTelegramMessage(msg.chat.id, await monthMessage(), process.env.APP_URL);
+    if (cmd === "/sold") {
+      const m = await loansMessage();
+      return m ? sendTelegramMessage(msg.chat.id, m, process.env.APP_URL) : sendTelegram(msg.chat.id, "Nu ai credite în aplicație.");
+    }
     if (cmd === "/anuleaza" || cmd === "/undo") return undoLast(msg.chat.id);
     return addEntry(msg.chat.id, text);
   });
