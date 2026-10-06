@@ -1,44 +1,19 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { barcodeBars, barcodeDigits } from "@/lib/barcode";
 
 /**
  * Piesele „de bon” folosite în toată aplicația (același stil ca bonul lunar în PDF):
  * rândul cu puncte între etichetă și sumă, codul de bare decorativ și antetul cu numărul bonului.
  */
 
-/** Generator determinist (FNV-1a + amestec), ca același text să dea mereu același cod de bare. */
-function seeded(seed: string) {
-  let h = 2166136261;
-  for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-  return () => {
-    h = Math.imul(h ^ (h >>> 15), 2246822507);
-    h = Math.imul(h ^ (h >>> 13), 3266489909);
-    return ((h ^= h >>> 16) >>> 0) / 4294967296;
-  };
-}
-
 /** Cod de bare decorativ (nu codifică nimic), desenat în culoarea textului. */
 export function Barcode({ seed, className = "h-9 w-52" }: { seed: string; className?: string }) {
-  const rand = seeded(seed);
-  const bars: { x: number; w: number }[] = [];
   const W = 200;
-  let x = 0;
-  const bar = (w: number) => {
-    bars.push({ x, w });
-    x += w;
-  };
-  // Bare de start și de stop, ca la un cod real.
-  bar(2.2); x += 1.8; bar(1.1); x += 1.8;
-  while (x < W - 10) {
-    bar(0.9 + Math.floor(rand() * 3) * 1);
-    x += 1.1 + Math.floor(rand() * 3) * 1;
-  }
-  x = W - 6.1;
-  bar(1.1); x += 1.8; bar(2.2);
   return (
     <svg viewBox={`0 0 ${W} 40`} preserveAspectRatio="none" className={className} aria-hidden>
-      {bars.map((b, i) => (
+      {barcodeBars(seed, W).map((b, i) => (
         <rect key={i} x={b.x} y={0} width={b.w} height={40} fill="currentColor" />
       ))}
     </svg>
@@ -104,9 +79,7 @@ export function ReceiptMeta({ month, label }: { month: string; label: string }) 
 
 /** Finalul fiecărei pagini, ca la capătul bonului: mulțumiri și un cod de bare. */
 export function ReceiptFooter({ seed }: { seed: string }) {
-  const rand = seeded(`cod:${seed}`);
-  const digits = (n: number) => Array.from({ length: n }, () => Math.floor(rand() * 10)).join("");
-  const code = `LEU ${digits(4)} ${digits(6)}`;
+  const code = barcodeDigits(seed);
   return (
     <footer className="mx-auto mt-12 flex max-w-xs flex-col items-center gap-2 text-ink-faint" aria-hidden>
       <div className="rule-dashed w-full" />

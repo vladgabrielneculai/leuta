@@ -49,6 +49,22 @@ export async function sendTelegramDocument(chatId: number | string, filename: st
   if (!j.ok) throw new Error(`Telegram: ${j.description ?? r.status}`);
 }
 
+/** Trimite o imagine (ex. notificarea desenată ca bon), cu o legendă scurtă în HTML (cel mult 1024 de caractere). */
+export async function sendTelegramPhoto(chatId: number | string, png: Uint8Array, captionHtml?: string, filename = "bon.png") {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) throw new Error("Botul Telegram nu e configurat (lipsește TELEGRAM_BOT_TOKEN).");
+  const form = new FormData();
+  form.append("chat_id", String(chatId));
+  if (captionHtml) {
+    form.append("caption", captionHtml.slice(0, 1024));
+    form.append("parse_mode", "HTML");
+  }
+  form.append("photo", new Blob([Buffer.from(png)], { type: "image/png" }), filename);
+  const r = await fetch(`${API}/bot${token}/sendPhoto`, { method: "POST", body: form, signal: AbortSignal.timeout(15000) });
+  const j = (await r.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+  if (!j.ok) throw new Error(`Telegram: ${j.description ?? r.status}`);
+}
+
 export function editTelegram(chatId: number | string, messageId: number, html: string, keyboard?: Keyboard) {
   return tg("editMessageText", {
     chat_id: chatId,

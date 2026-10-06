@@ -4,8 +4,9 @@ import { annualInsuranceFor, monthCashflow } from "../loan";
 import { addMonths, lei, monthLabel, pct } from "../util";
 import { emailConfigured, isEmail, sendEmail } from "./email";
 import { parsePrefs, type Channel, type NotifyKind } from "./kinds";
-import { toEmailHtml, toPlainText, toTelegram, type Message, type Row } from "./render";
-import { sendTelegram, sendTelegramDocument, telegramConfigured } from "./telegram";
+import { renderMessageImage } from "./image";
+import { toEmailHtml, toPlainText, toTelegram, toTelegramCaption, type Message, type Row } from "./render";
+import { sendTelegram, sendTelegramDocument, sendTelegramPhoto, telegramConfigured } from "./telegram";
 import { buildReceipt } from "../receipt/model";
 import { receiptFilename, renderReceiptPdf } from "../receipt/pdf";
 import { addDays, daysBetween, isoWeek, localNow, longDate, shortDate, type LocalNow } from "./time";
@@ -333,11 +334,40 @@ async function release(userId: number, kind: string, keys: string[]) {
 
 const SUBJECT_PREFIX = "Leuța · ";
 
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Pe Telegram, notificarea pleacă drept imagine în stilul bonului, cu titlul în legendă. Dacă imaginea
+ * nu poate fi generată sau trimisă, pleacă varianta text (mesajul nu se pierde).
+ */
+export async function sendTelegramMessage(chatId: number, m: Message, appUrl?: string) {
+  let png: Uint8Array | null = null;
+  try {
+    png = await renderMessageImage(m, { host: appUrl ? hostOf(appUrl) : undefined });
+  } catch (e) {
+    console.error("Imaginea notificării nu a putut fi generată:", e);
+  }
+  if (png) {
+    try {
+      return await sendTelegramPhoto(chatId, png, toTelegramCaption(m));
+    } catch (e) {
+      console.error("Imaginea notificării nu a putut fi trimisă pe Telegram:", e);
+    }
+  }
+  return sendTelegram(chatId, toTelegram(m));
+}
+
 export async function deliver(m: Message, channels: Channel[], target: Target, appUrl: string): Promise<Channel[]> {
   const sent: Channel[] = [];
   const errors: string[] = [];
   if (channels.includes("telegram") && target.chatId && telegramConfigured()) {
-    await sendTelegram(target.chatId, toTelegram(m)).then(() => sent.push("telegram"), (e) => errors.push(e.message));
+    await sendTelegramMessage(target.chatId, m, appUrl).then(() => sent.push("telegram"), (e) => errors.push(e.message));
     // Fișierul pleacă după mesaj; dacă el nu ajunge, mesajul rămâne trimis (nu-l retrimitem).
     if (m.attachment && sent.includes("telegram")) {
       await sendTelegramDocument(target.chatId, m.attachment.filename, m.attachment.content, m.attachment.caption).catch((e) =>
