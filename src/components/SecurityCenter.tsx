@@ -39,6 +39,8 @@ const METHOD_LABEL: Record<string, string> = {
  * Securitatea contului: passkey-uri (obligatorii după primul), coduri de recuperare,
  * dispozitive conectate și istoricul autentificărilor.
  */
+const SESSIONS_SHOWN = 3;
+
 export default function SecurityCenter({ onToast }: { onToast: (msg: string) => void }) {
   const confirm = useConfirm();
   const [passkeys, setPasskeys] = useState<Passkey[] | null>(null);
@@ -50,6 +52,8 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
   const [error, setError] = useState<string | null>(null);
   const [supported, setSupported] = useState(true);
   const [fromRecovery, setFromRecovery] = useState(false);
+  // Lista de dispozitive poate fi lungă: implicit doar primele câteva (cel curent e primul).
+  const [allSessions, setAllSessions] = useState(false);
 
   const load = useCallback(async () => {
     const [p, s, e, c] = await Promise.all([
@@ -59,7 +63,8 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
       api<{ left: number }>("/api/auth/recovery-codes"),
     ]);
     setPasskeys(p.passkeys);
-    setSessions(s.sessions);
+    // Dispozitivul curent primul, apoi după ultima activitate (ordinea de pe server).
+    setSessions([...s.sessions].sort((a, b) => Number(!!b.current) - Number(!!a.current)));
     setEvents(e.events);
     setCodesLeft(c.left);
   }, []);
@@ -215,9 +220,9 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
           )}
         </div>
         <ul className="divide-y divide-line">
-          {sessions.map((s) => (
-            <li key={s.key} className="flex flex-wrap items-center justify-between gap-2 py-2 text-[13px]">
-              <div>
+          {(allSessions ? sessions : sessions.slice(0, SESSIONS_SHOWN)).map((s) => (
+            <li key={s.key} className="flex items-center justify-between gap-3 py-2 text-[13px]">
+              <div className="min-w-0">
                 <div className="font-medium">
                   {device(s.user_agent)}
                   {s.current && <span className="ml-2 rounded-full bg-leu-tint px-2 py-0.5 text-[11px] text-leu">acest dispozitiv</span>}
@@ -226,10 +231,15 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
                   {[s.location, s.ip].filter(Boolean).join(" · ")} · activ {fmt(s.last_seen_at)} · conectat cu {METHOD_LABEL[s.method] ?? (s.method || "parolă")}
                 </div>
               </div>
-              {!s.current && <button className="btn-ghost py-1 text-[12px]" onClick={() => closeSession(s)} disabled={busy}>Închide</button>}
+              {!s.current && <button className="btn-ghost min-h-[36px] shrink-0 border border-line-strong/70 px-2.5 py-1 text-[12px]" onClick={() => closeSession(s)} disabled={busy}>Închide</button>}
             </li>
           ))}
         </ul>
+        {sessions.length > SESSIONS_SHOWN && (
+          <button className="btn-ghost mt-1 w-full text-[13px]" onClick={() => setAllSessions(!allSessions)}>
+            {allSessions ? "Arată mai puține" : `Arată toate (${sessions.length})`}
+          </button>
+        )}
       </div>
 
       {/* Istoric */}
@@ -246,7 +256,7 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
                   <td className="whitespace-nowrap p-1.5">{fmt(e.created_at)}</td>
                   <td className="p-1.5">{e.success ? "✓" : "✕"} {METHOD_LABEL[e.method] ?? e.method}{e.reason ? ` — ${e.reason}` : ""}</td>
                   <td className="p-1.5 text-ink-soft">{device(e.user_agent)}</td>
-                  <td className="p-1.5 text-ink-soft">{[e.location, e.ip].filter(Boolean).join(" · ")}</td>
+                  <td className="hidden p-1.5 text-ink-soft sm:table-cell">{[e.location, e.ip].filter(Boolean).join(" · ")}</td>
                 </tr>
               ))}
               {!events.length && (

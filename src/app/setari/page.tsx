@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BUCKET_LABEL, KIND_LABEL, type Bucket, type Kind } from "@/lib/util";
-import { api, downloadFile, Field, PageHeader, Panel, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
+import { api, CollapsiblePanels, downloadFile, Field, PageHeader, Panel, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
 import AccountSecurity from "@/components/AccountSecurity";
 import SecurityCenter from "@/components/SecurityCenter";
 import NotificationSettings from "@/components/NotificationSettings";
@@ -34,48 +34,57 @@ function CategoryRow({
 }) {
   const [d, setD] = useState(c);
   const dirty = d.name !== c.name || d.bucket !== c.bucket || d.color !== c.color;
+  const hasBucket = c.kind !== "income" && c.kind !== "saving";
+
+  const save = async () => {
+    const trimmed = d.name.trim();
+    if (!trimmed) {
+      onError?.("Numele categoriei nu poate fi gol");
+      return;
+    }
+    const duplicate = allCats?.find((other) => other.id !== c.id && other.name.trim().toLowerCase() === trimmed.toLowerCase());
+    if (duplicate) {
+      onError?.(`Există deja o categorie cu denumirea „${duplicate.name}”!`);
+      return;
+    }
+    try {
+      await api("/api/crud/categories", "PUT", { ...d, name: trimmed });
+      onSaved();
+    } catch (err: any) {
+      onError?.(err?.message || "Eroare la salvarea categoriei");
+    }
+  };
+
   return (
-    // Telefon: culoare | nume | ștergere pe primul rând, apoi „Nevoi/Dorințe” și „Salvează” (doar după o modificare).
-    // Ecran mare: totul pe un rând.
-    <li className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-2 py-2 sm:flex sm:flex-wrap">
-      <input type="color" value={d.color} onChange={(e) => setD({ ...d, color: e.target.value })} className="h-10 w-10 cursor-pointer rounded-lg border border-line bg-field p-1 sm:h-8 sm:w-8 sm:rounded sm:p-0.5" aria-label="Culoare" />
-      <input className="field sm:min-w-[160px] sm:flex-1" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} aria-label="Nume categorie" />
-      {c.kind !== "income" && c.kind !== "saving" && (
-        <select className="field order-1 col-start-2 sm:order-none sm:w-auto" value={d.bucket} onChange={(e) => setD({ ...d, bucket: e.target.value as Bucket })} aria-label="Tip pentru buget">
-          <option value="needs">{BUCKET_LABEL.needs}</option>
-          <option value="wants">{BUCKET_LABEL.wants}</option>
-        </select>
+    // Un singur rând, și pe telefon: culoare | nume | nevoie/dorință | acțiune. Cât timp rândul are modificări
+    // nesalvate, butonul de ștergere devine „Salvează” (✓).
+    <li className="flex items-center gap-1.5 py-1.5 sm:gap-2">
+      <input type="color" value={d.color} onChange={(e) => setD({ ...d, color: e.target.value })} className="h-9 w-7 shrink-0 cursor-pointer rounded border border-line bg-field p-0.5 sm:w-8" aria-label="Culoare" />
+      <input className="field min-w-0 flex-1 !py-1.5" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} aria-label="Nume categorie" />
+      {hasBucket && (
+        // Comutator compact (în loc de listă): o atingere schimbă între nevoie și dorință.
+        <button
+          type="button"
+          className={`h-9 w-[4.75rem] shrink-0 rounded-md border px-1 font-mono text-[12px] font-semibold uppercase tracking-[0.02em] transition-colors sm:w-24 ${
+            d.bucket === "wants" ? "border-rosu/40 bg-rosu-tint text-rosu" : "border-albastru/40 bg-albastru-tint text-albastru"
+          }`}
+          onClick={() => setD({ ...d, bucket: d.bucket === "wants" ? "needs" : "wants" })}
+          aria-label={`${BUCKET_LABEL[d.bucket]} — atinge pentru a schimba`}
+          title="Atinge pentru a schimba între nevoie și dorință"
+        >
+          {d.bucket === "wants" ? "Dorință" : "Nevoie"}
+        </button>
       )}
-      <button
-        className={`btn-primary order-1 col-start-3 sm:order-none ${dirty ? "" : "hidden sm:inline-flex"}`}
-        disabled={!dirty}
-        onClick={async () => {
-          const trimmed = d.name.trim();
-          if (!trimmed) {
-            onError?.("Numele categoriei nu poate fi gol");
-            return;
-          }
-          const duplicate = allCats?.find(
-            (other) => other.id !== c.id && other.name.trim().toLowerCase() === trimmed.toLowerCase()
-          );
-          if (duplicate) {
-            onError?.(`Există deja o categorie cu denumirea „${duplicate.name}”!`);
-            return;
-          }
-          try {
-            await api("/api/crud/categories", "PUT", { ...d, name: trimmed });
-            onSaved();
-          } catch (err: any) {
-            onError?.(err?.message || "Eroare la salvarea categoriei");
-          }
-        }}
-      >
-        Salvează
-      </button>
-      <button className="btn-danger h-10 w-10 px-0 sm:h-auto sm:w-auto sm:px-3.5" onClick={onDelete} aria-label="Șterge" title="Șterge">
-        <TrashIcon className="h-[18px] w-[18px] sm:hidden" />
-        <span className="hidden sm:inline">Șterge</span>
-      </button>
+      {dirty ? (
+        <button className="btn-primary h-9 w-9 shrink-0 px-0 sm:w-auto sm:px-3" onClick={save} aria-label="Salvează" title="Salvează">
+          <span className="sm:hidden" aria-hidden>✓</span>
+          <span className="hidden sm:inline">Salvează</span>
+        </button>
+      ) : (
+        <button className="btn-danger h-9 w-9 shrink-0 px-0" onClick={onDelete} aria-label={`Șterge categoria ${c.name}`} title="Șterge">
+          <TrashIcon className="h-[17px] w-[17px]" />
+        </button>
+      )}
     </li>
   );
 }
@@ -179,18 +188,20 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Setări" intro="Categoriile, parametrii calculelor și copiile de siguranță." />
+      <PageHeader title="Setări" intro="Categoriile, notificările, securitatea și parametrii calculelor." />
 
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <Panel title="Categorii">
+      {/* Pe telefon și tabletă, fiecare secțiune e pliată: se vede lista de titluri, iar o secțiune se deschide la atingere. */}
+      <CollapsiblePanels>
+      <div className="grid gap-4 lg:gap-6 xl:grid-cols-[1.4fr_1fr]">
+        <Panel title="Categorii" summary={cats ? `${cats.length} categorii · nevoi și dorințe` : undefined}>
           <p className="mb-4 text-[13px] text-ink-soft">
-            Pentru cheltuieli, alege dacă sunt nevoi sau dorințe. Asta decide cum se calculează metodele de buget.
+            Pentru cheltuieli, atinge „Nevoie” / „Dorință” ca să schimbi tipul. Asta decide cum se calculează metodele de buget.
           </p>
           {cats &&
             kinds.map((k) => (
-              <div key={k} className="mb-5">
-                <h3 className="mb-1 text-[15px] font-semibold">{KIND_LABEL[k]}</h3>
-                <ul className="divide-y divide-line border-y border-line">
+              <div key={k} className="mb-4">
+                <h3 className="mb-0.5 text-[13px] font-semibold uppercase tracking-[0.04em] text-ink-soft">{KIND_LABEL[k]}</h3>
+                <ul>
                   {cats.filter((c) => c.kind === k).map((c) => (
                     <CategoryRow
                       key={`${c.id}-${c.name}-${c.bucket}-${c.color}`}
@@ -224,8 +235,8 @@ export default function SettingsPage() {
           </form>
         </Panel>
 
-        <div className="flex flex-col gap-6">
-          <Panel title="Aspect">
+        <div className="flex flex-col gap-4 lg:gap-6">
+          <Panel title="Aspect" summary="Temă de zi, de noapte sau automată">
             <p className="mb-3 text-[13px] text-ink-soft">
               Tema de zi sau de noapte. „Auto” o schimbă singură după setarea telefonului sau a calculatorului. Alegerea se
               păstrează pe fiecare dispozitiv; o poți schimba rapid și din butonul ☀️/🌙 din bara aplicației.
@@ -247,7 +258,7 @@ export default function SettingsPage() {
             }}
           />
 
-          <Panel title="Modul Investiții">
+          <Panel title="Modul Investiții" summary={params.enable_investments === "1" ? "Pornit" : "Oprit"}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -281,7 +292,7 @@ export default function SettingsPage() {
             </div>
           </Panel>
 
-          <Panel title="Parametri">
+          <Panel title="Parametri" summary={params.emergency_months ? `Fond de urgență: ${params.emergency_months} luni · inflație ${params.inflation_pct ?? "–"}%` : undefined}>
             <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); saveParams(); }}>
               {PARAMS.filter((p) => !p.investmentOnly || params.enable_investments === "1").map((p) => {
                 const auto = p.key === "emergency_months" && params.emergency_auto !== "0";
@@ -303,31 +314,38 @@ export default function SettingsPage() {
             </form>
           </Panel>
 
-          <Panel title="Curs valutar">
-            <p className="num text-[15px] font-semibold text-ink">1 € = {eurRate.toFixed(4)} lei</p>
-            <p className="text-[13px] text-ink-soft mt-1">
-              {fxDate ? `Publicat de BNR în ${fxDate.split("-").reverse().join(".")}.` : "Încă nu s-a preluat niciun curs; se folosește 5,00 ca estimare."}{" "}
-              Se actualizează automat la cel mult 3 ore. Pentru lunile trecute se descarcă istoricul anual BNR.
-            </p>
-            {fxError && <p className="mt-2 text-[13px] text-rosu">{fxError}</p>}
-            <button className="btn-ghost mt-2 -ml-3" onClick={refreshFx}>Verifică curs BNR</button>
-          </Panel>
-
-          <Panel title="Rata inflației (România)">
-            <div className="flex items-baseline justify-between">
-              <span className="num font-display text-[22px] font-bold text-rosu">{inflationRate.toFixed(1)}%</span>
-              <span className="rounded-full bg-leu-tint/60 px-2.5 py-0.5 text-[11px] font-medium text-leu">
-                {inflationPeriod ? `Perioada: ${inflationPeriod}` : "Date oficiale"}
-              </span>
+          <Panel title="Curs valutar și inflație" summary={`1 € = ${eurRate.toFixed(4)} lei · inflație ${inflationRate.toFixed(1)}%`}>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-[13px] text-ink-soft">Curs BNR</span>
+              <span className="num text-[16px] font-semibold text-ink">1 € = {eurRate.toFixed(4)} lei</span>
             </div>
-            <p className="text-[13px] text-ink-soft mt-1.5">
-              Rata anuală a inflației din România preluată automat de pe internet ({inflationSource || "INS / Eurostat IAPC"}).
-              Se reflectă în proiecțiile economiilor pentru a converti valorile viitoare în puterea de cumpărare de azi.
+            <p className="mt-1 text-[12.5px] text-ink-soft">
+              {fxDate ? `Publicat de BNR în ${fxDate.split("-").reverse().join(".")}.` : "Încă nu s-a preluat niciun curs; se folosește 5,00 ca estimare."}{" "}
+              Se actualizează automat la cel mult 3 ore; pentru lunile trecute se folosește istoricul BNR.
             </p>
-            {inflationError && <p className="mt-2 text-[13px] text-rosu">{inflationError}</p>}
+            {fxError && <p className="mt-1 text-[13px] text-rosu">{fxError}</p>}
+
+            <div className="rule-dashed my-4" aria-hidden />
+
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-[13px] text-ink-soft">Inflația anuală{inflationPeriod ? ` (${inflationPeriod})` : ""}</span>
+              <span className="num text-[16px] font-semibold text-rosu">{inflationRate.toFixed(1)}%</span>
+            </div>
+            <p className="mt-1 text-[12.5px] text-ink-soft">
+              Preluată automat ({inflationSource || "INS / Eurostat IAPC"}); proiecțiile economiilor o folosesc ca să arate valorile viitoare în
+              puterea de cumpărare de azi.
+            </p>
+            {inflationError && <p className="mt-1 text-[13px] text-rosu">{inflationError}</p>}
+
             <div className="mt-3 flex flex-wrap gap-2">
-              <button className="btn-ghost -ml-2" onClick={refreshInflation}>
-                Actualizează de pe internet
+              <button
+                className="btn-ghost border border-line-strong/70"
+                onClick={() => {
+                  refreshFx();
+                  refreshInflation();
+                }}
+              >
+                ↻ Actualizează
               </button>
               {params.inflation_pct !== String(inflationRate) && (
                 <button
@@ -338,13 +356,13 @@ export default function SettingsPage() {
                     changed(`Parametrul de inflație a fost actualizat la ${inflationRate}%`);
                   }}
                 >
-                  Sincronizează parametrul ({inflationRate}%)
+                  Folosește {inflationRate}% în calcule
                 </button>
               )}
             </div>
           </Panel>
 
-          <Panel title="Copie de siguranță">
+          <Panel title="Copie de siguranță" summary="Export și restaurare (fișier JSON)">
             <p className="mb-3 text-[13px] text-ink-soft">
               Datele stau în baza de date Supabase. Exportă periodic un fișier JSON și păstrează-l pe NAS sau în cloud.
             </p>
@@ -371,6 +389,7 @@ export default function SettingsPage() {
           </Panel>
         </div>
       </div>
+      </CollapsiblePanels>
       <Toast message={toast} onDone={() => setToast(null)} />
     </>
   );
