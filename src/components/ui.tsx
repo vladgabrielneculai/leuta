@@ -414,30 +414,73 @@ export function PageHeader({ title, intro, actions }: { title: string; intro?: R
   );
 }
 
+/**
+ * Panourile din interiorul lui <CollapsiblePanels> se pliază pe ecranele mici (sub `lg`): se vede doar titlul,
+ * iar conținutul se deschide la atingere. Pe ecrane mari sunt mereu deschise. Plierea e făcută din CSS
+ * (`hidden lg:block`), deci prima randare arată la fel pe server și în browser.
+ */
+const CollapseCtx = createContext(false);
+
+export function CollapsiblePanels({ children }: { children: ReactNode }) {
+  return <CollapseCtx.Provider value={true}>{children}</CollapseCtx.Provider>;
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className={`h-5 w-5 shrink-0 text-ink-faint transition-transform duration-200 lg:hidden ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
 export function Panel({
   title,
   aside,
+  summary,
   children,
   className = "",
   pad = true,
 }: {
   title?: ReactNode;
   aside?: ReactNode;
+  /** Un rând scurt afișat sub titlu cât timp panoul e pliat (ex. „23 de categorii”). */
+  summary?: ReactNode;
   children: ReactNode;
   className?: string;
   pad?: boolean;
 }) {
+  const collapsible = useContext(CollapseCtx) && !!title;
+  const [open, setOpen] = useState(false);
+  const shown = !collapsible || open;
   return (
     <section className={`panel ${className}`}>
       {(title || aside) && (
         // Pe telefon, butoanele „fantomă” din antet primesc contur, ca să se vadă că sunt butoane când trec sub titlu.
         <div className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 pb-3 pt-3.5 sm:px-5 [&_.btn-ghost]:border [&_.btn-ghost]:border-line [&_.btn-ghost]:bg-field/60 sm:[&_.btn-ghost]:border-0 sm:[&_.btn-ghost]:bg-transparent">
-          {title && <h2 className="receipt-title min-w-0">{title}</h2>}
-          {aside}
-          <span className="rule-dashed absolute inset-x-4 bottom-0 sm:inset-x-5" aria-hidden />
+          {collapsible ? (
+            // Modelul de acordeon: titlul rămâne un <h2>, cu butonul în interior.
+            <h2 className="receipt-title -my-1 min-w-0 flex-1">
+              <button
+                type="button"
+                className="flex min-h-[40px] w-full items-center justify-between gap-3 text-left uppercase lg:pointer-events-none lg:min-h-0"
+                onClick={() => setOpen(!open)}
+                aria-expanded={open}
+              >
+                <span className="min-w-0">
+                  {title}
+                  {summary && !open && <span className="mt-0.5 block font-sans text-[12px] font-normal normal-case tracking-normal text-ink-faint lg:hidden">{summary}</span>}
+                </span>
+                <Chevron open={open} />
+              </button>
+            </h2>
+          ) : (
+            title && <h2 className="receipt-title min-w-0">{title}</h2>
+          )}
+          {aside && <div className={shown ? "contents" : "hidden lg:contents"}>{aside}</div>}
+          <span className={`rule-dashed absolute inset-x-4 bottom-0 sm:inset-x-5 ${shown ? "" : "hidden lg:block"}`} aria-hidden />
         </div>
       )}
-      <div className={pad ? "p-4 sm:p-5" : ""}>{children}</div>
+      <div className={`${pad ? "p-4 sm:p-5" : ""} ${shown ? "" : "hidden lg:block"}`}>{children}</div>
     </section>
   );
 }
