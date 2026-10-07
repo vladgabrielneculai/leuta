@@ -80,12 +80,13 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 | `RESEND_API_KEY` | cheia API Resend (opțional, pentru email) |
 | `RESEND_FROM` | opțional, ex. `Leuța <buget@domeniul-tau.ro>`; implicit `onboarding@resend.dev`, care trimite doar către adresa contului Resend |
 | `APP_URL` | opțional, adresa principală (`https://leuta.vercel.app`) pentru linkurile din emailuri și webhook-ul Telegram |
+| `WAITLIST_KEY` | opțional, cheie secretă comună cu site-ul de prezentare (`leuta-landing-page`, aceeași valoare acolo); fără ea lista de așteptare e închisă |
 
 Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiectul e pe celălalt cluster (`aws-0`), aplicația comută singură.
 
 ## 🗄️ Baza de date
 
-- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite), `0002_multi_user.sql`, `0003_loan_bank_schedule.sql` (graficul băncii ca sursă, situația la zi, asigurări anuale), `0004_security_hardening.sql` (passkey-uri, coduri de recuperare, sesiuni hash-uite, istoric), `0005_notifications.sql` (Telegram, jurnalul notificărilor), `0006_accounts_profiles.sql` (administrator, invitații, profilul utilizatorului).
+- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite), `0002_multi_user.sql`, `0003_loan_bank_schedule.sql` (graficul băncii ca sursă, situația la zi, asigurări anuale), `0004_security_hardening.sql` (passkey-uri, coduri de recuperare, sesiuni hash-uite, istoric), `0005_notifications.sql` (Telegram, jurnalul notificărilor), `0006_accounts_profiles.sql` (administrator, invitații, profilul utilizatorului), `0007_waitlist.sql` (lista de așteptare de pe site-ul de prezentare).
 - Backup / restaurare: *Setări → Exportă JSON* / *Restaurează*.
 - Editare directă: Supabase Dashboard → Table Editor.
 

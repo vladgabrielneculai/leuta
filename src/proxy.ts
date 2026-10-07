@@ -17,6 +17,8 @@ const PUBLIC_PATHS = [
   "/api/auth/passkey/login/options", "/api/auth/passkey/login/verify",
   // Apelate de servicii externe, autentificate în rută: Telegram (secret în header) și Vercel Cron (CRON_SECRET).
   "/api/telegram/webhook", "/api/cron/daily",
+  // Lista de așteptare, apelată de serverul site-ului de prezentare (cheia WAITLIST_KEY e verificată în rută).
+  "/api/waitlist",
 ];
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);

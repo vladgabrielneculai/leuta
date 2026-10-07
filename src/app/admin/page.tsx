@@ -23,6 +23,14 @@ type Account = {
   passkeys: number;
 };
 
+type WaitlistEntry = {
+  id: number;
+  email: string;
+  created_at: string;
+  invited_at: string | null;
+  invitation_status: Invitation["status"] | null;
+};
+
 const STATUS: Record<Invitation["status"], { label: string; cls: string }> = {
   active: { label: "Activă", cls: "bg-leu-tint text-leu" },
   used: { label: "Folosită", cls: "bg-albastru-tint text-albastru" },
@@ -79,6 +87,9 @@ export default function AdminPage() {
   const [newLink, setNewLink] = useState<string | null>(null);
   const invites = useApi<Invitation[]>("/api/admin/invitations");
   const accounts = useApi<{ me: number; users: Account[] }>("/api/admin/users");
+  const waitlist = useApi<{ rows: WaitlistEntry[]; emailConfigured: boolean }>("/api/admin/waitlist");
+  const [inviting, setInviting] = useState<number | null>(null);
+  const [waitlistLink, setWaitlistLink] = useState<{ email: string; link: string } | null>(null);
 
   if (invites.error?.includes("administrator") || accounts.error?.includes("administrator")) {
     return (
@@ -150,6 +161,46 @@ export default function AdminPage() {
       await api(`/api/admin/users?id=${a.id}`, "DELETE");
       accounts.reload();
       setToast("Contul a fost șters");
+    } catch (err) {
+      setToast((err as Error).message);
+    }
+  };
+
+  const inviteFromWaitlist = async (w: WaitlistEntry) => {
+    if (
+      w.invited_at &&
+      !(await confirm({
+        title: "Retrimite invitația",
+        message: `${w.email} a primit deja o invitație. Trimiți una nouă? Linkul vechi nu va mai funcționa.`,
+        confirmText: "Trimite din nou",
+      }))
+    )
+      return;
+    setInviting(w.id);
+    try {
+      const r = await api<{ link: string; emailed: boolean; emailError: string | null }>("/api/admin/waitlist", "POST", { id: w.id });
+      if (r.emailed) {
+        setWaitlistLink(null);
+        setToast(`Invitația a fost trimisă pe email la ${w.email}`);
+      } else {
+        setWaitlistLink({ email: w.email, link: r.link });
+        if (r.emailError) setToast(`Emailul nu a plecat: ${r.emailError}`);
+      }
+      waitlist.reload();
+      invites.reload();
+    } catch (err) {
+      setToast((err as Error).message);
+    } finally {
+      setInviting(null);
+    }
+  };
+
+  const removeFromWaitlist = async (w: WaitlistEntry) => {
+    if (!(await confirm({ title: "Scoate de pe listă", message: `Ștergi ${w.email} de pe lista de așteptare?`, confirmText: "Șterge", danger: true }))) return;
+    try {
+      await api(`/api/admin/waitlist?id=${w.id}`, "DELETE");
+      waitlist.reload();
+      setToast("Adresa a fost scoasă de pe listă");
     } catch (err) {
       setToast((err as Error).message);
     }
@@ -241,6 +292,63 @@ export default function AdminPage() {
                   </li>
                 );
               })}
+            </ul>
+          )}
+        </Panel>
+      </div>
+
+      <div className="mt-6">
+        <Panel
+          title="Lista de așteptare"
+          aside={<span className="text-[13px] text-ink-soft">{waitlist.data?.rows.filter((w) => !w.invited_at).length ?? 0} în așteptare</span>}
+        >
+          <p className="text-[13px] text-ink-soft">
+            Adresele lăsate pe site-ul de prezentare. „Trimite invitație” creează un link de cont nou
+            {waitlist.data?.emailConfigured ? " și îl trimite pe email." : "; emailul nu e configurat (RESEND_API_KEY), deci copiezi linkul și îl trimiți tu."}{" "}
+            Adresa dispare de pe listă când persoana își creează contul.
+          </p>
+
+          {waitlistLink && (
+            <div className="mt-4">
+              <NewInviteLink link={waitlistLink.link} onClose={() => setWaitlistLink(null)} />
+              <p className="mt-1.5 text-[12px] text-ink-soft">Pentru {waitlistLink.email}</p>
+            </div>
+          )}
+
+          {!waitlist.data ? (
+            <p className="mt-4 text-ink-soft">{waitlist.error ?? "Se încarcă…"}</p>
+          ) : waitlist.data.rows.length === 0 ? (
+            <p className="mt-4 text-[13px] text-ink-soft">Nimeni pe listă deocamdată.</p>
+          ) : (
+            <ul className="mt-4 divide-y divide-line border-y border-line">
+              {waitlist.data.rows.map((w) => (
+                <li key={w.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 sm:flex-nowrap">
+                  <div className="min-w-0 flex-1 basis-full sm:basis-auto">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="truncate font-medium">{w.email}</span>
+                      {w.invitation_status ? (
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS[w.invitation_status].cls}`}>
+                          Invitație {STATUS[w.invitation_status].label.toLowerCase()}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-galben-tint px-2 py-0.5 text-[11px] font-semibold text-galben">În așteptare</span>
+                      )}
+                    </div>
+                    <div className="text-[12px] text-ink-soft">
+                      Înscris {fmt(w.created_at)}
+                      {w.invited_at ? ` · invitat ${fmt(w.invited_at)}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button className={`${w.invited_at ? "btn-ghost border border-line" : "btn-primary"} text-[13px]`} onClick={() => inviteFromWaitlist(w)} disabled={inviting === w.id}>
+                      {inviting === w.id ? "Se trimite…" : w.invited_at ? "Retrimite" : "Trimite invitație"}
+                    </button>
+                    <button className="btn-danger h-10 w-10 px-0" onClick={() => removeFromWaitlist(w)} aria-label={`Scoate ${w.email} de pe listă`} title="Scoate de pe listă">
+                      <TrashIcon className="h-[18px] w-[18px]" />
+                    </button>
+                  </div>
+                </li>
+              ))}
             </ul>
           )}
         </Panel>

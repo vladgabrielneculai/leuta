@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GoalsRiskFields, PersonalFields, WorkFields, fromDraft, toDraft, type ProfileDraft } from "@/components/ProfileFields";
-import { api, PageHeader, Panel, Skeleton, Toast, useApi, useApp } from "@/components/ui";
+import { api, downloadFile, Modal, PageHeader, Panel, Skeleton, Toast, useApi, useApp } from "@/components/ui";
 import { daysUntilPayday, displayName, OCCUPATIONS, type Profile } from "@/lib/profile";
 
 type ProfileResponse = { profile: Profile; age: number | null; emergency: { months: number; reasons: string[] } };
@@ -17,6 +17,7 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (data && !draft) {
@@ -129,6 +130,23 @@ export default function ProfilePage() {
             </div>
           </Panel>
 
+          <Panel title="Datele tale">
+            <p className="text-[13px] text-ink-soft">
+              Descarcă tot ce știe Leuța despre tine (cont, profil, date financiare, notificări, istoric de autentificare) sau șterge definitiv contul.
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <button
+                className="btn-ghost justify-start border border-line"
+                onClick={() => downloadFile("/api/profile/export", "leuta-datele-mele.json").catch((e) => setToast((e as Error).message))}
+              >
+                ⬇️ Descarcă datele mele (JSON)
+              </button>
+              <button className="btn-danger justify-start border border-rosu/30" onClick={() => setDeleting(true)}>
+                Șterge contul…
+              </button>
+            </div>
+          </Panel>
+
           <Panel title="Cont">
             <div className="flex flex-col gap-2">
               <Link href="/setari" className="btn-ghost justify-start border border-line">🔐 Parolă, passkey și dispozitive</Link>
@@ -146,7 +164,56 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {deleting && <DeleteAccount username={username} onClose={() => setDeleting(false)} />}
       <Toast message={toast} onDone={() => setToast(null)} />
     </>
+  );
+}
+
+/** Ștergerea definitivă a contului: cere numele de utilizator scris de mână, apoi (dacă e nevoie) reconfirmarea identității. */
+function DeleteAccount({ username, onClose }: { username: string; onClose: () => void }) {
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const remove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    try {
+      await api("/api/profile/account", "DELETE", { confirm: typed.trim() });
+      window.location.href = "/login";
+    } catch (e) {
+      setErr((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Ștergerea contului">
+      <form onSubmit={remove} className="flex flex-col gap-4">
+        <p className="text-[14px] text-ink-soft">
+          Se șterg definitiv contul <b className="text-ink">@{username}</b> și toate datele lui: venituri, cheltuieli, credite, economii, profil, notificări
+          și passkey-uri. Acțiunea nu poate fi anulată. Dacă vrei o copie, descarcă întâi datele.
+        </p>
+        <label className="block">
+          <span className="label">Scrie numele de utilizator ca să confirmi</span>
+          <input className="field" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCapitalize="none" placeholder={username} />
+        </label>
+        {err && (
+          <p className="text-[13px] text-rosu" role="alert">
+            {err}
+          </p>
+        )}
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" className="btn-ghost" onClick={onClose}>
+            Renunță
+          </button>
+          <button type="submit" className="btn-primary !bg-rosu hover:!bg-rosu/85" disabled={busy || typed.trim() !== username}>
+            {busy ? "Se șterge…" : "Șterge definitiv contul"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
