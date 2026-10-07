@@ -45,5 +45,10 @@ export async function GET(req: NextRequest) {
   }
   // Jurnalul de notificări se păstrează 400 de zile (deduplicare pe lună/an).
   await (await getSystemDb()).prepare("DELETE FROM notification_log WHERE sent_at < now() - interval '400 days'").run();
+  // Lista de așteptare se păstrează cel mult 12 luni de la înscriere (Politica de confidențialitate a site-ului).
+  await (await getSystemDb())
+    .prepare("DELETE FROM waitlist WHERE created_at < now() - interval '12 months'")
+    .run()
+    .catch((e) => console.error("Curățarea listei de așteptare a eșuat:", e));
   return NextResponse.json({ ok: true, date: now.date, results });
 }

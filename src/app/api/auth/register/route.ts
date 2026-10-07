@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         .run(username, passwordHash, salt, new Date().toISOString());
       const userId = Number(user.lastInsertRowid);
       await tx.prepare("UPDATE invitations SET used_by = ? WHERE id = ?").run(userId, claimed.id);
-      return { userId } as const;
+      return { userId, invitationId: claimed.id } as const;
     });
 
     if ("error" in result) {
@@ -81,6 +81,13 @@ export async function POST(req: NextRequest) {
     // Categoriile și setările implicite se creează la prima folosire; profilul gol pornește ghidul de început.
     const userDb = await getDbFor(result.userId);
     await userDb.prepare("INSERT INTO user_profiles (onboarding_done_at) VALUES (NULL) ON CONFLICT DO NOTHING").run();
+
+    // Persoana venea de pe lista de așteptare: emailul nu mai trebuie păstrat acolo. În afara tranzacției și
+    // fără să blocheze crearea contului (ex. dacă migrarea 0007 n-a fost încă aplicată).
+    await (await getSystemDb())
+      .prepare("DELETE FROM waitlist WHERE invitation_id = ?")
+      .run(result.invitationId)
+      .catch((e) => console.error("Curățarea listei de așteptare a eșuat:", e));
 
     await logAuthEvent(result.userId, true, "invite", meta);
     const { token, expiresAt } = await createSession(result.userId, true, "invite", meta);
