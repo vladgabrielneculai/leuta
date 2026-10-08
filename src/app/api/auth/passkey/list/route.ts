@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentSession, logAuthEvent, passkeyCount, requestMeta, requireRecentAuth } from "@/lib/auth";
+import { getCurrentSession, isProtected, logAuthEvent, requestMeta, requireRecentAuth, secondFactors } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
 
@@ -17,7 +17,7 @@ export async function GET() {
   return NextResponse.json({ passkeys: rows });
 }
 
-/** Șterge un passkey. Fără niciun passkey, contul revine la login doar cu parola. */
+/** Scoate Face ID / amprenta unui dispozitiv. Fără nicio protecție rămasă (nici 2FA), contul revine la login doar cu parola. */
 export async function DELETE(req: NextRequest) {
   try {
     const auth = await requireRecentAuth();
@@ -27,10 +27,10 @@ export async function DELETE(req: NextRequest) {
     const res = await (await getDb())
       .prepare("DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?")
       .run(id, session.id);
-    if (!res.changes) return NextResponse.json({ error: "Passkey-ul nu există." }, { status: 404 });
+    if (!res.changes) return NextResponse.json({ error: "Dispozitivul nu există." }, { status: 404 });
     await logAuthEvent(session.id, true, "passkey-sters", requestMeta(req.headers));
-    return NextResponse.json({ ok: true, remaining: await passkeyCount(session.id) });
+    return NextResponse.json({ ok: true, protected: isProtected(await secondFactors(session.id)) });
   } catch (err) {
-    return errorResponse(err, "Passkey-ul nu a putut fi șters.");
+    return errorResponse(err, "Dispozitivul nu a putut fi scos.");
   }
 }

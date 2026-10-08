@@ -21,6 +21,7 @@ type Account = {
   disabled_at: string | null;
   last_active_at: string | null;
   passkeys: number;
+  totp: boolean;
 };
 
 type WaitlistEntry = {
@@ -276,7 +277,7 @@ export default function AdminPage() {
                         {a.disabled_at && <span className="rounded-full bg-rosu-tint px-2 py-0.5 text-[11px] font-semibold text-rosu">dezactivat</span>}
                       </div>
                       <div className="text-[12px] text-ink-soft">
-                        Creat {fmtDay(a.created_at)} · activ {fmt(a.last_active_at)} · {a.passkeys > 0 ? `${a.passkeys} passkey` : "fără passkey"}
+                        Creat {fmtDay(a.created_at)} · activ {fmt(a.last_active_at)} · {[a.passkeys > 0 && `Face ID / amprentă ×${a.passkeys}`, a.totp && "2FA"].filter(Boolean).join(" + ") || "doar parolă"}
                       </div>
                     </div>
                     {!a.is_admin && (

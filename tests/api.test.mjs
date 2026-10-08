@@ -8,6 +8,7 @@
  */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3100";
 const USER = process.env.TEST_USER;
@@ -192,6 +193,93 @@ test("invitații: cont nou dintr-un link de o singură folosire, fără acces de
   assert.ok(created, "contul apare în lista adminului");
   assert.equal((await call(`/api/admin/users?id=${created.id}`, { method: "DELETE" })).status, 200);
   assert.equal((await asNew("/api/auth/status").then((r) => r.json())).authenticated, false, "sesiunea contului șters nu mai e validă");
+});
+
+/** Codul TOTP (RFC 6238) pentru o cheie base32, ca o aplicație de autentificare. */
+function totp(secret, offsetSteps = 0) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const ch of secret) bits += alphabet.indexOf(ch).toString(2).padStart(5, "0");
+  const key = Buffer.from(bits.match(/.{8}/g).map((b) => parseInt(b, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000) + offsetSteps));
+  const h = crypto.createHmac("sha1", key).update(counter).digest();
+  const o = h[h.length - 1] & 0xf;
+  return String((h.readUInt32BE(o) & 0x7fffffff) % 1e6).padStart(6, "0");
+}
+
+test("2FA: activare cu cod, login în doi pași, cod refolosit refuzat, coduri de recuperare noi", async (t) => {
+  const me = await call("/api/auth/status");
+  if (!me.json.user?.isAdmin) return t.skip("TEST_USER nu este administrator");
+
+  const inv = await call("/api/admin/invitations", { method: "POST", body: { note: "[test 2fa]" } });
+  const code = new URL(inv.json.link).searchParams.get("cod");
+  const username = `test2fa_${Date.now()}`;
+  const password = "parola-de-test-123";
+  const reg = await fetch(BASE + "/api/auth/register", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ code, username, password }),
+  });
+  assert.equal(reg.status, 200, "înregistrare");
+  const c1 = reg.headers.get("set-cookie").split(";")[0];
+  const as = (c) => async (p, method = "GET", body) => {
+    const r = await fetch(BASE + p, { method, headers: { "content-type": "application/json", cookie: c }, body: body ? JSON.stringify(body) : undefined });
+    return { status: r.status, json: await r.json().catch(() => null), headers: r.headers };
+  };
+  const login = (body) => fetch(BASE + "/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password, ...body }) });
+  const u1 = as(c1);
+
+  try {
+    assert.equal((await u1("/api/auth/status")).json.secured, false, "cont nou = doar parolă");
+    assert.equal((await u1("/api/auth/recovery-codes", "POST")).status, 400, "fără 2FA nu se generează coduri");
+
+    // Activarea: cheia nu se salvează decât după un cod corect.
+    const start = await u1("/api/auth/totp", "POST", { action: "start" });
+    assert.equal(start.status, 200);
+    assert.match(start.json.secret, /^[A-Z2-7]{32}$/);
+    assert.match(start.json.uri, /^otpauth:\/\/totp\//);
+    assert.match(start.json.qr, /^data:image\/png;base64,/);
+    assert.equal((await u1("/api/auth/totp", "POST", { action: "enable", code: "000000" === totp(start.json.secret) ? "111111" : "000000" })).status, 400);
+    assert.equal((await u1("/api/auth/totp")).json.enabled, false);
+    const enableCode = totp(start.json.secret);
+    const enabled = await u1("/api/auth/totp", "POST", { action: "enable", code: enableCode });
+    assert.equal(enabled.status, 200, "activare");
+    assert.equal(enabled.json.recoveryCodes.length, 10, "prima protecție → 10 coduri de recuperare");
+    assert.equal((await u1("/api/auth/status")).json.secured, true);
+
+    // Login: parola singură nu mai ajunge; parola greșită nu dezvăluie pasul 2.
+    assert.equal((await login({ password: "gresit-gresit-1" })).status, 401);
+    const step1 = await login({});
+    assert.equal(step1.status, 403);
+    assert.equal((await step1.json()).secondFactor.totp, true);
+    assert.equal((await login({ totpCode: "12345" })).status, 401, "cod invalid");
+
+    // Codul folosit la activare nu mai merge; următorul interval da (ceasul aplicației poate fi înainte).
+    assert.equal((await login({ totpCode: enableCode })).status, 401, "același cod nu merge de două ori");
+    const ok = await login({ totpCode: totp(start.json.secret, 1) });
+    assert.equal(ok.status, 200, "parola + cod 2FA");
+    const c2 = ok.headers.get("set-cookie").split(";")[0];
+
+    // Cod de recuperare: intră o singură dată, apoi lista se poate regenera.
+    const rc = enabled.json.recoveryCodes[0];
+    const viaRecovery = await login({ recoveryCode: rc });
+    assert.equal(viaRecovery.status, 200);
+    assert.equal((await viaRecovery.json()).usedRecoveryCode, true);
+    assert.equal((await login({ recoveryCode: rc })).status, 401, "cod de recuperare de o singură folosire");
+    const fresh = await as(c2)("/api/auth/recovery-codes", "POST");
+    assert.equal(fresh.status, 200, "coduri noi (sesiunea e confirmată recent)");
+    assert.equal(fresh.json.codes.length, 10);
+    assert.equal((await login({ recoveryCode: enabled.json.recoveryCodes[1] })).status, 401, "codurile vechi nu mai merg");
+
+    // Reconfirmarea cere codul, nu parola.
+    const opts = await as(c2)("/api/auth/reauth/options", "POST");
+    assert.deepEqual(opts.json.methods, ["totp", "recovery"]);
+    assert.equal((await as(c2)("/api/auth/reauth/verify", "POST", { password })).status, 400, "parola singură nu reconfirmă");
+  } finally {
+    const created = (await call("/api/admin/users")).json.users.find((u) => u.username === username);
+    if (created) await call(`/api/admin/users?id=${created.id}`, { method: "DELETE" });
+  }
 });
 
 test("bonul lunii: PDF pentru o lună validă, 400 pentru o lună invalidă", async () => {

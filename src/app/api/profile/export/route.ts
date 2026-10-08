@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
  * Toate datele contului, într-un singur fișier JSON (dreptul de acces și de portabilitate, art. 15 și 20 GDPR).
  * Spre deosebire de backup (Setări → Exportă JSON), care conține doar datele financiare și se poate restaura,
  * aici intră și contul, profilul, notificările și istoricul de securitate. Hash-urile (parolă, coduri de
- * recuperare, sesiuni) și cheile passkey nu se exportă: nu sunt date despre tine, ci mecanisme de acces.
+ * recuperare, sesiuni), cheia 2FA și cheile Face ID / amprentă nu se exportă: nu sunt date despre tine, ci mecanisme de acces.
  */
 
 const FINANCIAL = [
@@ -40,7 +40,8 @@ export async function GET() {
         sent: await sys.prepare("SELECT kind, period_key, channels, sent_at FROM notification_log WHERE user_id = ? ORDER BY sent_at DESC").all(uid),
       },
       security: {
-        passkeys: await sys
+        two_factor_enabled_at: (await sys.prepare("SELECT totp_enabled_at FROM users WHERE id = ?").get<{ totp_enabled_at: string | null }>(uid))?.totp_enabled_at ?? null,
+        biometric_devices: await sys
           .prepare("SELECT name, device_type, backed_up, created_at, last_used_at FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at")
           .all(uid),
         recovery_codes_unused: (await sys.prepare("SELECT COUNT(*)::int AS c FROM recovery_codes WHERE user_id = ? AND used_at IS NULL").get<{ c: number }>(uid))?.c ?? 0,

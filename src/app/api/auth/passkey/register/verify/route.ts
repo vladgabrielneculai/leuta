@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRegistrationResponse, type RegistrationResponseJSON } from "@simplewebauthn/server";
-import { logAuthEvent, passkeyCount, regenerateRecoveryCodes, requestMeta, requireRecentAuth, revokeSessions } from "@/lib/auth";
+import { isProtected, logAuthEvent, regenerateRecoveryCodes, requestMeta, requireRecentAuth, revokeSessions, secondFactors } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
 import { clearChallengeCookie, deviceName, encodePublicKey, relyingParty, takeChallenge } from "@/lib/webauthn";
@@ -8,8 +8,9 @@ import { clearChallengeCookie, deviceName, encodePublicKey, relyingParty, takeCh
 export const dynamic = "force-dynamic";
 
 /**
- * Salvează passkey-ul nou. La primul passkey: contul trece pe „passkey obligatoriu”, se generează
- * codurile de recuperare (afișate o singură dată) și se închid celelalte sesiuni deschise cu parola.
+ * Salvează Face ID / amprenta dispozitivului. Dacă e prima protecție a contului (nici 2FA nu era activ): parola
+ * singură nu mai ajunge, se generează codurile de recuperare (afișate o singură dată) și se închid celelalte
+ * sesiuni deschise cu parola.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -29,12 +30,12 @@ export async function POST(req: NextRequest) {
       requireUserVerification: true,
     }).catch(() => null);
     if (!result?.verified || !result.registrationInfo) {
-      return NextResponse.json({ error: "Passkey-ul nu a putut fi verificat." }, { status: 400 });
+      return NextResponse.json({ error: "Face ID / amprenta nu a putut fi verificată." }, { status: 400 });
     }
 
     const { credential, credentialDeviceType, credentialBackedUp } = result.registrationInfo;
     const meta = requestMeta(req.headers);
-    const first = (await passkeyCount(session.id)) === 0;
+    const first = !isProtected(await secondFactors(session.id));
     const name = String(body.name ?? "").trim().slice(0, 60) || deviceName(meta.userAgent);
     await (await getDb())
       .prepare(
@@ -56,6 +57,6 @@ export async function POST(req: NextRequest) {
     clearChallengeCookie(res);
     return res;
   } catch (err) {
-    return errorResponse(err, "Passkey-ul nu a putut fi salvat.");
+    return errorResponse(err, "Face ID / amprenta nu a putut fi salvată.");
   }
 }

@@ -5,13 +5,19 @@ import { useSearchParams } from "next/navigation";
 import Logo from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Field } from "@/components/ui";
+import { parseInviteCode } from "@/lib/invite";
 
 const MIN_PASSWORD = 12;
 
-/** Crearea unui cont nou dintr-un link de invitație (/inregistrare?cod=…). */
+/**
+ * Crearea unui cont nou dintr-o invitație: linkul (/inregistrare?cod=…) sau, fără cod în adresă, codul lipit
+ * de mână în pagină (sau din fila „Cont nou” de la login).
+ */
 function RegisterForm() {
-  const code = useSearchParams().get("cod") ?? "";
-  const [state, setState] = useState<"checking" | "valid" | "invalid">("checking");
+  const fromUrl = useSearchParams().get("cod") ?? "";
+  const [code, setCode] = useState(fromUrl);
+  const [typed, setTyped] = useState("");
+  const [state, setState] = useState<"ask" | "checking" | "valid" | "invalid">(fromUrl ? "checking" : "ask");
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -20,11 +26,8 @@ function RegisterForm() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!code) {
-      setInviteError("Linkul nu conține un cod de invitație. Deschide exact linkul primit de la administrator.");
-      setState("invalid");
-      return;
-    }
+    if (!code) return;
+    setState("checking");
     fetch(`/api/auth/register?cod=${encodeURIComponent(code)}`, { cache: "no-store" })
       .then(async (r) => {
         const j = await r.json().catch(() => ({}));
@@ -39,6 +42,17 @@ function RegisterForm() {
         setState("invalid");
       });
   }, [code]);
+
+  const submitCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    const c = parseInviteCode(typed);
+    if (!c) {
+      setInviteError("Codul nu pare complet. Lipește exact linkul sau codul primit de la administrator.");
+      return;
+    }
+    setInviteError(null);
+    setCode(c);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,11 +89,25 @@ function RegisterForm() {
 
       {state === "checking" && <p className="text-center text-ink-soft">Se verifică invitația…</p>}
 
-      {state === "invalid" && (
-        <div className="rounded-md bg-rosu-tint p-3 text-[13px] font-medium text-rosu">
-          {inviteError}
-          <a href="/login" className="mt-2 block text-albastru hover:underline">Ai deja cont? Intră în aplicație →</a>
-        </div>
+      {(state === "ask" || state === "invalid") && (
+        <form onSubmit={submitCode} className="flex flex-col gap-4">
+          {inviteError && <div className="rounded-md bg-rosu-tint p-3 text-[13px] font-medium text-rosu">{inviteError}</div>}
+          <Field label="Linkul sau codul de invitație" hint="Îl primești de la administrator, pe email sau în mesaj. E valabil 7 zile și merge o singură dată.">
+            <input
+              className="field font-mono text-[13px]"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="https://app.leuta.ro/inregistrare?cod=…"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              required
+              autoFocus
+            />
+          </Field>
+          <button type="submit" className="btn-primary w-full justify-center py-3 text-[15px] font-semibold">Continuă</button>
+          <a href="/login" className="text-center text-[13px] text-albastru hover:underline">Ai deja cont? Intră în aplicație →</a>
+        </form>
       )}
 
       {state === "valid" && (
@@ -99,7 +127,7 @@ function RegisterForm() {
               autoFocus
             />
           </Field>
-          <Field label="Parolă" hint={`Cel puțin ${MIN_PASSWORD} caractere. După ce intri, poți adăuga și un passkey (amprentă / Face ID).`}>
+          <Field label="Parolă" hint={`Cel puțin ${MIN_PASSWORD} caractere. După ce intri, protejează contul cu Face ID / amprentă sau cu 2FA.`}>
             <input className="field" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </Field>
           <Field label="Confirmă parola">

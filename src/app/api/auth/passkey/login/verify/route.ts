@@ -10,7 +10,7 @@ import { clearChallengeCookie, credentialById, relyingParty, takeChallenge } fro
 
 export const dynamic = "force-dynamic";
 
-/** Verifică semnătura passkey-ului și deschide sesiunea. Blocarea contului (parole greșite) nu se aplică aici. */
+/** Verifică semnătura (Face ID / amprentă) și deschide sesiunea. Blocarea contului (parole greșite) nu se aplică aici. */
 export async function POST(req: NextRequest) {
   const meta = requestMeta(req.headers);
   try {
@@ -21,12 +21,12 @@ export async function POST(req: NextRequest) {
     const fail = async (reason: string) => {
       await recordFailedLogin(meta.ip);
       await logAuthEvent(credential?.userId ?? null, false, "passkey", meta, reason);
-      const res = NextResponse.json({ error: "Passkey-ul nu a putut fi verificat. Încearcă din nou." }, { status: 401 });
+      const res = NextResponse.json({ error: "Face ID / amprenta nu a putut fi verificată. Încearcă din nou." }, { status: 401 });
       clearChallengeCookie(res);
       return res;
     };
     if (!challenge) return fail("provocare expirată");
-    if (!credential) return fail("passkey necunoscut");
+    if (!credential) return fail("dispozitiv necunoscut");
 
     const { rpID, origin } = relyingParty(req);
     const result = await verifyAuthenticationResponse({
@@ -56,6 +56,6 @@ export async function POST(req: NextRequest) {
     clearChallengeCookie(res);
     return res;
   } catch (err) {
-    return errorResponse(err, "Eroare la login-ul cu passkey.");
+    return errorResponse(err, "Eroare la login-ul cu Face ID / amprentă.");
   }
 }

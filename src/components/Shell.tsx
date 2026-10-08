@@ -95,7 +95,7 @@ const TABS_LEFT = [
 const TABS_RIGHT = [{ href: "/credite", label: "Credite", icon: ICON.loans }];
 const TABS = [...TABS_LEFT, ...TABS_RIGHT];
 
-const PASSKEY_SNOOZE = "leuta-passkey-amanat";
+const SECURITY_SNOOZE = "leuta-securitate-amanat";
 const SNOOZE_DAYS = 14;
 
 /** Butonul „+” din mijlocul barei de jos: deschide adăugarea rapidă. */
@@ -202,21 +202,21 @@ export default function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<StatusUser | null>(null);
-  const [hasPasskey, setHasPasskey] = useState(true);
-  // Îndemnul spre passkey poate fi amânat (câteva zile), ca să nu ocupe mereu partea de sus a ecranului.
-  const [passkeySnoozed, setPasskeySnoozed] = useState(true);
+  const [secured, setSecured] = useState(true);
+  // Îndemnul spre Face ID / 2FA poate fi amânat (câteva zile), ca să nu ocupe mereu partea de sus a ecranului.
+  const [securitySnoozed, setSecuritySnoozed] = useState(true);
   useEffect(() => {
     try {
-      const until = Number(localStorage.getItem(PASSKEY_SNOOZE) || 0);
-      setPasskeySnoozed(until > Date.now());
+      const until = Number(localStorage.getItem(SECURITY_SNOOZE) || 0);
+      setSecuritySnoozed(until > Date.now());
     } catch {
-      setPasskeySnoozed(false);
+      setSecuritySnoozed(false);
     }
   }, []);
-  const snoozePasskey = () => {
-    setPasskeySnoozed(true);
+  const snoozeSecurity = () => {
+    setSecuritySnoozed(true);
     try {
-      localStorage.setItem(PASSKEY_SNOOZE, String(Date.now() + SNOOZE_DAYS * 86_400_000));
+      localStorage.setItem(SECURITY_SNOOZE, String(Date.now() + SNOOZE_DAYS * 86_400_000));
     } catch {}
   };
   const isAuthPage = path === "/login" || path === "/setup" || path === "/inregistrare";
@@ -229,7 +229,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   useEffect(() => {
-    api<{ setupNeeded: boolean; authenticated: boolean; user: StatusUser | null; hasPasskey?: boolean; onboardingPending?: boolean }>("/api/auth/status")
+    api<{ setupNeeded: boolean; authenticated: boolean; user: StatusUser | null; secured?: boolean; onboardingPending?: boolean }>("/api/auth/status")
       .then((res) => {
         if (res.setupNeeded) {
           if (path !== "/setup") window.location.replace("/setup");
@@ -237,7 +237,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           if (path !== "/login" && path !== "/inregistrare") window.location.replace("/login");
         } else {
           setUser(res.user);
-          setHasPasskey(res.hasPasskey !== false);
+          setSecured(res.secured !== false);
           if (isAuthPage) window.location.replace(res.onboardingPending ? "/bun-venit" : "/");
           // Un cont nou trece întâi prin ghidul de început (îl poate amâna de acolo).
           else if (res.onboardingPending && path !== "/bun-venit") window.location.replace("/bun-venit");
@@ -462,19 +462,19 @@ export default function Shell({ children }: { children: ReactNode }) {
       </nav>
 
       <main key={path} className="page-enter mx-auto w-full max-w-[1240px] px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-8 sm:pt-6 lg:py-10">
-        {!hasPasskey && !passkeySnoozed && !path.startsWith("/setari") && (
+        {!secured && !securitySnoozed && !path.startsWith("/setari") && (
           <div className="mb-4 flex items-center gap-1 rounded-lg border border-galben/40 bg-galben-tint text-[13px] sm:mb-5">
             <Link href="/setari" className="flex min-w-0 flex-1 items-center justify-between gap-3 py-2.5 pl-3.5 hover:underline sm:py-3 sm:pl-4">
               <span>
-                🔐 <strong>Protejează-ți contul cu un passkey</strong>
+                🔐 <strong>Protejează-ți contul cu Face ID / amprentă sau 2FA</strong>
                 <span className="hidden sm:inline">
-                  {" "}(amprentă / Face ID). După asta, o parolă furată nu mai ajunge pentru a intra în aplicație.
+                  . După asta, o parolă furată nu mai ajunge pentru a intra în aplicație.
                 </span>
               </span>
               <span className="shrink-0 font-semibold text-albastru">Setări →</span>
             </Link>
             <button
-              onClick={snoozePasskey}
+              onClick={snoozeSecurity}
               className="flex h-11 w-11 shrink-0 items-center justify-center text-[15px] text-ink-faint hover:text-ink"
               aria-label={`Amână ${SNOOZE_DAYS} zile`}
               title={`Amână ${SNOOZE_DAYS} zile`}

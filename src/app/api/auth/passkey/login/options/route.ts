@@ -6,7 +6,7 @@ import { relyingParty, saveChallenge } from "@/lib/webauthn";
 
 export const dynamic = "force-dynamic";
 
-/** Începe login-ul cu passkey: browserul arată passkey-urile salvate pentru acest site. */
+/** Începe login-ul cu Face ID / amprentă: browserul cere biometria pentru contul salvat pe acest site. */
 export async function POST(req: NextRequest) {
   try {
     if (await isLockedOut(clientIp(req.headers))) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
@@ -16,6 +16,6 @@ export async function POST(req: NextRequest) {
     await saveChallenge(res, "login", options.challenge, null);
     return res;
   } catch (err) {
-    return errorResponse(err, "Login-ul cu passkey nu a putut porni.");
+    return errorResponse(err, "Login-ul cu Face ID / amprentă nu a putut porni.");
   }
 }

@@ -273,8 +273,8 @@ export function useApi<T>(url: string | null, deps: unknown[] = []) {
 }
 
 // ---------- Reconfirmarea identității ----------
-// Acțiunile sensibile (ștergeri, export, restaurare, parolă, passkey-uri) răspund 403 + `reauth: true`
-// dacă identitatea n-a fost confirmată în ultimele minute. Atunci cerem passkey-ul / parola și repetăm cererea.
+// Acțiunile sensibile (ștergeri, export, restaurare, parolă, securitate) răspund 403 + `reauth: true`
+// dacă identitatea n-a fost confirmată în ultimele minute. Atunci cerem Face ID / codul 2FA / parola și repetăm cererea.
 
 let reauthHandler: (() => Promise<boolean>) | null = null;
 export function setReauthHandler(h: (() => Promise<boolean>) | null) {

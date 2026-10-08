@@ -7,7 +7,11 @@ import { credentialsForUser, relyingParty, RP_NAME, saveChallenge } from "@/lib/
 
 export const dynamic = "force-dynamic";
 
-/** Începe adăugarea unui passkey (cere identitatea confirmată recent). */
+/**
+ * Începe adăugarea Face ID / amprentei pe dispozitivul curent (cere identitatea confirmată recent). Cerem
+ * autentificatorul dispozitivului (Face ID, Touch ID, amprenta Android, Windows Hello), nu chei externe sau
+ * telefonul altcuiva, ca fereastra browserului să ceară direct biometria.
+ */
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireRecentAuth();
@@ -23,11 +27,12 @@ export async function POST(req: NextRequest) {
       attestationType: "none",
       excludeCredentials: existing.map((c) => ({ id: c.id, transports: c.transports })),
       authenticatorSelection: { residentKey: "required", userVerification: "required" },
+      preferredAuthenticatorType: "localDevice",
     });
     const res = NextResponse.json(options);
     await saveChallenge(res, "register", options.challenge, session.id);
     return res;
   } catch (err) {
-    return errorResponse(err, "Adăugarea passkey-ului nu a putut porni.");
+    return errorResponse(err, "Adăugarea Face ID / amprentei nu a putut porni.");
   }
 }
