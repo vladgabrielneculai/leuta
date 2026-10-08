@@ -1,39 +1,31 @@
-import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { clientIp } from "@/lib/auth";
 import { getSystemDb } from "@/lib/db";
 import { isEmail } from "@/lib/notify/email";
+import { SITE } from "@/lib/site/config";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Înscrierea pe lista de așteptare, apelată doar de serverul site-ului de prezentare (leuta-landing-page).
- * Cererea trebuie să aibă cheia comună WAITLIST_KEY în headerul `x-waitlist-key`; fără cheie configurată,
- * lista e închisă. IP-ul vizitatorului vine de la site în `x-waitlist-client-ip` (de încredere doar
- * după verificarea cheii) și limitează încercările: 5 pe oră per IP.
+ * Înscrierea pe lista de așteptare, din formularul site-ului de prezentare (components/site/Waitlist.tsx).
+ * Ruta e publică (proxy.ts), deci se apără singură: câmp-capcană pentru roboți, acord obligatoriu și cel mult
+ * 5 încercări pe oră per IP (pe Vercel, x-forwarded-for e pus de platformă și nu poate fi falsificat).
  */
 
 const MAX_PER_HOUR = 5;
 
-function keyMatches(given: string | null) {
-  const key = process.env.WAITLIST_KEY;
-  if (!key || !given) return false;
-  const a = crypto.createHash("sha256").update(given).digest();
-  const b = crypto.createHash("sha256").update(key).digest();
-  return crypto.timingSafeEqual(a, b);
-}
-
 export async function POST(req: NextRequest) {
-  if (!process.env.WAITLIST_KEY) return NextResponse.json({ error: "Lista de așteptare nu este încă deschisă." }, { status: 503 });
-  if (!keyMatches(req.headers.get("x-waitlist-key"))) return NextResponse.json({ error: "Neautorizat." }, { status: 401 });
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object") return NextResponse.json({ error: "Cerere invalidă." }, { status: 400 });
 
-  const body = await req.json().catch(() => ({}));
+  // Roboții completează câmpul ascuns: le răspundem ca și cum ar fi reușit, fără să salvăm nimic.
+  if (typeof body.website === "string" && body.website.trim()) return NextResponse.json({ ok: true });
+
   const email = String(body.email ?? "").trim().toLowerCase();
-  const consentVersion = String(body.consent_version ?? "").trim().slice(0, 40);
-  const source = String(body.source ?? "landing").trim().slice(0, 40) || "landing";
   if (!isEmail(email)) return NextResponse.json({ error: "Adresa de email nu pare corectă." }, { status: 400 });
-  if (!consentVersion) return NextResponse.json({ error: "Lipsește acordul." }, { status: 400 });
+  if (body.consent !== true) return NextResponse.json({ error: "Bifează acordul ca să te putem înscrie." }, { status: 400 });
 
-  const ip = (req.headers.get("x-waitlist-client-ip") ?? "").slice(0, 64) || "necunoscut";
+  const ip = clientIp(req.headers).slice(0, 64);
   try {
     const db = await getSystemDb();
     const recent = await db
@@ -46,8 +38,8 @@ export async function POST(req: NextRequest) {
     if (Math.random() < 0.05) await db.prepare("DELETE FROM waitlist_attempts WHERE attempted_at < now() - interval '1 day'").run();
 
     const res = await db
-      .prepare("INSERT INTO waitlist (email, consent_version, source) VALUES (?, ?, ?) ON CONFLICT (email) DO NOTHING")
-      .run(email, consentVersion, source);
+      .prepare("INSERT INTO waitlist (email, consent_version, source) VALUES (?, ?, 'landing') ON CONFLICT (email) DO NOTHING")
+      .run(email, SITE.consentVersion);
     return NextResponse.json({ ok: true, already: res.changes === 0 });
   } catch (err) {
     console.error("Înscriere pe lista de așteptare eșuată:", err);

@@ -1,0 +1,269 @@
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource/ibm-plex-mono/700.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Aceleași tokenuri ca în aplicație: bonuri de hârtie termică (--sheet) pe o masă (--paper),
+ * cerneală aproape neagră și culorile bancnotelor pentru sume și grafice.
+ */
+:root {
+  color-scheme: light;
+  --paper: 234 229 219;
+  --sheet: 253 251 246;
+  --field: 255 255 252;
+  --ink: 31 29 26;
+  --ink-soft: 92 86 77;
+  --ink-faint: 140 133 122;
+  --line: 224 217 204;
+  --line-strong: 196 187 171;
+  --leu: 61 122 78;
+  --leu-tint: 223 236 222;
+  --mov: 106 78 153;
+  --mov-tint: 233 225 240;
+  --rosu: 181 69 106;
+  --rosu-tint: 246 223 228;
+  --galben: 168 124 16;
+  --galben-tint: 247 236 201;
+  --albastru: 46 92 138;
+  --albastru-tint: 223 230 238;
+  --shadow: 74 60 38;
+  --tooth: 7px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: 16 15 13;
+    --sheet: 30 28 25;
+    --field: 23 22 19;
+    --ink: 237 231 219;
+    --ink-soft: 176 168 154;
+    --ink-faint: 128 121 109;
+    --line: 54 50 44;
+    --line-strong: 77 72 63;
+    --leu: 98 186 128;
+    --leu-tint: 26 46 31;
+    --mov: 163 141 222;
+    --mov-tint: 40 33 56;
+    --rosu: 232 124 160;
+    --rosu-tint: 58 28 38;
+    --galben: 228 183 76;
+    --galben-tint: 56 44 15;
+    --albastru: 110 164 220;
+    --albastru-tint: 27 37 50;
+    --shadow: 0 0 0;
+  }
+}
+
+/* Culorile ca valori CSS complete, pentru stiluri inline și SVG (fill="var(--c-leu)"). */
+:root {
+  --c-paper: rgb(var(--paper));
+  --c-sheet: rgb(var(--sheet));
+  --c-ink: rgb(var(--ink));
+  --c-leu: rgb(var(--leu));
+  --c-mov: rgb(var(--mov));
+  --c-rosu: rgb(var(--rosu));
+  --c-galben: rgb(var(--galben));
+  --c-albastru: rgb(var(--albastru));
+}
+
+@layer base {
+  html {
+    background: rgb(var(--paper));
+    color: rgb(var(--ink));
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-padding-top: 5rem;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  body {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    line-height: 1.55;
+    background: rgb(var(--paper));
+  }
+  html, body { overflow-x: clip; }
+  h1, h2, h3 { letter-spacing: -0.035em; text-wrap: balance; }
+  p { text-wrap: pretty; }
+  .num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; white-space: nowrap; }
+  :focus-visible { outline: 2px solid rgb(var(--albastru)); outline-offset: 3px; border-radius: 4px; }
+  a, button { -webkit-tap-highlight-color: transparent; }
+}
+
+@layer components {
+  /* Bon de hârtie cu margini zimțate sus și jos (ca în aplicație). */
+  .panel {
+    @apply relative bg-sheet;
+    margin-block: var(--tooth);
+    filter: drop-shadow(0 1px 1.5px rgb(var(--shadow) / 0.14)) drop-shadow(0 10px 24px rgb(var(--shadow) / 0.08));
+  }
+  .panel::before, .panel::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: var(--tooth);
+    pointer-events: none;
+    background-repeat: repeat-x;
+    background-size: calc(var(--tooth) * 2) var(--tooth);
+  }
+  .panel::before {
+    bottom: 100%;
+    background-image: conic-gradient(from 135deg at 50% 0, rgb(var(--sheet)) 90deg, transparent 0);
+    background-position: 0 100%;
+  }
+  .panel::after {
+    top: 100%;
+    background-image: conic-gradient(from -45deg at 50% 100%, rgb(var(--sheet)) 90deg, transparent 0);
+  }
+  .kicker { @apply text-[12px] font-medium uppercase tracking-[0.18em] text-ink-faint sm:text-[13px]; }
+  .receipt-title { @apply text-[13px] font-semibold uppercase tracking-[0.08em]; }
+  .rule-dashed {
+    height: 1px;
+    background-image: linear-gradient(to right, rgb(var(--line-strong)) 55%, transparent 0);
+    background-size: 7px 1px;
+    background-repeat: repeat-x;
+  }
+  .rule-double {
+    height: 4px;
+    border-top: 1px solid rgb(var(--ink) / 0.55);
+    border-bottom: 1px solid rgb(var(--ink) / 0.55);
+  }
+  .leader-dots {
+    height: 4px;
+    transform: translateY(-1px);
+    background-image: radial-gradient(circle, rgb(var(--ink-faint) / 0.8) 0.9px, transparent 1.3px);
+    background-size: 6px 4px;
+    background-repeat: repeat-x;
+    background-position: left bottom;
+  }
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md px-5 py-2.5 text-[15px] font-semibold transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary { @apply btn bg-ink text-sheet shadow-sm hover:bg-ink/85 hover:shadow-md; }
+  .btn-ghost { @apply btn border border-line-strong/80 text-ink hover:bg-sheet; }
+  .field {
+    @apply block w-full min-w-0 rounded-md border border-line-strong/80 bg-field px-4 py-3 text-[16px] text-ink placeholder:text-ink-faint transition-all duration-150 focus:border-albastru focus:outline-none focus:ring-1 focus:ring-albastru;
+  }
+  .stamp {
+    @apply inline-block -rotate-3 rounded-[3px] border-2 border-leu px-2 py-0.5 text-[12px] font-bold uppercase tracking-[0.1em] text-leu;
+  }
+  /* Textele legale */
+  .prose-legal { @apply text-[15px] leading-[1.7] text-ink-soft; }
+  .prose-legal h2 { @apply mt-10 mb-3 text-[19px] font-bold text-ink; }
+  .prose-legal h3 { @apply mt-6 mb-2 text-[16px] font-semibold text-ink; }
+  .prose-legal p, .prose-legal ul, .prose-legal table { @apply mb-4; }
+  .prose-legal ul { @apply list-disc space-y-1.5 pl-5; }
+  .prose-legal a { @apply text-albastru underline underline-offset-2; }
+  .prose-legal strong { @apply text-ink; }
+  .prose-legal table { @apply w-full border-collapse text-[13.5px]; }
+  .prose-legal th, .prose-legal td { @apply border border-line px-3 py-2 text-left align-top; }
+  .prose-legal th { @apply bg-paper font-semibold text-ink; }
+}
+
+/* ------------------------------------------------------------------ telefon */
+/* Ecranul are lățimea aplicației (390 px CSS) scalată prin unități de container: 1 px din aplicație = var(--u). */
+.phone {
+  --pw: 320px; /* lățimea totală; fiecare utilizare o suprascrie */
+  position: relative;
+  width: var(--pw);
+  border-radius: calc(var(--pw) * 0.155);
+  background: #151412;
+  padding: calc(var(--pw) * 0.032);
+  box-shadow: 0 0 0 1.5px #3a3833 inset, 0 30px 60px rgb(40 30 15 / 0.28), 0 6px 14px rgb(40 30 15 / 0.22);
+}
+.phone-screen {
+  --u: calc(100cqw / 390);
+  position: relative;
+  aspect-ratio: 390 / 888;
+  border-radius: calc(var(--pw) * 0.125);
+  overflow: hidden;
+  background: #EAE5DB;
+  container-type: inline-size;
+}
+.phone-screen .status {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: calc(44 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 calc(34 * var(--u));
+  font: 700 calc(15 * var(--u)) / 1 -apple-system, "Helvetica Neue", Arial, sans-serif;
+  color: #1F1D1A;
+  background: #EAE5DB;
+  z-index: 3;
+}
+.phone-screen .island {
+  position: absolute;
+  top: calc(10 * var(--u));
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30%;
+  height: calc(33 * var(--u));
+  border-radius: 99px;
+  background: #000;
+  z-index: 4;
+}
+.phone-screen .app {
+  position: absolute;
+  inset: calc(44 * var(--u)) 0 0 0;
+  overflow: hidden;
+}
+.phone-screen .app img {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  will-change: transform, opacity;
+}
+
+/* ------------------------------------------------------------------ hero: bonul iese din casa de marcat */
+.printer-slot {
+  height: 18px;
+  border-radius: 9px;
+  background: linear-gradient(rgb(var(--ink) / 0.92), rgb(var(--ink) / 0.75));
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.35), 0 8px 20px rgb(var(--shadow) / 0.2);
+}
+@keyframes print {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(0); }
+}
+.printing { animation: print 2.2s steps(22, end) 0.35s both; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+.rise { animation: rise 0.8s cubic-bezier(.2, .7, .2, 1) both; }
+
+/* Elemente care apar la derulare (clasa `in` vine din Reveal.tsx). */
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.8s cubic-bezier(.2, .7, .2, 1); }
+.reveal.in { opacity: 1; transform: none; }
+
+/* Bara de progres a paginii, în culorile bancnotelor. */
+.progress-bar {
+  background: linear-gradient(90deg, rgb(var(--leu)) 0 20%, rgb(var(--mov)) 20% 40%, rgb(var(--rosu)) 40% 60%, rgb(var(--galben)) 60% 80%, rgb(var(--albastru)) 80% 100%);
+  background-size: 100vw 100%;
+  transform-origin: left;
+}
+
+.striped {
+  background-image: repeating-linear-gradient(-45deg, rgb(var(--leu)) 0 6px, rgb(var(--leu) / 0.7) 6px 12px);
+}
+
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details[open] .faq-plus { transform: rotate(45deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .printing, .rise { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
