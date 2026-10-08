@@ -62,7 +62,8 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 
 - **Face ID / amprentă** (Face ID, Touch ID, amprenta Android, Windows Hello; tehnic WebAuthn cu autentificatorul dispozitivului): intri dintr-o atingere, fără parolă. Se activează per dispozitiv din *Setări → Securitate & dispozitive*.
 - **Autentificare în doi pași (2FA)**: parola + codul de 6 cifre dintr-o aplicație (Google/Microsoft Authenticator, 1Password, Parole pe iPhone), TOTP RFC 6238; un cod nu merge de două ori. Bun pentru calculatoarele fără biometrie.
-- Cu oricare dintre ele activ, parola singură nu mai deschide contul. Pentru urgențe: parola + unul din cele 10 **coduri de recuperare** (o singură folosire fiecare); lista se poate regenera oricând din Setări. Codurile nu apar în ecranele obișnuite (doar la login, ca „Ai pierdut telefonul?”); în schimb, **o dată la 3 luni** aplicația cere unul ca verificare (codul nu se consumă) sau propune o listă nouă.
+- Cu 2FA activ, parola singură nu mai deschide contul. Face ID / amprenta e drumul rapid pe dispozitivele tale; pe celelalte intri cu parola (+ codul 2FA). Nu există coduri de recuperare.
+- **Parolă uitată / telefon pierdut**: în *Administrare → Conturi*, „Resetează accesul” creează un link (o singură folosire, 24 de ore) la `/resetare?cod=…`. Persoana își alege o parolă nouă; 2FA și Face ID / amprenta se dezactivează, toate sesiunile se închid, datele rămân.
 - **Reconfirmare**: ștergerea datelor, exportul/restaurarea backup-ului, schimbarea parolei și a securității cer confirmarea identității dacă ultima confirmare e mai veche de 10 minute.
 - Fiecare pagină și fiecare `/api/...` trec prin `src/proxy.ts`, care verifică sesiunea pe server (fără sesiune → `/login` sau `401`) și respinge cererile care modifică date venite de pe alte site-uri (CSRF).
 - Cookie de sesiune `HttpOnly`, `Secure`, `SameSite=Lax`; în baza de date se păstrează doar **hash-ul** token-ului. Schimbarea parolei închide celelalte sesiuni; poți închide oricând un dispozitiv din Setări.
@@ -71,7 +72,7 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 - Header-e de securitate pe toate paginile: CSP, HSTS, anti-iframe, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
 - Istoricul autentificărilor (reușite și eșuate, cu dispozitiv și locație aproximativă) e în Setări.
 - În Supabase, toate tabelele au RLS activ și nicio permisiune pentru `anon`/`authenticated`. Serverul se conectează cu rolul dedicat `bp_app`.
-- Face ID / amprenta e legată de domeniul aplicației (app.leuta.ro); pe linkurile de previzualizare Vercel (protejate cu login Vercel) se intră cu parola + cod 2FA sau de recuperare.
+- Face ID / amprenta e legată de domeniul aplicației (app.leuta.ro); pe linkurile de previzualizare Vercel (protejate cu login Vercel) se intră cu parola (+ cod 2FA).
 
 ## ⚙️ Configurare (Vercel → Settings → Environment Variables)
 
@@ -97,7 +98,7 @@ Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiec
 
 ## 🗄️ Baza de date
 
-- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite), `0002_multi_user.sql`, `0003_loan_bank_schedule.sql` (graficul băncii ca sursă, situația la zi, asigurări anuale), `0004_security_hardening.sql` (passkey-uri, coduri de recuperare, sesiuni hash-uite, istoric), `0005_notifications.sql` (Telegram, jurnalul notificărilor), `0006_accounts_profiles.sql` (administrator, invitații, profilul utilizatorului), `0007_waitlist.sql` (lista de așteptare de pe site-ul de prezentare), `0008_totp.sql` (autentificarea în doi pași), `0009_recovery_check.sql` (verificarea periodică a codurilor de recuperare).
+- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite), `0002_multi_user.sql`, `0003_loan_bank_schedule.sql` (graficul băncii ca sursă, situația la zi, asigurări anuale), `0004_security_hardening.sql` (passkey-uri, coduri de recuperare, sesiuni hash-uite, istoric), `0005_notifications.sql` (Telegram, jurnalul notificărilor), `0006_accounts_profiles.sql` (administrator, invitații, profilul utilizatorului), `0007_waitlist.sql` (lista de așteptare de pe site-ul de prezentare), `0008_totp.sql` (autentificarea în doi pași), `0009_recovery_check.sql` (verificarea periodică a codurilor de recuperare), `0010_password_resets.sql` (linkuri de resetare; codurile de recuperare dispar).
 - Backup / restaurare: *Setări → Exportă JSON* / *Restaurează*.
 - Editare directă: Supabase Dashboard → Table Editor.
 

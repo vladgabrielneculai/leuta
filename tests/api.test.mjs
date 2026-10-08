@@ -208,7 +208,7 @@ function totp(secret, offsetSteps = 0) {
   return String((h.readUInt32BE(o) & 0x7fffffff) % 1e6).padStart(6, "0");
 }
 
-test("2FA: activare cu cod, login în doi pași, cod refolosit refuzat, coduri de recuperare noi", async (t) => {
+test("2FA: activare cu cod, login în doi pași, cod refolosit refuzat; resetare prin link de la administrator", async (t) => {
   const me = await call("/api/auth/status");
   if (!me.json.user?.isAdmin) return t.skip("TEST_USER nu este administrator");
 
@@ -227,12 +227,12 @@ test("2FA: activare cu cod, login în doi pași, cod refolosit refuzat, coduri d
     const r = await fetch(BASE + p, { method, headers: { "content-type": "application/json", cookie: c }, body: body ? JSON.stringify(body) : undefined });
     return { status: r.status, json: await r.json().catch(() => null), headers: r.headers };
   };
-  const login = (body) => fetch(BASE + "/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password, ...body }) });
+  const login = (body, pass = password) => fetch(BASE + "/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password: pass, ...body }) });
   const u1 = as(c1);
 
   try {
     assert.equal((await u1("/api/auth/status")).json.secured, false, "cont nou = doar parolă");
-    assert.equal((await u1("/api/auth/recovery-codes", "POST")).status, 400, "fără 2FA nu se generează coduri");
+    assert.deepEqual((await u1("/api/auth/reauth/options", "POST")).json.methods, ["password"]);
 
     // Activarea: cheia nu se salvează decât după un cod corect.
     const start = await u1("/api/auth/totp", "POST", { action: "start" });
@@ -245,15 +245,16 @@ test("2FA: activare cu cod, login în doi pași, cod refolosit refuzat, coduri d
     const enableCode = totp(start.json.secret);
     const enabled = await u1("/api/auth/totp", "POST", { action: "enable", code: enableCode });
     assert.equal(enabled.status, 200, "activare");
-    assert.equal(enabled.json.recoveryCodes.length, 10, "prima protecție → 10 coduri de recuperare");
+    assert.equal(enabled.json.recoveryCodes, undefined, "fără coduri de recuperare");
     assert.equal((await u1("/api/auth/status")).json.secured, true);
 
     // Login: parola singură nu mai ajunge; parola greșită nu dezvăluie pasul 2.
-    assert.equal((await login({ password: "gresit-gresit-1" })).status, 401);
+    assert.equal((await login({}, "gresit-gresit-1")).status, 401);
     const step1 = await login({});
     assert.equal(step1.status, 403);
     assert.equal((await step1.json()).secondFactor.totp, true);
     assert.equal((await login({ totpCode: "12345" })).status, 401, "cod invalid");
+    assert.equal((await login({ recoveryCode: "aaaa-bbbb-cccc" })).status, 403, "codurile de recuperare nu mai există");
 
     // Codul folosit la activare nu mai merge; următorul interval da (ceasul aplicației poate fi înainte).
     assert.equal((await login({ totpCode: enableCode })).status, 401, "același cod nu merge de două ori");
@@ -261,28 +262,23 @@ test("2FA: activare cu cod, login în doi pași, cod refolosit refuzat, coduri d
     assert.equal(ok.status, 200, "parola + cod 2FA");
     const c2 = ok.headers.get("set-cookie").split(";")[0];
 
-    // Verificarea periodică: nu e încă scadentă; un cod corect se verifică fără să se consume.
-    assert.equal((await as(c2)("/api/auth/status")).json.recoveryCheckDue, false, "lista abia generată");
-    assert.equal((await as(c2)("/api/auth/recovery-codes/check", "POST", { code: "aaaa-bbbb-cccc" })).status, 400);
-    assert.equal((await as(c2)("/api/auth/recovery-codes/check", "POST", { code: enabled.json.recoveryCodes[0] })).status, 200);
-    assert.equal((await as(c2)("/api/auth/recovery-codes")).json.left, 10, "verificarea nu consumă codul");
+    // Reconfirmarea cere codul 2FA, nu parola.
+    assert.deepEqual((await as(c2)("/api/auth/reauth/options", "POST")).json.methods, ["totp"]);
+    assert.equal((await as(c2)("/api/auth/reauth/verify", "POST", { password })).status, 401, "parola singură nu reconfirmă");
 
-    // Cod de recuperare: intră o singură dată, apoi lista se poate regenera.
-    const rc = enabled.json.recoveryCodes[0];
-    const viaRecovery = await login({ recoveryCode: rc });
-    assert.equal(viaRecovery.status, 200);
-    assert.equal((await viaRecovery.json()).usedRecoveryCode, true);
-    assert.equal((await login({ recoveryCode: rc })).status, 401, "cod de recuperare de o singură folosire");
-    const fresh = await as(c2)("/api/auth/recovery-codes", "POST");
-    assert.equal(fresh.status, 200, "coduri noi (sesiunea e confirmată recent)");
-    assert.equal(fresh.json.codes.length, 10);
-    assert.equal((await login({ recoveryCode: enabled.json.recoveryCodes[1] })).status, 401, "codurile vechi nu mai merg");
-
-    // Reconfirmarea cere codul 2FA: nici parola, nici codul de recuperare (păstrat pentru urgențe).
-    const opts = await as(c2)("/api/auth/reauth/options", "POST");
-    assert.deepEqual(opts.json.methods, ["totp"]);
-    assert.equal((await as(c2)("/api/auth/reauth/verify", "POST", { password })).status, 400, "parola singură nu reconfirmă");
-    assert.equal((await as(c2)("/api/auth/reauth/verify", "POST", { recoveryCode: fresh.json.codes[0] })).status, 400, "codul de recuperare nu reconfirmă");
+    // Resetare: adminul creează linkul; persoana își alege altă parolă, 2FA se dezactivează, sesiunile se închid.
+    const created = (await call("/api/admin/users")).json.users.find((u) => u.username === username);
+    const reset = await call("/api/admin/users/reset", { method: "POST", body: { id: created.id } });
+    assert.equal(reset.status, 200);
+    const rcode = new URL(reset.json.link).searchParams.get("cod");
+    assert.equal((await call(`/api/auth/reset?cod=${rcode}`, { auth: false })).json.username, username);
+    assert.equal((await call("/api/auth/reset", { method: "POST", auth: false, body: { code: rcode, password: "scurta" } })).status, 400);
+    const done = await fetch(BASE + "/api/auth/reset", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: rcode, password: "parola-noua-de-test" }) });
+    assert.equal(done.status, 200, "parolă nouă");
+    assert.equal((await as(c2)("/api/auth/status")).json.authenticated, false, "sesiunile vechi s-au închis");
+    assert.equal((await call("/api/auth/reset", { method: "POST", auth: false, body: { code: rcode, password: "alta-parola-de-test" } })).status, 404, "linkul merge o singură dată");
+    assert.equal((await login({}, password)).status, 401, "parola veche nu mai merge");
+    assert.equal((await login({}, "parola-noua-de-test")).status, 200, "parola nouă, fără 2FA");
   } finally {
     const created = (await call("/api/admin/users")).json.users.find((u) => u.username === username);
     if (created) await call(`/api/admin/users?id=${created.id}`, { method: "DELETE" });

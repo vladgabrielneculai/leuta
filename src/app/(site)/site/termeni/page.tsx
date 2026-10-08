@@ -39,7 +39,7 @@ export default function Terms() {
       <ul>
         <li>Accesul se face pe bază de invitație. Înscrierea pe lista de așteptare nu garantează primirea unei invitații într-un anumit termen.</li>
         <li>Trebuie să ai cel puțin {SITE.minAge} ani ca să îți creezi un cont.</li>
-        <li>Contul este personal. Păstrează parola și codurile de recuperare în siguranță și nu le da altor persoane.</li>
+        <li>Contul este personal. Păstrează parola și telefonul cu 2FA în siguranță și nu le da altor persoane.</li>
         <li>Dacă bănuiești că altcineva are acces la cont, schimbă parola, închide sesiunile active din aplicație și anunță-ne.</li>
       </ul>
 

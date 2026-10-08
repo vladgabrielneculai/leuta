@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   clearFailedLogins, createSession, DISABLED_MESSAGE, dummyPasswordCheck, hashPassword, isAccountLocked, isLockedOut, isProtected,
   isSetupComplete, LOCKOUT_MESSAGE, logAuthEvent, recordFailedLogin, requestMeta, secondFactors, sessionCookieOptions,
-  useRecoveryCode, useTotpCode, verifyPassword,
+  useTotpCode, verifyPassword,
 } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
@@ -13,9 +13,9 @@ const BAD_CREDENTIALS = "Utilizator sau parolă incorectă.";
 const BAD_CODE = "Codul nu este corect sau a expirat. Încearcă din nou.";
 
 /**
- * Login cu parolă, în doi pași dacă e nevoie. Contul protejat cu Face ID / amprentă sau cu 2FA nu se deschide
- * doar cu parola: după parola corectă cerem codul din aplicația de autentificare (2FA) sau, în caz de urgență,
- * un cod de recuperare. Face ID / amprenta are drumul ei (/api/auth/passkey/login/...), fără parolă.
+ * Login cu parolă, în doi pași dacă contul are 2FA: după parola corectă cerem codul din aplicația de
+ * autentificare. Face ID / amprenta are drumul ei (/api/auth/passkey/login/...), fără parolă. Cine și-a uitat
+ * parola sau a pierdut telefonul cu 2FA primește de la administrator un link de resetare (/resetare).
  */
 export async function POST(req: NextRequest) {
   try {
@@ -32,7 +32,6 @@ export async function POST(req: NextRequest) {
     const username = String(body.username ?? "").trim().slice(0, 100);
     const password = String(body.password ?? "").slice(0, 200);
     const totpCode = String(body.totpCode ?? "").trim().slice(0, 20);
-    const recoveryCode = String(body.recoveryCode ?? "").trim().slice(0, 40);
     const rememberMe = body.rememberMe !== false;
 
     if (!username || !password) {
@@ -68,27 +67,21 @@ export async function POST(req: NextRequest) {
       await db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(await hashPassword(password, user.salt), user.id);
     }
 
-    // Pasul al doilea. Parola e corectă, dar fără cod contul rămâne închis; interfața cere codul și retrimite tot.
+    // Pasul al doilea. Parola e bună, dar fără cod contul rămâne închis; interfața cere codul și retrimite tot.
     const factors = await secondFactors(user.id);
-    let method: "password" | "totp" | "recovery" = "password";
+    let method: "password" | "totp" = "password";
     if (isProtected(factors)) {
-      if (!totpCode && !recoveryCode) {
+      if (!totpCode) {
         return NextResponse.json(
-          {
-            error: factors.totp
-              ? "Introdu codul de 6 cifre din aplicația de autentificare."
-              : "Contul tău se deschide cu Face ID / amprentă. Dacă nu ai acces la dispozitiv, folosește un cod de recuperare.",
-            secondFactor: { totp: factors.totp, biometric: factors.biometric > 0 },
-          },
+          { error: "Introdu codul de 6 cifre din aplicația de autentificare.", secondFactor: { totp: true } },
           { status: 403 },
         );
       }
-      method = recoveryCode ? "recovery" : "totp";
-      const ok = recoveryCode ? await useRecoveryCode(user.id, recoveryCode) : await useTotpCode(user.id, totpCode);
-      if (!ok) {
+      method = "totp";
+      if (!(await useTotpCode(user.id, totpCode))) {
         await recordFailedLogin(meta.ip, user.id);
-        await logAuthEvent(user.id, false, method, meta, recoveryCode ? "cod de recuperare greșit" : "cod 2FA greșit");
-        return NextResponse.json({ error: BAD_CODE, secondFactor: { totp: factors.totp, biometric: factors.biometric > 0 } }, { status: 401 });
+        await logAuthEvent(user.id, false, method, meta, "cod 2FA greșit");
+        return NextResponse.json({ error: BAD_CODE, secondFactor: { totp: true } }, { status: 401 });
       }
     }
 
@@ -101,7 +94,7 @@ export async function POST(req: NextRequest) {
     await clearFailedLogins(meta.ip, user.id);
     await logAuthEvent(user.id, true, method, meta);
     const { token, expiresAt } = await createSession(user.id, rememberMe, method, meta);
-    const res = NextResponse.json({ ok: true, user: { id: user.id, username: user.username }, usedRecoveryCode: method === "recovery" });
+    const res = NextResponse.json({ ok: true, user: { id: user.id, username: user.username } });
     res.cookies.set({ ...sessionCookieOptions(expiresAt), value: token });
     return res;
   } catch (err) {

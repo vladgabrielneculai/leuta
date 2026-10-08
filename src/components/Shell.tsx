@@ -9,7 +9,6 @@ import Logo from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { ReceiptFooter } from "./receipt";
 import { QuickAddProvider, useQuickAdd } from "./QuickAdd";
-import RecoveryCheck from "./RecoveryCheck";
 
 // Iconițe (trasee SVG 24×24) folosite în bara de jos și în meniul „Mai mult” de pe telefon.
 const ICON = {
@@ -204,8 +203,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<StatusUser | null>(null);
   const [secured, setSecured] = useState(true);
-  const [recoveryDue, setRecoveryDue] = useState(false);
-  // Îndemnul spre Face ID / 2FA poate fi amânat (câteva zile), ca să nu ocupe mereu partea de sus a ecranului.
+  // Îndemnul spre 2FA poate fi amânat (câteva zile), ca să nu ocupe mereu partea de sus a ecranului.
   const [securitySnoozed, setSecuritySnoozed] = useState(true);
   useEffect(() => {
     try {
@@ -221,7 +219,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       localStorage.setItem(SECURITY_SNOOZE, String(Date.now() + SNOOZE_DAYS * 86_400_000));
     } catch {}
   };
-  const isAuthPage = path === "/login" || path === "/setup" || path === "/inregistrare";
+  const isAuthPage = path === "/login" || path === "/setup" || path === "/inregistrare" || path === "/resetare";
   // Ghidul de început ocupă tot ecranul, fără meniul aplicației.
   const isFocusPage = path === "/bun-venit";
   // Paginile protejate ajung în browser doar cu sesiune validă (verificată pe server în proxy.ts),
@@ -231,16 +229,15 @@ export default function Shell({ children }: { children: ReactNode }) {
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   useEffect(() => {
-    api<{ setupNeeded: boolean; authenticated: boolean; user: StatusUser | null; secured?: boolean; recoveryCheckDue?: boolean; onboardingPending?: boolean }>("/api/auth/status")
+    api<{ setupNeeded: boolean; authenticated: boolean; user: StatusUser | null; secured?: boolean; onboardingPending?: boolean }>("/api/auth/status")
       .then((res) => {
         if (res.setupNeeded) {
           if (path !== "/setup") window.location.replace("/setup");
         } else if (!res.authenticated) {
-          if (path !== "/login" && path !== "/inregistrare") window.location.replace("/login");
+          if (path !== "/login" && path !== "/inregistrare" && path !== "/resetare") window.location.replace("/login");
         } else {
           setUser(res.user);
           setSecured(res.secured !== false);
-          setRecoveryDue(!!res.recoveryCheckDue);
           if (isAuthPage) window.location.replace(res.onboardingPending ? "/bun-venit" : "/");
           // Un cont nou trece întâi prin ghidul de început (îl poate amâna de acolo).
           else if (res.onboardingPending && path !== "/bun-venit") window.location.replace("/bun-venit");
@@ -469,7 +466,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <div className="mb-4 flex items-center gap-1 rounded-lg border border-galben/40 bg-galben-tint text-[13px] sm:mb-5">
             <Link href="/setari" className="flex min-w-0 flex-1 items-center justify-between gap-3 py-2.5 pl-3.5 hover:underline sm:py-3 sm:pl-4">
               <span>
-                🔐 <strong>Protejează-ți contul cu Face ID / amprentă sau 2FA</strong>
+                🔐 <strong>Protejează-ți contul cu autentificarea în doi pași (2FA)</strong>
                 <span className="hidden sm:inline">
                   . După asta, o parolă furată nu mai ajunge pentru a intra în aplicație.
                 </span>
@@ -487,7 +484,6 @@ export default function Shell({ children }: { children: ReactNode }) {
           </div>
         )}
         {children}
-        <RecoveryCheck due={recoveryDue} />
         <ReceiptFooter seed={path} />
       </main>
     </div>
