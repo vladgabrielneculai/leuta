@@ -105,6 +105,12 @@ export default function Cookies() {
               <td>Ține minte că ai amânat propunerea de a activa Face ID / amprentă sau 2FA</td>
               <td>14 zile</td>
             </tr>
+            <tr>
+              <td>leuta-verificare-coduri-amanata</td>
+              <td>Stocare locală</td>
+              <td>Ține minte că ai amânat verificarea periodică a codurilor de recuperare</td>
+              <td>3 zile</td>
+            </tr>
           </tbody>
         </table>
       </div>

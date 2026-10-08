@@ -44,6 +44,7 @@ export async function GET() {
         biometric_devices: await sys
           .prepare("SELECT name, device_type, backed_up, created_at, last_used_at FROM webauthn_credentials WHERE user_id = ? ORDER BY created_at")
           .all(uid),
+        recovery_codes_last_checked: (await sys.prepare("SELECT recovery_checked_at FROM users WHERE id = ?").get<{ recovery_checked_at: string | null }>(uid))?.recovery_checked_at ?? null,
         recovery_codes_unused: (await sys.prepare("SELECT COUNT(*)::int AS c FROM recovery_codes WHERE user_id = ? AND used_at IS NULL").get<{ c: number }>(uid))?.c ?? 0,
         sessions: await sys
           .prepare("SELECT created_at, expires_at, last_seen_at, ip, user_agent, location, method FROM sessions WHERE user_id = ? ORDER BY created_at DESC")

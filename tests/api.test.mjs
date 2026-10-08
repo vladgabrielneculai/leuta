@@ -261,6 +261,12 @@ test("2FA: activare cu cod, login în doi pași, cod refolosit refuzat, coduri d
     assert.equal(ok.status, 200, "parola + cod 2FA");
     const c2 = ok.headers.get("set-cookie").split(";")[0];
 
+    // Verificarea periodică: nu e încă scadentă; un cod corect se verifică fără să se consume.
+    assert.equal((await as(c2)("/api/auth/status")).json.recoveryCheckDue, false, "lista abia generată");
+    assert.equal((await as(c2)("/api/auth/recovery-codes/check", "POST", { code: "aaaa-bbbb-cccc" })).status, 400);
+    assert.equal((await as(c2)("/api/auth/recovery-codes/check", "POST", { code: enabled.json.recoveryCodes[0] })).status, 200);
+    assert.equal((await as(c2)("/api/auth/recovery-codes")).json.left, 10, "verificarea nu consumă codul");
+
     // Cod de recuperare: intră o singură dată, apoi lista se poate regenera.
     const rc = enabled.json.recoveryCodes[0];
     const viaRecovery = await login({ recoveryCode: rc });
@@ -272,10 +278,11 @@ test("2FA: activare cu cod, login în doi pași, cod refolosit refuzat, coduri d
     assert.equal(fresh.json.codes.length, 10);
     assert.equal((await login({ recoveryCode: enabled.json.recoveryCodes[1] })).status, 401, "codurile vechi nu mai merg");
 
-    // Reconfirmarea cere codul, nu parola.
+    // Reconfirmarea cere codul 2FA: nici parola, nici codul de recuperare (păstrat pentru urgențe).
     const opts = await as(c2)("/api/auth/reauth/options", "POST");
-    assert.deepEqual(opts.json.methods, ["totp", "recovery"]);
+    assert.deepEqual(opts.json.methods, ["totp"]);
     assert.equal((await as(c2)("/api/auth/reauth/verify", "POST", { password })).status, 400, "parola singură nu reconfirmă");
+    assert.equal((await as(c2)("/api/auth/reauth/verify", "POST", { recoveryCode: fresh.json.codes[0] })).status, 400, "codul de recuperare nu reconfirmă");
   } finally {
     const created = (await call("/api/admin/users")).json.users.find((u) => u.username === username);
     if (created) await call(`/api/admin/users?id=${created.id}`, { method: "DELETE" });

@@ -210,10 +210,10 @@ function LoginScreen() {
                 {busy === "form" ? "Se verifică…" : step2 ? "Intră" : "Intră cu parola"}
               </button>
               {step2 && (
-                <div className="flex flex-col items-center gap-2 text-[12.5px]">
+                <div className="flex flex-col items-center gap-2 text-[12px]">
                   {step2.totp && (
-                    <button type="button" className="text-albastru hover:underline" onClick={() => { setUseRecovery(!useRecovery); setCode(""); setError(null); }}>
-                      {useRecovery ? "Folosește codul din aplicația de autentificare" : "Nu ai telefonul? Folosește un cod de recuperare"}
+                    <button type="button" className="text-ink-soft hover:text-ink hover:underline" onClick={() => { setUseRecovery(!useRecovery); setCode(""); setError(null); }}>
+                      {useRecovery ? "Folosește codul din aplicația de autentificare" : "Ai pierdut telefonul? Intră cu un cod de recuperare"}
                     </button>
                   )}
                   <button type="button" className="text-ink-soft hover:underline" onClick={backToPassword}>← Alt utilizator</button>
