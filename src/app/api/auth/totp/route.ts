@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
 import {
-  getCurrentSession, isProtected, logAuthEvent, regenerateRecoveryCodes, requestMeta, requireRecentAuth, revokeSessions,
-  secondFactors, sha256,
+  getCurrentSession, logAuthEvent, requestMeta, requireRecentAuth, revokeSessions, sha256,
 } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
@@ -61,20 +60,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Codul nu se potrivește. Verifică ora telefonului și scrie codul afișat acum." }, { status: 400 });
       }
 
-      const first = !isProtected(await secondFactors(session.id));
       await db
         .prepare("UPDATE users SET totp_secret = ?, totp_enabled_at = now(), totp_last_step = ? WHERE id = ?")
         .run(pending.challenge, step, session.id);
       await db.prepare("DELETE FROM auth_challenges WHERE id = ?").run(pendingId(session.sessionId));
 
-      // Prima protecție pe lângă parolă: coduri de recuperare + închiderea sesiunilor deschise doar cu parola.
-      let recoveryCodes: string[] | null = null;
-      if (first) {
-        recoveryCodes = await regenerateRecoveryCodes(session.id);
-        await revokeSessions(session.id, session.sessionId);
-      }
+      // De acum parola singură nu mai ajunge: închidem celelalte sesiuni (inclusiv ale cuiva care o aflase).
+      await revokeSessions(session.id, session.sessionId);
       await logAuthEvent(session.id, true, "totp-activat", requestMeta(req.headers));
-      return NextResponse.json({ ok: true, recoveryCodes });
+      return NextResponse.json({ ok: true });
     }
 
     return NextResponse.json({ error: "Acțiune necunoscută." }, { status: 400 });
@@ -83,7 +77,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** Dezactivează 2FA. Dacă nu mai rămâne nici Face ID / amprentă, contul se deschide din nou doar cu parola. */
+/** Dezactivează 2FA: contul se deschide din nou doar cu parola (sau cu Face ID / amprenta, unde e activată). */
 export async function DELETE(req: NextRequest) {
   try {
     const auth = await requireRecentAuth();
@@ -93,7 +87,7 @@ export async function DELETE(req: NextRequest) {
       .prepare("UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = 0 WHERE id = ?")
       .run(session.id);
     await logAuthEvent(session.id, true, "totp-dezactivat", requestMeta(req.headers));
-    return NextResponse.json({ ok: true, protected: isProtected(await secondFactors(session.id)) });
+    return NextResponse.json({ ok: true });
   } catch (err) {
     return errorResponse(err, "Autentificarea în doi pași nu a putut fi dezactivată.");
   }

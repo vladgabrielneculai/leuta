@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { biometricAvailable, biometricLabel, passkeyErrorMessage, registerPasskey } from "@/lib/passkeyClient";
-import RecoveryCodesModal from "./RecoveryCodesModal";
 import { api, Modal, Panel, useConfirm } from "./ui";
 
 type Passkey = { id: string; name: string; device_type: string; backed_up: number; created_at: string; last_used_at: string | null };
@@ -26,6 +25,7 @@ const METHOD_LABEL: Record<string, string> = {
   passkey: "Face ID / amprentă",
   totp: "parolă + cod 2FA",
   recovery: "parolă + cod de recuperare",
+  reset: "parolă nouă din link de resetare",
   setup: "creare cont",
   invite: "creare cont din invitație",
   reconfirmare: "reconfirmare",
@@ -35,6 +35,7 @@ const METHOD_LABEL: Record<string, string> = {
   "totp-dezactivat": "2FA dezactivat",
   "coduri-regenerate": "coduri de recuperare noi",
   "coduri-verificate": "verificarea codurilor de recuperare",
+  "resetare-creata": "link de resetare creat de administrator",
   "parola-schimbata": "parolă schimbată",
   "delogare-peste-tot": "delogare de pe celelalte dispozitive",
   "sesiune-inchisa": "sesiune închisă",
@@ -44,8 +45,9 @@ type TotpSetup = { secret: string; uri: string; qr: string };
 
 /**
  * Securitatea contului: Face ID / amprentă pe fiecare dispozitiv, autentificare în doi pași cu o aplicație
- * (2FA), coduri de recuperare, dispozitive conectate și istoricul autentificărilor. Cu Face ID / amprentă sau
- * 2FA activ, parola singură nu mai deschide contul.
+ * (2FA), dispozitive conectate și istoricul autentificărilor. Cu 2FA activ, parola singură nu mai deschide contul;
+ * Face ID / amprenta e drumul rapid de pe dispozitivele tale. Cine pierde accesul primește un link de resetare
+ * de la administrator.
  */
 const SESSIONS_SHOWN = 3;
 
@@ -55,8 +57,6 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
   const [totp, setTotp] = useState<{ enabled: boolean; enabledAt: string | null } | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [codesLeft, setCodesLeft] = useState<number | null>(null);
-  const [newCodes, setNewCodes] = useState<string[] | null>(null);
   const [setup, setSetup] = useState<TotpSetup | null>(null);
   const [setupCode, setSetupCode] = useState("");
   const [setupError, setSetupError] = useState<string | null>(null);
@@ -64,30 +64,26 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
   const [error, setError] = useState<string | null>(null);
   const [bioReady, setBioReady] = useState(true);
   const [bioLabel, setBioLabel] = useState("Face ID / amprentă");
-  const [fromRecovery, setFromRecovery] = useState(false);
   // Lista de dispozitive poate fi lungă: implicit doar primele câteva (cel curent e primul).
   const [allSessions, setAllSessions] = useState(false);
 
   const load = useCallback(async () => {
-    const [p, t, s, e, c] = await Promise.all([
+    const [p, t, s, e] = await Promise.all([
       api<{ passkeys: Passkey[] }>("/api/auth/passkey/list"),
       api<{ enabled: boolean; enabledAt: string | null }>("/api/auth/totp"),
       api<{ sessions: Session[] }>("/api/auth/sessions"),
       api<{ events: Event[] }>("/api/auth/events"),
-      api<{ left: number }>("/api/auth/recovery-codes"),
     ]);
     setPasskeys(p.passkeys);
     setTotp(t);
     // Dispozitivul curent primul, apoi după ultima activitate (ordinea de pe server).
     setSessions([...s.sessions].sort((a, b) => Number(!!b.current) - Number(!!a.current)));
     setEvents(e.events);
-    setCodesLeft(c.left);
   }, []);
 
   useEffect(() => {
     biometricAvailable().then(setBioReady);
     setBioLabel(biometricLabel());
-    setFromRecovery(new URLSearchParams(window.location.search).get("securitate") === "recuperare");
     load().catch((e) => setError(e.message));
   }, [load]);
 
@@ -106,21 +102,16 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
   const addBiometric = () =>
     run(async () => {
       const res = await registerPasskey("", api);
-      if (res.recoveryCodes) setNewCodes(res.recoveryCodes);
       onToast(`${bioLabel} activat pe ${res.name}`);
       await load();
     });
 
   const hasBiometric = (passkeys?.length ?? 0) > 0;
-  const secured = hasBiometric || !!totp?.enabled;
 
   const removeBiometric = async (p: Passkey) => {
-    const lastFactor = (passkeys?.length ?? 0) === 1 && !totp?.enabled;
     const ok = await confirm({
       title: "Scoate Face ID / amprenta",
-      message: lastFactor
-        ? `„${p.name}” e ultima protecție a contului. Fără ea, contul se va deschide din nou doar cu parola (mai puțin sigur). Continui?`
-        : `Scoți Face ID / amprenta de pe „${p.name}”? Dispozitivul acela nu va mai putea intra fără parolă și cod.`,
+      message: `Scoți Face ID / amprenta de pe „${p.name}”? Pe dispozitivul acela vei intra din nou cu parola.`,
       confirmText: "Scoate",
       danger: true,
     });
@@ -144,9 +135,8 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
     setSetupError(null);
     setBusy(true);
     try {
-      const r = await api<{ ok: true; recoveryCodes: string[] | null }>("/api/auth/totp", "POST", { action: "enable", code: setupCode });
+      await api("/api/auth/totp", "POST", { action: "enable", code: setupCode });
       setSetup(null);
-      if (r.recoveryCodes) setNewCodes(r.recoveryCodes);
       onToast("Autentificarea în doi pași e activă");
       await load();
     } catch (err) {
@@ -159,9 +149,7 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
   const disableTotp = async () => {
     const ok = await confirm({
       title: "Dezactivează 2FA",
-      message: hasBiometric
-        ? "Codurile din aplicația de autentificare nu vor mai funcționa. Contul rămâne protejat cu Face ID / amprentă. Continui?"
-        : "2FA e ultima protecție a contului. Fără ea, contul se va deschide din nou doar cu parola (mai puțin sigur). Continui?",
+      message: "Codurile din aplicația de autentificare nu vor mai funcționa, iar contul se va deschide din nou doar cu parola (mai puțin sigur). Continui?",
       confirmText: "Dezactivează",
       danger: true,
     });
@@ -173,19 +161,6 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
     });
   };
 
-  const regenerateCodes = async () => {
-    const ok = await confirm({
-      title: "Coduri de recuperare noi",
-      message: "Codurile vechi nu vor mai funcționa, nici cele nefolosite. Generez 10 coduri noi?",
-      confirmText: "Generează",
-    });
-    if (!ok) return;
-    run(async () => {
-      const r = await api<{ codes: string[] }>("/api/auth/recovery-codes", "POST");
-      setNewCodes(r.codes);
-      await load();
-    });
-  };
 
   const closeSession = (s: Session) =>
     run(async () => {
@@ -215,25 +190,13 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
 
   return (
     <Panel title="Securitate & dispozitive">
-      {fromRecovery && (
-        <div className="mb-4 rounded-md bg-galben-tint p-3 text-[13px]">
-          <p>
-            Ai intrat cu un cod de recuperare; mai ai <strong>{codesLeft ?? "…"}</strong> nefolosite. Dacă ai pierdut
-            telefonul, scoate-l de mai jos și activează Face ID / amprenta sau 2FA pe dispozitivul nou. Dacă nu mai ai
-            lista de coduri, generează una nouă acum.
-          </p>
-          {secured && (
-            <button className="btn-primary mt-2 py-1 text-[13px]" onClick={regenerateCodes} disabled={busy}>Generează coduri noi</button>
-          )}
-        </div>
-      )}
       {error && <div className="mb-3 rounded bg-rosu-tint p-2.5 text-[13px] font-medium text-rosu">{error}</div>}
 
-      {!secured && passkeys && totp && (
+      {totp && !totp.enabled && (
         <p className="mb-4 rounded-md bg-paper p-3 text-[13px] text-ink-soft">
-          Acum contul se deschide doar cu parola. Activează <strong>Face ID / amprentă</strong> (intri dintr-o atingere) sau{" "}
-          <strong>autentificarea în doi pași</strong> (parola + un cod din telefon). Ideal amândouă: 2FA te ajută să intri de pe
-          orice calculator. Primești și 10 coduri de recuperare pentru urgențe.
+          Acum contul se deschide doar cu parola. Activează <strong>autentificarea în doi pași</strong> (parola + un cod din
+          telefon), ca o parolă aflată de altcineva să nu ajungă. <strong>Face ID / amprenta</strong> e în plus: intri dintr-o
+          atingere pe dispozitivele tale.
         </p>
       )}
 
@@ -253,7 +216,7 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
         </div>
         <p className="mb-2 text-[12.5px] text-ink-soft">
           Intri dintr-o atingere, fără parolă. Amprenta și fața nu pleacă niciodată de pe dispozitiv: telefonul doar confirmă că ești tu.
-          Activează pe fiecare dispozitiv pe care îl folosești.
+          Activează pe fiecare dispozitiv pe care îl folosești; pe celelalte intri cu parola (+ codul 2FA).
         </p>
         <ul className="divide-y divide-line">
           {passkeys?.map((p) => (
@@ -290,22 +253,10 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
         </p>
       </div>
 
-      {/* Coduri de recuperare */}
-      {secured && (
-        <div className="mb-5 rounded-md bg-paper p-3 text-[13px]">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span>
-              Coduri de recuperare nefolosite: <strong>{codesLeft ?? "…"}</strong> din 10
-              {codesLeft !== null && codesLeft <= 3 ? " — generează altele curând" : ""}
-            </span>
-            <button className="btn-ghost py-1 text-[13px]" onClick={regenerateCodes} disabled={busy}>Generează coduri noi</button>
-          </div>
-          <p className="mt-1 text-[12px] text-ink-soft">
-            Ai pierdut lista sau ai folosit câteva? Generează alte 10 oricând; cele vechi nu mai merg. Un cod de recuperare +
-            parola deschid contul când nu ai la tine telefonul.
-          </p>
-        </div>
-      )}
+      <p className="mb-5 rounded-md bg-paper p-3 text-[12.5px] text-ink-soft">
+        Ți-ai uitat parola sau ai pierdut telefonul cu 2FA? Administratorul îți poate trimite un link de resetare: îți alegi o
+        parolă nouă, apoi reactivezi 2FA și Face ID / amprenta de aici.
+      </p>
 
       {/* Sesiuni */}
       <div className="mb-5">
@@ -403,7 +354,6 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
         </form>
       </Modal>
 
-      <RecoveryCodesModal codes={newCodes} onClose={() => setNewCodes(null)} onCopied={() => onToast("Codurile au fost copiate")} />
     </Panel>
   );
 }

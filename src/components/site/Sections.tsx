@@ -40,7 +40,7 @@ const SECURITY: [string, string][] = [
   ["Face ID, amprentă sau 2FA", "Intri dintr-o atingere sau cu parola + un cod din telefon. Parolele sunt stocate doar ca hash (PBKDF2)."],
   ["Date găzduite în UE", "Baza de date și serverele aplicației sunt în Frankfurt, Germania. Conexiunea e mereu criptată (HTTPS)."],
   ["Controlul sesiunilor", "Vezi de pe ce dispozitive ești conectat și închizi orice sesiune dintr-un buton."],
-  ["Coduri de recuperare", "Dacă pierzi telefonul, intri cu un cod de rezervă și îți generezi altele oricând."],
+  ["Acces recuperabil", "Ți-ai uitat parola sau ai pierdut telefonul? Primești un link de resetare și intri din nou, cu datele neatinse."],
 ];
 
 export function Security() {

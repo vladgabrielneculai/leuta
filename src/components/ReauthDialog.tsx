@@ -7,11 +7,10 @@ import {
 } from "@/lib/passkeyClient";
 import { Modal, setReauthHandler } from "./ui";
 
-type CodeMode = "totp" | "recovery" | "password";
+type CodeMode = "totp" | "password";
 
 const CODE_FIELD: Record<CodeMode, { label: string; placeholder: string; inputMode?: "numeric"; mono?: boolean; type?: string }> = {
   totp: { label: "Codul din aplicația de autentificare", placeholder: "123 456", inputMode: "numeric", mono: true },
-  recovery: { label: "Un cod de recuperare", placeholder: "xxxx-xxxx-xxxx", mono: true },
   password: { label: "Parola", placeholder: "", type: "password" },
 };
 
@@ -36,7 +35,7 @@ export default function ReauthDialog() {
       const r = await reauthOptions();
       setMethods(r.methods);
       setOptions(r.options ?? null);
-      setMode(r.methods.includes("totp") ? "totp" : r.methods.includes("password") ? "password" : "recovery");
+      setMode(r.methods.includes("totp") ? "totp" : "password");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Confirmarea nu a putut porni.");
     }
@@ -82,7 +81,7 @@ export default function ReauthDialog() {
     setBusy(true);
     setError(null);
     try {
-      await reauthWithCode(mode === "totp" ? { totpCode: value } : mode === "recovery" ? { recoveryCode: value } : { password: value });
+      await reauthWithCode(mode === "totp" ? { totpCode: value } : { password: value });
       finish(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Confirmarea nu a reușit.");

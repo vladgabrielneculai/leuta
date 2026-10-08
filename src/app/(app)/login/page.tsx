@@ -19,12 +19,12 @@ export default function LoginPage() {
   );
 }
 
-type SecondFactor = { totp: boolean; biometric: boolean };
+type SecondFactor = { totp: boolean };
 
 /**
- * Login: Face ID / amprentă dintr-o atingere, sau utilizator + parolă. Dacă contul are 2FA (ori Face ID /
- * amprentă, iar acum intri de pe alt dispozitiv), după parola corectă se cere al doilea pas: codul din aplicația
- * de autentificare sau un cod de recuperare. Fila „Cont nou” duce la crearea contului dintr-o invitație.
+ * Login: Face ID / amprentă dintr-o atingere, sau utilizator + parolă. Dacă contul are 2FA, după parola corectă
+ * se cere codul din aplicația de autentificare. Parolă uitată / telefon pierdut → link de resetare de la
+ * administrator. Fila „Cont nou” duce la crearea contului dintr-o invitație.
  */
 function LoginScreen() {
   const [tab, setTab] = useState<"login" | "new">("login");
@@ -32,7 +32,6 @@ function LoginScreen() {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [step2, setStep2] = useState<SecondFactor | null>(null);
-  const [useRecovery, setUseRecovery] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"bio" | "form" | null>(null);
@@ -76,7 +75,7 @@ function LoginScreen() {
     setError(null);
     setBusy("form");
     try {
-      const second = step2 ? (useRecovery || !step2.totp ? { recoveryCode: code } : { totpCode: code }) : {};
+      const second = step2 ? { totpCode: code } : {};
       const r = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,13 +83,12 @@ function LoginScreen() {
       });
       const res = await r.json();
       if (r.ok) {
-        window.location.href = res.usedRecoveryCode ? "/setari?securitate=recuperare" : "/";
+        window.location.href = "/";
         return;
       }
       if (res.secondFactor && !step2) {
         // Parola e bună; urmează codul. Mesajul de pe server nu e o eroare, ci instrucțiunea pasului 2.
         setStep2(res.secondFactor);
-        setUseRecovery(!res.secondFactor.totp);
         setCode("");
         return;
       }
@@ -124,7 +122,6 @@ function LoginScreen() {
     );
   }
 
-  const recoveryMode = !!step2 && (useRecovery || !step2.totp);
   const tabClass = (t: typeof tab) =>
     `flex-1 rounded-[6px] py-2 text-[13.5px] font-semibold transition-colors ${tab === t ? "bg-paper text-ink shadow-sm" : "text-ink-soft hover:text-ink"}`;
 
@@ -177,27 +174,16 @@ function LoginScreen() {
               ) : (
                 <>
                   <p className="rounded-md bg-paper p-3 text-[13px]">
-                    {recoveryMode ? (
-                      <>
-                        Pasul 2 pentru <strong>{username.trim()}</strong>: scrie unul dintre cele 10 coduri de recuperare. Fiecare
-                        merge o singură dată; după ce intri, poți genera altele din Setări.
-                      </>
-                    ) : (
-                      <>
-                        Pasul 2 pentru <strong>{username.trim()}</strong>: deschide aplicația de autentificare și scrie codul de 6
-                        cifre pentru Leuța.
-                      </>
-                    )}
+                    Pasul 2 pentru <strong>{username.trim()}</strong>: deschide aplicația de autentificare și scrie codul de 6
+                    cifre pentru Leuța.
                   </p>
-                  <Field label={recoveryMode ? "Cod de recuperare" : "Cod de autentificare (2FA)"}>
+                  <Field label="Cod de autentificare (2FA)">
                     <input
-                      key={recoveryMode ? "rec" : "totp"}
                       className="field font-mono tracking-wider"
                       type="text"
-                      inputMode={recoveryMode ? "text" : "numeric"}
+                      inputMode="numeric"
                       autoComplete="one-time-code"
-                      autoCapitalize="none"
-                      placeholder={recoveryMode ? "xxxx-xxxx-xxxx" : "123 456"}
+                      placeholder="123 456"
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
                       required
@@ -211,11 +197,6 @@ function LoginScreen() {
               </button>
               {step2 && (
                 <div className="flex flex-col items-center gap-2 text-[12px]">
-                  {step2.totp && (
-                    <button type="button" className="text-ink-soft hover:text-ink hover:underline" onClick={() => { setUseRecovery(!useRecovery); setCode(""); setError(null); }}>
-                      {useRecovery ? "Folosește codul din aplicația de autentificare" : "Ai pierdut telefonul? Intră cu un cod de recuperare"}
-                    </button>
-                  )}
                   <button type="button" className="text-ink-soft hover:underline" onClick={backToPassword}>← Alt utilizator</button>
                 </div>
               )}
@@ -225,6 +206,9 @@ function LoginScreen() {
               <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-line accent-leu" />
               <span>Ține-mă minte pe acest dispozitiv</span>
             </label>
+            <p className="mt-3 text-[12px] text-ink-soft">
+              Ți-ai uitat parola sau ai pierdut telefonul cu 2FA? Cere administratorului un link de resetare.
+            </p>
           </>
         ) : (
           <form onSubmit={openInvite} className="flex flex-col gap-4">

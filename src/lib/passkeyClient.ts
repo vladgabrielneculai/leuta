@@ -57,11 +57,11 @@ export async function loginWithPasskey(rememberMe: boolean) {
   return post<{ ok: true }>("/api/auth/passkey/login/verify", { response, rememberMe });
 }
 
-/** Face ID / amprentă pe dispozitivul curent. Întoarce codurile de recuperare dacă e prima protecție a contului. */
+/** Face ID / amprentă pe dispozitivul curent. */
 export async function registerPasskey(name: string, request: <T>(url: string, method: string, body?: unknown) => Promise<T>) {
   const options = await request<PublicKeyCredentialCreationOptionsJSON>("/api/auth/passkey/register/options", "POST");
   const response = await startRegistration({ optionsJSON: options });
-  return request<{ ok: true; name: string; recoveryCodes: string[] | null }>("/api/auth/passkey/register/verify", "POST", { response, name });
+  return request<{ ok: true; name: string }>("/api/auth/passkey/register/verify", "POST", { response, name });
 }
 
 /** Reconfirmarea identității cu Face ID / amprentă, pe baza opțiunilor primite de la server. */
@@ -70,11 +70,11 @@ export async function reauthWithPasskey(options: PublicKeyCredentialRequestOptio
   return post<{ ok: true }>("/api/auth/reauth/verify", { response });
 }
 
-export async function reauthWithCode(body: { password: string } | { totpCode: string } | { recoveryCode: string }) {
+export async function reauthWithCode(body: { password: string } | { totpCode: string }) {
   return post<{ ok: true }>("/api/auth/reauth/verify", body);
 }
 
-export type ReauthMethod = "biometric" | "totp" | "recovery" | "password";
+export type ReauthMethod = "biometric" | "totp" | "password";
 
 export async function reauthOptions() {
   return post<{ methods: ReauthMethod[]; options?: PublicKeyCredentialRequestOptionsJSON | null }>("/api/auth/reauth/options");

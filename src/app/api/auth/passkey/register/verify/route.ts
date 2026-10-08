@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRegistrationResponse, type RegistrationResponseJSON } from "@simplewebauthn/server";
-import { isProtected, logAuthEvent, regenerateRecoveryCodes, requestMeta, requireRecentAuth, revokeSessions, secondFactors } from "@/lib/auth";
+import { logAuthEvent, requestMeta, requireRecentAuth } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
 import { clearChallengeCookie, deviceName, encodePublicKey, relyingParty, takeChallenge } from "@/lib/webauthn";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Salvează Face ID / amprenta dispozitivului. Dacă e prima protecție a contului (nici 2FA nu era activ): parola
- * singură nu mai ajunge, se generează codurile de recuperare (afișate o singură dată) și se închid celelalte
- * sesiuni deschise cu parola.
- */
+/** Salvează Face ID / amprenta dispozitivului: de acum, pe el intri dintr-o atingere. */
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireRecentAuth();
@@ -35,7 +31,6 @@ export async function POST(req: NextRequest) {
 
     const { credential, credentialDeviceType, credentialBackedUp } = result.registrationInfo;
     const meta = requestMeta(req.headers);
-    const first = !isProtected(await secondFactors(session.id));
     const name = String(body.name ?? "").trim().slice(0, 60) || deviceName(meta.userAgent);
     await (await getDb())
       .prepare(
@@ -47,13 +42,8 @@ export async function POST(req: NextRequest) {
         (credential.transports ?? []).join(","), credentialDeviceType, credentialBackedUp ? 1 : 0, name,
       );
 
-    let recoveryCodes: string[] | null = null;
-    if (first) {
-      recoveryCodes = await regenerateRecoveryCodes(session.id);
-      await revokeSessions(session.id, session.sessionId);
-    }
     await logAuthEvent(session.id, true, "passkey-adaugat", meta, name);
-    const res = NextResponse.json({ ok: true, name, recoveryCodes });
+    const res = NextResponse.json({ ok: true, name });
     clearChallengeCookie(res);
     return res;
   } catch (err) {

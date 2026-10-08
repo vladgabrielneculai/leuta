@@ -97,7 +97,7 @@ export function requestMeta(headers: Headers): RequestMeta {
 
 // ---------- Sesiuni ----------
 
-export type AuthMethod = "password" | "passkey" | "totp" | "recovery" | "setup" | "invite";
+export type AuthMethod = "password" | "passkey" | "totp" | "setup" | "invite" | "reset";
 
 export async function createSession(
   userId: number,
@@ -234,7 +234,7 @@ export async function markReauthenticated(sessionId: string) {
   await (await getDb()).prepare("UPDATE sessions SET last_auth_at = now() WHERE id = ?").run(sessionId);
 }
 
-// ---------- Al doilea factor (Face ID / amprentă, 2FA) și coduri de recuperare ----------
+// ---------- Face ID / amprentă și autentificarea în doi pași ----------
 
 /** Câte dispozitive cu Face ID / amprentă are contul (passkey-uri WebAuthn, tehnic). */
 export async function passkeyCount(userId: number): Promise<number> {
@@ -246,7 +246,6 @@ export async function passkeyCount(userId: number): Promise<number> {
 
 export type SecondFactors = { biometric: number; totp: boolean };
 
-/** Ce protejează contul pe lângă parolă. Cu oricare activ, parola singură nu mai deschide contul. */
 export async function secondFactors(userId: number): Promise<SecondFactors> {
   const row = await (await getDb())
     .prepare(
@@ -258,7 +257,11 @@ export async function secondFactors(userId: number): Promise<SecondFactors> {
   return { biometric: row?.biometric ?? 0, totp: !!row?.totp };
 }
 
-export const isProtected = (f: SecondFactors) => f.biometric > 0 || f.totp;
+/**
+ * Contul cere al doilea pas la login cu parolă doar dacă are 2FA. Face ID / amprenta e un login rapid în plus,
+ * nu o barieră: de pe un dispozitiv fără ea intri cu parola (+ codul 2FA, dacă e activ), fără coduri de rezervă.
+ */
+export const isProtected = (f: SecondFactors) => f.totp;
 
 /** Verifică un cod 2FA al contului și îl marchează folosit (același cod nu merge de două ori). */
 export async function useTotpCode(userId: number, code: string): Promise<boolean> {
@@ -274,70 +277,32 @@ export async function useTotpCode(userId: number, code: string): Promise<boolean
   return res.changes > 0;
 }
 
-const RECOVERY_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"; // fără caractere ușor de confundat
+// ---------- Resetarea accesului (parolă uitată, telefon pierdut) ----------
 
-function normalizeRecoveryCode(code: string) {
-  return code.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
+export const RESET_HOURS = 24;
 
-/** 10 coduri noi (le vede utilizatorul o singură dată); cele vechi nu mai sunt valabile. */
-export async function regenerateRecoveryCodes(userId: number): Promise<string[]> {
-  const codes = Array.from({ length: 10 }, () => {
-    const bytes = crypto.randomBytes(12);
-    const raw = Array.from(bytes, (b) => RECOVERY_ALPHABET[b % RECOVERY_ALPHABET.length]).join("");
-    return `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`;
-  });
+/** Link de resetare creat de administrator: codul e vizibil o singură dată; cele vechi ale contului se anulează. */
+export async function createPasswordReset(userId: number, createdBy: number): Promise<{ code: string; expiresAt: string }> {
+  const code = crypto.randomBytes(24).toString("base64url");
+  const expiresAt = new Date(Date.now() + RESET_HOURS * 60 * 60 * 1000).toISOString();
   const db = await getDb();
-  await db.transaction(async (tx) => {
-    await tx.prepare("DELETE FROM recovery_codes WHERE user_id = ?").run(userId);
-    await tx
-      .prepare(`INSERT INTO recovery_codes (user_id, code_hash) VALUES ${codes.map(() => "(?, ?)").join(",")}`)
-      .run(...codes.flatMap((c) => [userId, sha256(normalizeRecoveryCode(c))]));
-    // Lista tocmai a fost văzută și salvată: următoarea verificare periodică abia peste RECOVERY_CHECK_DAYS.
-    await tx.prepare("UPDATE users SET recovery_checked_at = now() WHERE id = ?").run(userId);
-  });
-  return codes;
+  await db.prepare("UPDATE password_resets SET revoked_at = now() WHERE user_id = ? AND used_at IS NULL AND revoked_at IS NULL").run(userId);
+  await db
+    .prepare("INSERT INTO password_resets (user_id, token_hash, created_by, expires_at) VALUES (?, ?, ?, ?)")
+    .run(userId, sha256(code), createdBy, expiresAt);
+  return { code, expiresAt };
 }
 
-/** La câte zile cerem un cod de recuperare, ca verificare că lista e încă la tine. */
-export const RECOVERY_CHECK_DAYS = 90;
-
-/** E timpul pentru verificarea periodică: contul e protejat, are coduri și n-a mai fost verificat de 3 luni. */
-export async function recoveryCheckDue(userId: number): Promise<boolean> {
+/** Contul pentru un link de resetare valid (nefolosit, neanulat, neexpirat), sau null. */
+export async function findValidReset(code: string): Promise<{ id: number; user_id: number; username: string } | null> {
+  if (!/^[A-Za-z0-9_-]{20,64}$/.test(code)) return null;
   const row = await (await getDb())
     .prepare(
-      `SELECT (recovery_checked_at IS NULL OR recovery_checked_at < now() - interval '${RECOVERY_CHECK_DAYS} days')
-              AND EXISTS (SELECT 1 FROM recovery_codes r WHERE r.user_id = u.id AND r.used_at IS NULL) AS due
-       FROM users u WHERE u.id = ?`,
+      `SELECT r.id, r.user_id, u.username FROM password_resets r JOIN users u ON u.id = r.user_id
+       WHERE r.token_hash = ? AND r.used_at IS NULL AND r.revoked_at IS NULL AND r.expires_at > now() AND u.disabled_at IS NULL`,
     )
-    .get<{ due: boolean }>(userId);
-  return !!row?.due;
-}
-
-/** Verifică un cod de recuperare FĂRĂ să-l consume (verificarea periodică) și reînnoiește data verificării. */
-export async function checkRecoveryCode(userId: number, code: string): Promise<boolean> {
-  const db = await getDb();
-  const hit = await db
-    .prepare("SELECT 1 FROM recovery_codes WHERE user_id = ? AND code_hash = ? AND used_at IS NULL")
-    .get(userId, sha256(normalizeRecoveryCode(code)));
-  if (!hit) return false;
-  await db.prepare("UPDATE users SET recovery_checked_at = now() WHERE id = ?").run(userId);
-  return true;
-}
-
-/** Consumă un cod de recuperare (o singură folosire). */
-export async function useRecoveryCode(userId: number, code: string): Promise<boolean> {
-  const res = await (await getDb())
-    .prepare("UPDATE recovery_codes SET used_at = now() WHERE user_id = ? AND code_hash = ? AND used_at IS NULL")
-    .run(userId, sha256(normalizeRecoveryCode(code)));
-  return res.changes > 0;
-}
-
-export async function recoveryCodesLeft(userId: number): Promise<number> {
-  const row = await (await getDb())
-    .prepare("SELECT COUNT(*)::int AS c FROM recovery_codes WHERE user_id = ? AND used_at IS NULL")
-    .get<{ c: number }>(userId);
-  return row?.c ?? 0;
+    .get<{ id: number; user_id: number; username: string }>(sha256(code));
+  return row ?? null;
 }
 
 // ---------- Protecție împotriva ghicirii parolei ----------

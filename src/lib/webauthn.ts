@@ -8,7 +8,7 @@ import { getSystemDb as getDb } from "./db";
 /**
  * Passkey-uri (WebAuthn): amprentă, Face ID, Windows Hello sau o cheie de securitate.
  * Un passkey e legat de domeniul aplicației (RP ID). Pe un alt domeniu (ex. o previzualizare Vercel)
- * nu funcționează — acolo rămân codurile de recuperare.
+ * nu funcționează — acolo se intră cu parola (+ codul 2FA).
  */
 
 export const RP_NAME = "Leuța";

@@ -48,8 +48,8 @@ function fmtDay(d: string) {
   return new Date(d).toLocaleDateString("ro-RO", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-/** Linkul de invitație abia creat: se vede o singură dată, cu buton de copiere și de partajare. */
-function NewInviteLink({ link, onClose }: { link: string; onClose: () => void }) {
+/** Linkul abia creat (invitație sau resetare): se vede o singură dată, cu buton de copiere și de partajare. */
+function NewInviteLink({ link, onClose, reset }: { link: string; onClose: () => void; reset?: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -62,15 +62,17 @@ function NewInviteLink({ link, onClose }: { link: string; onClose: () => void })
   const canShare = typeof navigator !== "undefined" && "share" in navigator;
   return (
     <div className="rounded-lg border border-leu/40 bg-leu-tint/40 p-3.5 sm:p-4">
-      <p className="text-[13px] font-semibold text-ink">Invitația a fost creată</p>
+      <p className="text-[13px] font-semibold text-ink">{reset ? `Link de resetare pentru ${reset}` : "Invitația a fost creată"}</p>
       <p className="mt-0.5 text-[12.5px] text-ink-soft">
-        Trimite linkul persoanei (mesaj, email, WhatsApp). Îl vezi doar acum; merge o singură dată, timp de 7 zile.
+        {reset
+          ? "Trimite-l doar persoanei respective. Îl vezi doar acum; merge o singură dată, timp de 24 de ore. Persoana își alege o parolă nouă, iar 2FA și Face ID / amprenta se dezactivează (le reactivează din Setări)."
+          : "Trimite linkul persoanei (mesaj, email, WhatsApp). Îl vezi doar acum; merge o singură dată, timp de 7 zile."}
       </p>
-      <input readOnly value={link} onFocus={(e) => e.target.select()} className="field mt-2.5 font-mono text-[13px]" aria-label="Link de invitație" />
+      <input readOnly value={link} onFocus={(e) => e.target.select()} className="field mt-2.5 font-mono text-[13px]" aria-label={reset ? "Link de resetare" : "Link de invitație"} />
       <div className="mt-2.5 flex flex-wrap gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
         <button className="btn-primary" onClick={copy}>{copied ? "✓ Copiat" : "Copiază linkul"}</button>
         {canShare && (
-          <button className="btn-ghost border border-line" onClick={() => navigator.share({ title: "Invitație Leuța", text: "Îți poți crea contul în Leuța aici:", url: link }).catch(() => undefined)}>
+          <button className="btn-ghost border border-line" onClick={() => navigator.share(reset ? { title: "Resetare Leuța", text: "Îți poți alege o parolă nouă în Leuța aici:", url: link } : { title: "Invitație Leuța", text: "Îți poți crea contul în Leuța aici:", url: link }).catch(() => undefined)}>
             Trimite…
           </button>
         )}
@@ -86,6 +88,7 @@ export default function AdminPage() {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [newLink, setNewLink] = useState<string | null>(null);
+  const [resetLink, setResetLink] = useState<{ username: string; link: string } | null>(null);
   const invites = useApi<Invitation[]>("/api/admin/invitations");
   const accounts = useApi<{ me: number; users: Account[] }>("/api/admin/users");
   const waitlist = useApi<{ rows: WaitlistEntry[]; emailConfigured: boolean }>("/api/admin/waitlist");
@@ -122,6 +125,22 @@ export default function AdminPage() {
       await api(`/api/admin/invitations?id=${i.id}`, "DELETE");
       invites.reload();
       setToast("Invitația a fost anulată");
+    } catch (err) {
+      setToast((err as Error).message);
+    }
+  };
+
+  const createReset = async (a: Account) => {
+    const ok = await confirm({
+      title: "Resetare acces",
+      message: `Creez un link prin care „${a.username}” își alege o parolă nouă? La folosire, 2FA și Face ID / amprenta contului se dezactivează și toate sesiunile se închid. Datele rămân neatinse.`,
+      confirmText: "Creează linkul",
+    });
+    if (!ok) return;
+    try {
+      const r = await api<{ link: string; username: string }>("/api/admin/users/reset", "POST", { id: a.id });
+      setResetLink({ username: r.username, link: r.link });
+      accounts.reload();
     } catch (err) {
       setToast((err as Error).message);
     }
@@ -280,20 +299,34 @@ export default function AdminPage() {
                         Creat {fmtDay(a.created_at)} · activ {fmt(a.last_active_at)} · {[a.passkeys > 0 && `Face ID / amprentă ×${a.passkeys}`, a.totp && "2FA"].filter(Boolean).join(" + ") || "doar parolă"}
                       </div>
                     </div>
-                    {!a.is_admin && (
-                      <div className="ml-12 flex shrink-0 items-center gap-1 sm:ml-0">
-                        <button className="btn-ghost border border-line text-[13px] sm:border-0" onClick={() => toggleDisabled(a)}>
-                          {a.disabled_at ? "Reactivează" : "Dezactivează"}
-                        </button>
-                        <button className="btn-danger h-10 w-10 px-0" onClick={() => remove(a)} aria-label={`Șterge contul ${a.username}`} title="Șterge contul">
-                          <TrashIcon className="h-[18px] w-[18px]" />
-                        </button>
+                    {!me && (
+                      <div className="ml-12 flex basis-[calc(100%-3rem)] flex-wrap items-center gap-1 sm:ml-0 sm:shrink-0 sm:basis-auto sm:flex-nowrap">
+                        {!a.disabled_at && (
+                          <button className="btn-ghost border border-line text-[13px] sm:border-0" onClick={() => createReset(a)} title="Parolă uitată sau telefon pierdut">
+                            Resetează accesul
+                          </button>
+                        )}
+                        {!a.is_admin && (
+                          <>
+                            <button className="btn-ghost border border-line text-[13px] sm:border-0" onClick={() => toggleDisabled(a)}>
+                              {a.disabled_at ? "Reactivează" : "Dezactivează"}
+                            </button>
+                            <button className="btn-danger h-10 w-10 px-0" onClick={() => remove(a)} aria-label={`Șterge contul ${a.username}`} title="Șterge contul">
+                              <TrashIcon className="h-[18px] w-[18px]" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </li>
                 );
               })}
             </ul>
+          )}
+          {resetLink && (
+            <div className="mt-4">
+              <NewInviteLink link={resetLink.link} reset={resetLink.username} onClose={() => setResetLink(null)} />
+            </div>
           )}
         </Panel>
       </div>

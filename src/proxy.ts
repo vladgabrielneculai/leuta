@@ -14,6 +14,8 @@ const PUBLIC_PATHS = [
   "/login", "/setup", "/api/auth/login", "/api/auth/setup", "/api/auth/status",
   // Crearea unui cont nou dintr-o invitație (codul e verificat în rută).
   "/inregistrare", "/api/auth/register",
+  // Parolă nouă dintr-un link de resetare creat de administrator (codul e verificat în rută).
+  "/resetare", "/api/auth/reset",
   "/api/auth/passkey/login/options", "/api/auth/passkey/login/verify",
   // Apelate de servicii externe, autentificate în rută: Telegram (secret în header) și Vercel Cron (CRON_SECRET).
   "/api/telegram/webhook", "/api/cron/daily",
