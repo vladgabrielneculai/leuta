@@ -37,10 +37,10 @@ export function Features() {
 const SECURITY: [string, string][] = [
   ["Fără acces la bancă", "Leuța nu se conectează la conturile tale bancare. Tu decizi ce sume introduci."],
   ["Fără reclame și trackere", "Aplicația nu afișează reclame și nu încarcă scripturi de urmărire. Datele tale nu se vând."],
-  ["Autentificare cu passkey", "Intri cu amprenta sau Face ID. Parolele sunt stocate doar ca hash (PBKDF2), niciodată în clar."],
+  ["Face ID, amprentă sau 2FA", "Intri dintr-o atingere sau cu parola + un cod din telefon. Parolele sunt stocate doar ca hash (PBKDF2)."],
   ["Date găzduite în UE", "Baza de date și serverele aplicației sunt în Frankfurt, Germania. Conexiunea e mereu criptată (HTTPS)."],
   ["Controlul sesiunilor", "Vezi de pe ce dispozitive ești conectat și închizi orice sesiune dintr-un buton."],
-  ["Coduri de recuperare", "Dacă pierzi telefonul, intri în cont cu codurile de rezervă generate de tine."],
+  ["Coduri de recuperare", "Dacă pierzi telefonul, intri cu un cod de rezervă și îți generezi altele oricând."],
 ];
 
 export function Security() {

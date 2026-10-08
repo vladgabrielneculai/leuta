@@ -45,8 +45,8 @@ export default function Privacy() {
           </tr>
           <tr>
             <td>
-              <strong>Contul:</strong> nume de utilizator, parolă (stocată doar ca hash PBKDF2), cheile publice ale passkey-urilor, codurile de recuperare
-              (stocate ca hash)
+              <strong>Contul:</strong> nume de utilizator, parolă (stocată doar ca hash PBKDF2), cheile publice pentru Face ID / amprentă (biometria
+              rămâne pe dispozitivul tău), cheia pentru codurile 2FA, dacă activezi autentificarea în doi pași, codurile de recuperare (stocate ca hash)
             </td>
             <td>Crearea contului și autentificarea</td>
             <td>Executarea contractului (Termenii), alin. (1) lit. b)</td>
@@ -190,7 +190,7 @@ export default function Privacy() {
       <h2>7. Cum protejăm datele</h2>
       <ul>
         <li>Toate conexiunile sunt criptate (HTTPS, cu HSTS).</li>
-        <li>Parolele și codurile de recuperare sunt stocate doar ca hash; autentificarea poate folosi passkey (amprentă sau Face ID).</li>
+        <li>Parolele și codurile de recuperare sunt stocate doar ca hash; contul se poate proteja cu Face ID / amprentă sau cu autentificare în doi pași (2FA). Amprenta și fața nu ajung niciodată la noi.</li>
         <li>Încercările repetate de autentificare sunt blocate temporar, iar sesiunile pot fi închise de la distanță.</li>
         <li>Datele fiecărui utilizator sunt separate în baza de date, iar accesul administrativ este restricționat.</li>
       </ul>

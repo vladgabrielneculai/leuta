@@ -149,7 +149,7 @@ export default function ProfilePage() {
 
           <Panel title="Cont">
             <div className="flex flex-col gap-2">
-              <Link href="/setari" className="btn-ghost justify-start border border-line">🔐 Parolă, passkey și dispozitive</Link>
+              <Link href="/setari" className="btn-ghost justify-start border border-line">🔐 Parolă, Face ID / 2FA și dispozitive</Link>
               <button className="btn-danger justify-start border border-rosu/30" onClick={logout}>Ieșire din cont</button>
             </div>
           </Panel>
@@ -194,7 +194,7 @@ function DeleteAccount({ username, onClose }: { username: string; onClose: () =>
       <form onSubmit={remove} className="flex flex-col gap-4">
         <p className="text-[14px] text-ink-soft">
           Se șterg definitiv contul <b className="text-ink">@{username}</b> și toate datele lui: venituri, cheltuieli, credite, economii, profil, notificări
-          și passkey-uri. Acțiunea nu poate fi anulată. Dacă vrei o copie, descarcă întâi datele.
+          și setările de securitate. Acțiunea nu poate fi anulată. Dacă vrei o copie, descarcă întâi datele.
         </p>
         <label className="block">
           <span className="label">Scrie numele de utilizator ca să confirmi</span>

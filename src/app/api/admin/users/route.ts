@@ -20,7 +20,8 @@ export async function GET() {
                   (SELECT max(s.last_seen_at) FROM sessions s WHERE s.user_id = u.id),
                   (SELECT max(e.created_at) FROM login_events e WHERE e.user_id = u.id AND e.success = 1)
                 ) AS last_active_at,
-                (SELECT count(*)::int FROM webauthn_credentials w WHERE w.user_id = u.id) AS passkeys
+                (SELECT count(*)::int FROM webauthn_credentials w WHERE w.user_id = u.id) AS passkeys,
+                u.totp_secret IS NOT NULL AS totp
          FROM users u
          ORDER BY u.created_at`,
       )

@@ -3,6 +3,7 @@ import { promisify } from "util";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getSystemDb as getDb } from "./db"; // utilizatori/sesiuni = tabele comune
+import { matchTotp } from "./totp";
 
 export const SESSION_COOKIE = "bp_session";
 
@@ -96,7 +97,7 @@ export function requestMeta(headers: Headers): RequestMeta {
 
 // ---------- Sesiuni ----------
 
-export type AuthMethod = "password" | "passkey" | "recovery" | "setup" | "invite";
+export type AuthMethod = "password" | "passkey" | "totp" | "recovery" | "setup" | "invite";
 
 export async function createSession(
   userId: number,
@@ -216,8 +217,8 @@ export function isRecentAuth(s: CurrentSession) {
 }
 
 /**
- * Pentru ștergeri, restaurări, export, schimbarea parolei sau a passkey-urilor: identitatea trebuie
- * confirmată (passkey sau parolă) în ultimele minute. Altfel răspundem 403 + `reauth: true`,
+ * Pentru ștergeri, restaurări, export, schimbarea parolei sau a securității: identitatea trebuie
+ * confirmată (Face ID / amprentă, cod 2FA sau parolă) în ultimele minute. Altfel răspundem 403 + `reauth: true`,
  * iar interfața cere confirmarea și repetă automat cererea.
  */
 export async function requireRecentAuth(): Promise<{ session: CurrentSession } | { response: NextResponse }> {
@@ -233,13 +234,44 @@ export async function markReauthenticated(sessionId: string) {
   await (await getDb()).prepare("UPDATE sessions SET last_auth_at = now() WHERE id = ?").run(sessionId);
 }
 
-// ---------- Passkey-uri și coduri de recuperare ----------
+// ---------- Al doilea factor (Face ID / amprentă, 2FA) și coduri de recuperare ----------
 
+/** Câte dispozitive cu Face ID / amprentă are contul (passkey-uri WebAuthn, tehnic). */
 export async function passkeyCount(userId: number): Promise<number> {
   const row = await (await getDb())
     .prepare("SELECT COUNT(*)::int AS c FROM webauthn_credentials WHERE user_id = ?")
     .get<{ c: number }>(userId);
   return row?.c ?? 0;
+}
+
+export type SecondFactors = { biometric: number; totp: boolean };
+
+/** Ce protejează contul pe lângă parolă. Cu oricare activ, parola singură nu mai deschide contul. */
+export async function secondFactors(userId: number): Promise<SecondFactors> {
+  const row = await (await getDb())
+    .prepare(
+      `SELECT (SELECT COUNT(*)::int FROM webauthn_credentials WHERE user_id = u.id) AS biometric,
+              u.totp_secret IS NOT NULL AS totp
+       FROM users u WHERE u.id = ?`,
+    )
+    .get<{ biometric: number; totp: boolean }>(userId);
+  return { biometric: row?.biometric ?? 0, totp: !!row?.totp };
+}
+
+export const isProtected = (f: SecondFactors) => f.biometric > 0 || f.totp;
+
+/** Verifică un cod 2FA al contului și îl marchează folosit (același cod nu merge de două ori). */
+export async function useTotpCode(userId: number, code: string): Promise<boolean> {
+  const db = await getDb();
+  const row = await db
+    .prepare("SELECT totp_secret, totp_last_step FROM users WHERE id = ?")
+    .get<{ totp_secret: string | null; totp_last_step: string | number }>(userId);
+  if (!row?.totp_secret) return false;
+  const step = matchTotp(row.totp_secret, code, Number(row.totp_last_step));
+  if (step === null) return false;
+  // Condiția din WHERE face marcarea atomică: două cereri simultane cu același cod nu trec amândouă.
+  const res = await db.prepare("UPDATE users SET totp_last_step = ? WHERE id = ? AND totp_last_step < ?").run(step, userId, step);
+  return res.changes > 0;
 }
 
 const RECOVERY_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"; // fără caractere ușor de confundat
@@ -294,7 +326,7 @@ export async function isLockedOut(ip: string): Promise<boolean> {
   return (row?.c ?? 0) >= MAX_IP_FAILS;
 }
 
-/** Contul e blocat temporar (prea multe parole greșite, din orice IP). Passkey-ul nu e afectat. */
+/** Contul e blocat temporar (prea multe parole sau coduri greșite, din orice IP). Face ID / amprenta nu e afectată. */
 export async function isAccountLocked(userId: number): Promise<boolean> {
   const row = await (await getDb())
     .prepare("SELECT (locked_until IS NOT NULL AND locked_until > now()) AS locked FROM users WHERE id = ?")

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentSession, isSetupComplete, passkeyCount } from "@/lib/auth";
+import { getCurrentSession, isProtected, isSetupComplete, secondFactors } from "@/lib/auth";
 import { getDbFor } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +21,9 @@ export async function GET() {
   } catch {
     return NextResponse.json({ error: "Baza de date nu răspunde. Încearcă din nou." }, { status: 503 });
   }
-  const [hasPasskey, brief] = session
+  const [secured, brief] = session
     ? await Promise.all([
-        passkeyCount(session.id).then((c) => c > 0).catch(() => true),
+        secondFactors(session.id).then(isProtected).catch(() => true),
         profileBrief(session.id).catch(() => ({ firstName: "", onboardingPending: false })),
       ])
     : [undefined, null];
@@ -33,7 +33,7 @@ export async function GET() {
     user: session
       ? { id: session.id, username: session.username, isAdmin: session.is_admin, firstName: brief?.firstName ?? "" }
       : null,
-    hasPasskey,
+    secured,
     onboardingPending: brief?.onboardingPending ?? false,
   });
 }

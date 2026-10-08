@@ -90,7 +90,7 @@ export default function Cookies() {
             <tr>
               <td>bp_wa</td>
               <td>Cookie</td>
-              <td>Verificarea unică la autentificarea cu passkey</td>
+              <td>Verificarea unică la autentificarea cu Face ID / amprentă</td>
               <td>Câteva minute; se șterge după folosire</td>
             </tr>
             <tr>
@@ -100,9 +100,9 @@ export default function Cookies() {
               <td>Până o ștergi din browser</td>
             </tr>
             <tr>
-              <td>leuta-passkey-amanat</td>
+              <td>leuta-securitate-amanat</td>
               <td>Stocare locală</td>
-              <td>Ține minte că ai amânat propunerea de a adăuga un passkey</td>
+              <td>Ține minte că ai amânat propunerea de a activa Face ID / amprentă sau 2FA</td>
               <td>14 zile</td>
             </tr>
           </tbody>
