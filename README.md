@@ -1,121 +1,213 @@
+<div align="center">
+
+<img src="src/app/icon.svg" alt="Sigla Leuța" width="88" height="88">
+
 # Leuța
 
-*Bugetul tău, ban cu ban.* Aplicație personală de buget: venituri, costuri fixe, cheltuieli variabile, economii, investiții și credite (scadențar de la bancă, recalculare automată, plăți anticipate), cu curs BNR și inflație România preluate automat.
+**Bugetul tău, ban cu ban.**
 
-**Rulează online** — se deschide din orice browser, de pe calculator sau telefon. Nu mai e nevoie de `npm install` / `npm run dev`.
+O aplicație web de buget personal pentru România: venituri, cheltuieli, credite și economii, într-un singur loc.
 
-| Componentă | Unde |
+[**Deschide aplicația**](https://app.leuta.ro) · [Site de prezentare](https://leuta.ro) · [Bot Telegram](https://t.me/leuta_app_bot)
+
+![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/Supabase-Postgres-3FCF8E?logo=supabase&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-fra1-000000?logo=vercel&logoColor=white)
+
+<sub>A personal budgeting web app for Romania (UI in Romanian): income, expenses, bank loans, savings, BNR exchange rates and inflation.</sub>
+
+</div>
+
+<br>
+
+![Panoul aplicației Leuța pe calculator](public/ecrane/d-light-home.webp)
+
+<table>
+  <tr>
+    <td align="center"><img src="public/ecrane/qa-0.webp" alt="Panoul pe telefon" width="240"></td>
+    <td align="center"><img src="public/ecrane/qa-3.webp" alt="Adăugarea rapidă a unei cheltuieli" width="240"></td>
+    <td align="center"><img src="public/ecrane/qa-5.webp" alt="Bugetul recalculat după adăugare" width="240"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Toată luna pe un ecran</sub></td>
+    <td align="center"><sub>O cheltuială în trei atingeri</sub></td>
+    <td align="center"><sub>Bugetul se recalculează pe loc</sub></td>
+  </tr>
+</table>
+
+## Cuprins
+
+- [Ce face](#ce-face)
+- [Cum se folosește](#cum-se-folosește)
+- [Tehnologii](#tehnologii)
+- [Pornire locală](#pornire-locală)
+- [Configurare](#configurare)
+- [Publicare](#publicare)
+- [Teste](#teste)
+- [Securitate](#securitate)
+- [Structura proiectului](#structura-proiectului)
+
+## Ce face
+
+**Buget lunar**
+- Venituri, costuri fixe, cheltuieli variabile și economii, cu subtotaluri pe categorii. Intrările lunare se copiază în luna următoare dintr-un buton.
+- Adăugare rapidă: butonul „+”, suma, categoria. Sumele se pot trece și în euro, la cursul BNR al zilei.
+- Panou cu repartizarea venitului, ultimele 12 luni, avere netă și sfaturi pentru luna curentă (fond de urgență, rata de economisire, dobânzi).
+- Metode de buget: 50/30/20, procente alese de tine, buget bazat pe zero și una „recomandată pentru tine” pe baza profilului.
+- *Îmi permit?*: compară plata integrală cu un credit și arată cum se schimbă venitul lunar.
+
+**Credite**
+- Import din graficul de rambursare al băncii (PDF din George / BCR sau Excel): sold, dobânzi pe perioade, toate ratele, asigurări.
+- Actualizare din PDF nou sau din datele copiate din aplicația băncii; graficul se reconstruiește până la maturitate.
+- Simulări de plăți anticipate și scenarii IRCC, recalculate ca la bancă.
+
+**Economii și investiții**
+- Fondul de urgență măsurat în luni de cheltuieli, obiective cu termen și suma lunară necesară.
+- Curs BNR și inflația din România (INS) preluate automat.
+
+**Notificări**
+- Telegram: reminder seara, scadențe, alerte de buget. Botului îi poți scrie `45 mâncare` sau `+5000 salariu` și intrarea apare în aplicație.
+- Email (Resend): rezumat săptămânal și bilanțul lunii.
+- Rapoartele arată ca un bon de casă (imagine pe Telegram, HTML pe email, PDF descărcabil pentru orice lună).
+
+**Conturi**
+- Mai mulți utilizatori, fiecare cu datele lui. Separarea e făcută în Postgres (row-level security), nu doar în interfață.
+- Conturi noi doar pe bază de invitație. Primul cont creat e administratorul.
+- Profil (venit, stabilitate, obiective, risc) care influențează recomandările. Contul nou trece printr-un ghid de început în 4 pași.
+
+**Aspect**
+- Temă de zi și de noapte, cu o paletă inspirată din bancnotele românești.
+- Se instalează pe telefon ca aplicație (PWA) și are o variantă Windows (`Leuta.exe`).
+
+## Cum se folosește
+
+Aplicația rulează online la **[app.leuta.ro](https://app.leuta.ro)**. Conturile se fac pe bază de invitație: cere una pe [leuta.ro](https://leuta.ro), apoi deschide linkul primit sau lipește codul în fila *Cont nou* de pe pagina de login.
+
+**Pe telefon**, deschide adresa în browser și adaug-o pe ecranul principal:
+- iPhone (Safari): Share → *Add to Home Screen*
+- Android (Chrome): meniul ⋮ → *Install app*
+
+**Pe Windows**, `Leuta.exe` deschide versiunea online într-o fereastră separată (cu iconiță în tray). Se construiește cu `npm run build:exe`; adresa se citește din `Leuta.url.txt`, iar scurtătura de pe Desktop se face cu `npm run shortcut`.
+
+## Tehnologii
+
+| Zonă | Ce folosește |
 |---|---|
-| Site-ul de prezentare | https://leuta.ro — același proiect Vercel, paginile din `src/app/(site)` |
-| Aplicația (Next.js 16) | https://app.leuta.ro — Vercel, regiunea `fra1` (Frankfurt); vechile adrese `leuta.vercel.app` și `buget-personal-beta.vercel.app` redirecționează aici |
-| Baza de date (Postgres) | Supabase, proiectul „Leuța” (`eu-central-1`) |
-| Codul | GitHub `vladgabrielneculai/buget-personal` — orice push pe `main` se publică automat |
-| Bot Telegram | [@leuta_app_bot](https://t.me/leuta_app_bot) — se conectează din *Setări → Notificări* |
+| Aplicație | Next.js 16 (App Router), React 18, TypeScript, Tailwind CSS |
+| Bază de date | PostgreSQL pe Supabase, cu row-level security și un rol dedicat (`bp_app`) |
+| Găzduire | Vercel, regiunea `fra1` (Frankfurt), plus Vercel Cron pentru notificări |
+| Autentificare | Parolă (PBKDF2), Face ID / amprentă (WebAuthn, `@simplewebauthn`), 2FA cu coduri TOTP |
+| Grafice și documente | Recharts, `pdf-parse` (import), `pdf-lib` (bonul lunii), `read-excel-file`, `next/og` |
+| Notificări | Telegram Bot API, Resend (email) |
 
----
+Site-ul de prezentare (leuta.ro) și aplicația (app.leuta.ro) sunt același proiect Next.js. `src/proxy.ts` alege ce pagini servește după domeniu.
 
-## 🎨 Aspect
+## Pornire locală
 
-- Temă de zi și de noapte („bancnotă pe catifea”): *Auto* urmează setarea telefonului/calculatorului, iar butonul ☀️/🌙 din bara aplicației (sau *Setări → Aspect*) o forțează. Alegerea se ține minte pe dispozitiv; schimbarea e animată.
-- Paleta e inspirată din bancnotele românești (1 leu verde, 5 lei mov, 10 lei roșu, 50 lei galben, 100 lei albastru); culorile sunt variabile CSS în `src/app/(app)/globals.css` (site-ul de prezentare: `src/app/(site)/site.css`), folosite de clasele Tailwind și de grafice.
-- Sigla: o monedă verde cu chenar guilloche și un „L” cu piciorul ascendent (`src/components/Logo.tsx`, `src/app/icon.svg`).
-
-## 📱 Pe telefon
-
-Deschide adresa aplicației în browser, apoi:
-- **iPhone (Safari):** Share → *Add to Home Screen*
-- **Android (Chrome):** meniul ⋮ → *Install app* / *Add to Home screen*
-
-Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna · Credite · Economii · Mai mult) și luna analizată mereu vizibilă sus.
-
-## 🖥️ Pe Windows
-
-`Leuta.exe` (construit cu `npm run build:exe`) deschide versiunea online în propria fereastră (tray, splash, fără tab de browser). Nu mai pornește niciun server local și nu mai cere Node.js. Adresa se citește din `Leuta.url.txt`, lângă exe (sau din `BaniiMei.url.txt`, la instalările vechi); scurtătura „Leuța” de pe Desktop se face cu `npm run shortcut`.
-
----
-
-## 🏦 Credite din graficul băncii
-
-- **Credite → „Adaugă din grafic PDF”**: încarci graficul de rambursare descărcat din George (BCR). Se citesc suma, soldul actual, data acordării, dobânzile pe perioade, nr. contractului și toate ratele (principal, dobândă, asigurare, sold).
-- Pe un credit existent: **„Actualizează graficul / situația la zi”** → PDF nou (după o plată anticipată sau o schimbare de dobândă) sau datele copiate manual din aplicația băncii (sold, următoarea rată, principal, dobândă, taxe lunare, maturitate, restanțe, rata dobânzii), din care graficul se reconstruiește până la maturitate.
-- Cu graficul activ, ratele din buget, soldul și dobânda se iau exact din grafic; plățile anticipate și scenariile de IRCC recalculează restul ca banca.
-- Asigurarea PAD și cea facultativă (anuale) apar ca sumă întreagă în luna scadenței, în fiecare an; suma restantă se adaugă la plățile lunii în care a fost raportată.
-
-## 🔔 Notificări (Telegram + email)
-
-- **Telegram**: reminder la 21:00 („Ai trecut cheltuielile de azi?”), scadențe de credit și alerte de buget. Îi poți scrie botului `45 mâncare`, `120,50 benzină`, `+5000 salariu` și cheltuiala intră în aplicație (categoria se alege automat și se poate schimba din butoane). Comenzi: `/azi`, `/luna`, `/sold`, `/anuleaza`.
-  Notificările și rapoartele `/azi`, `/luna`, `/sold` sosesc ca **imagine în stilul bonului de casă** (PNG generat cu `next/og`, același font și aceleași culori ca aplicația), cu titlul în legendă; dacă imaginea nu poate fi generată sau trimisă, pleacă varianta text.
-- **Email** (Resend): rezumatul săptămânal (duminică) și bilanțul lunii (pe 1), plus scadențele, tot în stilul bonului: hârtie cu margini zimțate, rânduri cu puncte, total, cod de bare (tabele + stiluri inline; sigla vine din `public/email/logo.png`).
-- **Bonul lunii (PDF)**: veniturile și cheltuielile unei luni, în stilul unui bon de casă (hârtie îngustă, linii punctate, total mare, cod de bare). Se descarcă din *Luna curentă → 🧾 Bonul lunii (PDF)* pentru orice lună și vine automat atașat la bilanțul lunii (pe 1), pe Telegram și/sau email. Fontul IBM Plex Mono (licență OFL, în `src/lib/receipt/fonts`) asigură diacriticele.
-- În *Setări → Notificări* alegi pentru fiecare tip de mesaj pe ce canal vine și poți trimite mesaje de test.
-- Rulează din Vercel Cron (`vercel.json`): două rulări pe zi, 18:00 și 19:00 UTC, ca să prindă 21:00 în România și vara, și iarna.
-
-## 👥 Mai mulți utilizatori
-
-- Fiecare cont are datele lui: venituri, cheltuieli, credite, obiective, setări și profil. Separarea o face Postgres (row-level security), nu doar interfața.
-- **Conturi noi doar pe bază de invitație.** Primul cont (cel creat la configurarea inițială) este **administrator**: în *Administrare* creează un link de invitație (o singură folosire, valabil 7 zile) și îl trimite persoanei. Aceasta își alege utilizatorul și parola la `/inregistrare?cod=…` (sau lipește linkul / codul în fila *Cont nou* de pe pagina de login).
-- Administratorul vede lista conturilor (nume, data creării, ultima activitate, Face ID / 2FA), le poate dezactiva/reactiva sau șterge definitiv. **Nu vede** datele financiare sau profilul celorlalți.
-- **Profilul meu**: date personale, ocupație și venit (tip, stabilitate, venit net, ziua salariului), obiective și profil de risc. Un cont nou trece printr-un **ghid de început** în 4 pași (profil, venit, credite, obiective), care poate fi amânat.
-- Profilul influențează calculele: numărul de luni al fondului de urgență (venit variabil / pe cont propriu / familie / prudență → țintă mai mare; se poate fixa manual din Setări), bugetul „Recomandat pentru tine”, sfaturile lunii și „lei pe zi până la salariu”.
-
-## 🔐 Securitate
-
-- **Face ID / amprentă** (Face ID, Touch ID, amprenta Android, Windows Hello; tehnic WebAuthn cu autentificatorul dispozitivului): intri dintr-o atingere, fără parolă. Se activează per dispozitiv din *Setări → Securitate & dispozitive*.
-- **Autentificare în doi pași (2FA)**: parola + codul de 6 cifre dintr-o aplicație (Google/Microsoft Authenticator, 1Password, Parole pe iPhone), TOTP RFC 6238; un cod nu merge de două ori. Bun pentru calculatoarele fără biometrie.
-- Cu 2FA activ, parola singură nu mai deschide contul. Face ID / amprenta e drumul rapid pe dispozitivele tale; pe celelalte intri cu parola (+ codul 2FA). Nu există coduri de recuperare.
-- **Parolă uitată / telefon pierdut**: în *Administrare → Conturi*, „Resetează accesul” creează un link (o singură folosire, 24 de ore) la `/resetare?cod=…`. Persoana își alege o parolă nouă; 2FA și Face ID / amprenta se dezactivează, toate sesiunile se închid, datele rămân.
-- **Reconfirmare**: ștergerea datelor, exportul/restaurarea backup-ului, schimbarea parolei și a securității cer confirmarea identității dacă ultima confirmare e mai veche de 10 minute.
-- Fiecare pagină și fiecare `/api/...` trec prin `src/proxy.ts`, care verifică sesiunea pe server (fără sesiune → `/login` sau `401`) și respinge cererile care modifică date venite de pe alte site-uri (CSRF).
-- Cookie de sesiune `HttpOnly`, `Secure`, `SameSite=Lax`; în baza de date se păstrează doar **hash-ul** token-ului. Schimbarea parolei închide celelalte sesiuni; poți închide oricând un dispozitiv din Setări.
-- Blocare după parole greșite: 8 pe IP sau 10 pe cont → 15 minute (login-ul cu Face ID / amprentă nu e afectat).
-- Parole: minim 12 caractere, PBKDF2-SHA512 cu 210.000 de iterații (hash-urile vechi se refac automat la login).
-- Header-e de securitate pe toate paginile: CSP, HSTS, anti-iframe, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
-- Istoricul autentificărilor (reușite și eșuate, cu dispozitiv și locație aproximativă) e în Setări.
-- În Supabase, toate tabelele au RLS activ și nicio permisiune pentru `anon`/`authenticated`. Serverul se conectează cu rolul dedicat `bp_app`.
-- Face ID / amprenta e legată de domeniul aplicației (app.leuta.ro); pe linkurile de previzualizare Vercel (protejate cu login Vercel) se intră cu parola (+ cod 2FA).
-
-## ⚙️ Configurare (Vercel → Settings → Environment Variables)
-
-| Variabilă | Valoare |
-|---|---|
-| `DATABASE_URL` | `postgres://bp_app.<project-ref>:<parola>@aws-1-eu-central-1.pooler.supabase.com:6543/postgres` |
-| `CRON_SECRET` | un șir lung aleator (Vercel îl trimite automat la rularea cron-ului) |
-| `TELEGRAM_BOT_TOKEN` | token-ul de la @BotFather (opțional, pentru Telegram) |
-| `RESEND_API_KEY` | cheia API Resend (opțional, pentru email) |
-| `RESEND_FROM` | opțional, ex. `Leuța <buget@domeniul-tau.ro>`; implicit `onboarding@resend.dev`, care trimite doar către adresa contului Resend |
-| `APP_URL` | adresa aplicației (`https://app.leuta.ro`), pentru linkurile din emailuri, webhook-ul Telegram și redirecționările de pe site |
-| `SITE_HOSTS` | opțional, adresele site-ului de prezentare, separate prin virgulă (implicit `leuta.ro,www.leuta.ro`) |
-| `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_APP_URL` | opțional, adresele folosite în paginile site-ului (implicit `https://leuta.ro` și `https://app.leuta.ro`) |
-| `NEXT_PUBLIC_GA_ID` | opțional, Google Analytics 4 doar pe site, pornit numai după acordul vizitatorului |
-
-Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiectul e pe celălalt cluster (`aws-0`), aplicația comută singură.
-
-## 🌐 Site-ul de prezentare (leuta.ro)
-
-- Același proiect și același deploy ca aplicația. `src/proxy.ts` alege după adresă: pe `leuta.ro` arată paginile din `src/app/(site)/site` la adresele scurte (`/`, `/confidentialitate`, `/termeni`, `/cookies`) și trimite orice altă pagină la `app.leuta.ro`; pe adresa aplicației, paginile legale merg la fel, iar prima pagină a site-ului se vede la `/site` (util în previzualizările Vercel).
-- Componentele sunt în `src/components/site`, datele site-ului (operator, adrese, versiunea acordului) în `src/lib/site/config.ts`. Cât timp operatorul nu e completat acolo, site-ul nu se indexează.
-- Formularul „Cere invitație” scrie direct în lista de așteptare (`/api/waitlist`), pe care o vezi în *Administrare*.
-
-## 🗄️ Baza de date
-
-- Schema: `supabase/migrations/0001_init.sql` (aceleași tabele ca vechiul SQLite), `0002_multi_user.sql`, `0003_loan_bank_schedule.sql` (graficul băncii ca sursă, situația la zi, asigurări anuale), `0004_security_hardening.sql` (passkey-uri, coduri de recuperare, sesiuni hash-uite, istoric), `0005_notifications.sql` (Telegram, jurnalul notificărilor), `0006_accounts_profiles.sql` (administrator, invitații, profilul utilizatorului), `0007_waitlist.sql` (lista de așteptare de pe site-ul de prezentare), `0008_totp.sql` (autentificarea în doi pași), `0009_recovery_check.sql` (verificarea periodică a codurilor de recuperare), `0010_password_resets.sql` (linkuri de resetare; codurile de recuperare dispar).
-- Backup / restaurare: *Setări → Exportă JSON* / *Restaurează*.
-- Editare directă: Supabase Dashboard → Table Editor.
-
-## 🧪 Teste
-
-Teste end-to-end ale API-ului (autentificare, protecția rutelor, CRUD, copiere lună, categorii, backup):
+Ai nevoie de **Node.js 20+** și **PostgreSQL** (local sau un proiect Supabase).
 
 ```bash
-BASE_URL=https://app.leuta.ro TEST_USER=<utilizator> TEST_PASS=<parola> npm test
+git clone https://github.com/vladgabrielneculai/leuta.git
+cd leuta
+npm install
 ```
 
-Testele își creează propriile date (luna `1999-01`) și le șterg la final. Cu `TEST_USER2`/`TEST_PASS2` (un al doilea cont) se verifică și izolarea datelor între conturi; dacă `TEST_USER` e administrator, se testează și fluxul de invitație (contul de test creat e șters la final).
-
-## 💻 Dezvoltare locală (opțional)
+**1. Baza de date.** Pe un Postgres local, creează rolurile și aplică migrările în ordine:
 
 ```bash
-npm install
-# .env.local cu DATABASE_URL (vezi .env.example)
+createdb leuta
+psql -d leuta -c "create role anon nologin; create role authenticated nologin; create role bp_app login password 'parola-locala';"
+for f in supabase/migrations/*.sql; do psql -d leuta -v ON_ERROR_STOP=1 -f "$f"; done
+```
+
+Rolurile `anon` și `authenticated` există deja în Supabase; local sunt cerute doar de migrări. Pe Supabase, rulează fișierele din `supabase/migrations` în SQL Editor, în aceeași ordine.
+
+**2. Variabilele de mediu.** Copiază `.env.example` în `.env.local` și completează măcar conexiunea:
+
+```bash
+DATABASE_URL=postgres://bp_app:parola-locala@localhost:5432/leuta
+```
+
+**3. Pornește aplicația.**
+
+```bash
 npm run dev   # http://localhost:3100
 ```
+
+La prima deschidere ajungi la `/setup`, unde creezi contul de administrator. Din *Setări → Bază de date* poți încărca date demonstrative (2 credite, venituri, cheltuieli) ca să vezi aplicația plină.
+
+| Comandă | Ce face |
+|---|---|
+| `npm run dev` | server de dezvoltare pe portul 3100 |
+| `npm run build` / `npm start` | build de producție și pornirea lui |
+| `npm test` | testele end-to-end ale API-ului (vezi [Teste](#teste)) |
+
+## Configurare
+
+| Variabilă | Obligatorie | Rol |
+|---|---|---|
+| `DATABASE_URL` | da | conexiunea Postgres cu rolul `bp_app`. Pe Supabase, pooler-ul în mod *transaction*: `postgres://bp_app.<project-ref>:<parola>@aws-1-eu-central-1.pooler.supabase.com:6543/postgres` |
+| `APP_URL` | în producție | adresa aplicației (ex. `https://app.leuta.ro`), folosită în emailuri, webhook-ul Telegram și linkurile de invitație/resetare |
+| `CRON_SECRET` | pentru notificări | un șir lung aleator; Vercel îl trimite la rularea cron-ului |
+| `TELEGRAM_BOT_TOKEN` | nu | token-ul de la @BotFather |
+| `RESEND_API_KEY` | nu | cheia Resend, pentru email |
+| `RESEND_FROM` | nu | expeditorul, ex. `Leuța <buget@domeniul-tau.ro>` (implicit `onboarding@resend.dev`) |
+| `SITE_HOSTS` | nu | domeniile site-ului de prezentare (implicit `leuta.ro,www.leuta.ro`) |
+| `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_APP_URL` | nu | adresele folosite în paginile site-ului |
+| `NEXT_PUBLIC_GA_ID` | nu | Google Analytics 4, doar pe site și doar după acordul vizitatorului |
+
+Dacă proiectul Supabase e pe celălalt cluster de pooler (`aws-0`), aplicația comută singură.
+
+## Publicare
+
+Producția rulează pe Vercel, cu baza de date pe Supabase (`eu-central-1`):
+
+1. Importă repository-ul în Vercel și setează variabilele de mai sus (*Settings → Environment Variables*).
+2. Aplică migrările din `supabase/migrations` pe baza de date.
+3. Orice push pe `main` se publică automat; pull request-urile primesc un link de previzualizare.
+
+`vercel.json` programează notificările zilnice la 18:00 și 19:00 UTC, ca să prindă ora 21:00 în România și vara, și iarna. Pentru domenii: leuta.ro servește site-ul de prezentare, iar app.leuta.ro aplicația.
+
+## Teste
+
+Testele end-to-end lovesc API-ul unei instanțe care rulează (locală sau online) și verifică autentificarea, 2FA, resetarea accesului, protecția rutelor, CRUD, copierea lunii, categoriile și backup-ul:
+
+```bash
+BASE_URL=http://localhost:3100 TEST_USER=<utilizator> TEST_PASS=<parola> npm test
+```
+
+Testele își creează propriile date (luna `1999-01`) și le șterg la final. Cu `TEST_USER2` / `TEST_PASS2` (un al doilea cont) se verifică și izolarea datelor între conturi. Dacă `TEST_USER` e administrator, se testează și invitațiile.
+
+## Securitate
+
+- **Face ID / amprentă** (WebAuthn cu autentificatorul dispozitivului) și **autentificare în doi pași** cu orice aplicație TOTP (Google/Microsoft Authenticator, 1Password, Parole pe iPhone). Cu 2FA activ, parola singură nu mai deschide contul.
+- **Parolă uitată sau telefon pierdut**: administratorul creează din *Administrare → Conturi* un link de resetare (o singură folosire, 24 de ore). Datele rămân; 2FA, Face ID și sesiunile se resetează.
+- **Reconfirmarea identității** pentru acțiuni sensibile (export, ștergere, schimbarea parolei sau a securității), valabilă 10 minute.
+- Fiecare pagină și fiecare `/api/...` trec prin `src/proxy.ts`: verificarea sesiunii pe server și protecție CSRF.
+- Cookie de sesiune `HttpOnly`, `Secure`, `SameSite=Lax`; în baza de date se păstrează doar hash-ul token-ului.
+- Parole de minim 12 caractere, PBKDF2-SHA512 cu 210.000 de iterații. Blocare temporară după încercări greșite (8 pe IP sau 10 pe cont, 15 minute).
+- Header-e de securitate pe toate paginile: CSP, HSTS, anti-iframe, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.
+- RLS activ pe toate tabelele, fără permisiuni pentru `anon` / `authenticated`.
+- Administratorul gestionează conturile, dar **nu vede** datele financiare sau profilul celorlalți.
+
+Ai găsit o problemă de securitate? Te rog să nu deschizi un issue public: scrie-i direct autorului prin GitHub.
+
+## Structura proiectului
+
+```
+src/
+├── app/
+│   ├── (app)/          paginile aplicației: panou, luna, credite, economii, setări, admin…
+│   ├── (site)/         site-ul de prezentare și paginile legale (leuta.ro)
+│   └── api/            rutele API: autentificare, CRUD, import grafic, cron, Telegram…
+├── components/         componente React (formulare, securitate, bonul, site)
+├── lib/                logica: calcul credite, buget, curs BNR, inflație, notificări, autentificare
+└── proxy.ts            sesiune, CSRF și alegerea paginilor după domeniu
+supabase/migrations/    schema bazei de date, în ordine
+tests/                  testele end-to-end ale API-ului
+public/                 iconițe, capturi de ecran, sigla din emailuri
+```
+
+Pentru modificări la baza de date, adaugă o migrare nouă numerotată în `supabase/migrations` (de ex. `0011_….sql`) în loc să le editezi pe cele existente.
