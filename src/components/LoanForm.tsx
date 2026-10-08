@@ -235,10 +235,10 @@ export default function LoanForm({
         <legend className="px-1 text-[14px] font-medium">Costuri și plăți anticipate</legend>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Comision în perioada fixă (%)">
-            <input className="field num" type="number" min="0" step="0.1" value={d.fee_fixed_pct} onChange={(e) => set("fee_fixed_pct", n(e.target.value))} />
+            <input className="field num" type="number" min="0" step="0.01" inputMode="decimal" value={d.fee_fixed_pct} onChange={(e) => set("fee_fixed_pct", n(e.target.value))} />
           </Field>
           <Field label="Comision în perioada variabilă (%)">
-            <input className="field num" type="number" min="0" step="0.1" value={d.fee_variable_pct} onChange={(e) => set("fee_variable_pct", n(e.target.value))} />
+            <input className="field num" type="number" min="0" step="0.01" inputMode="decimal" value={d.fee_variable_pct} onChange={(e) => set("fee_variable_pct", n(e.target.value))} />
           </Field>
           <Field
             label="Asigurări lunare (lei)"

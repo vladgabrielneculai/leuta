@@ -118,7 +118,7 @@ export function WorkFields({ d, set }: Props) {
       </Group>
       <div className="grid gap-4 sm:grid-cols-[1fr_1fr_120px]">
         <Field label="Venit net lunar estimat" hint="Cât intră în cont, în medie.">
-          <input className="field num" type="number" inputMode="decimal" min={0} step={50} value={d.net_income} onChange={(e) => set({ net_income: e.target.value })} placeholder="ex. 6500" />
+          <input className="field num" type="number" inputMode="decimal" min={0} step="0.01" value={d.net_income} onChange={(e) => set({ net_income: e.target.value })} placeholder="ex. 6500" />
         </Field>
         <Field label="Ziua salariului" hint="Ziua din lună în care primești banii.">
           <input className="field num" type="number" inputMode="numeric" min={1} max={31} value={d.payday} onChange={(e) => set({ payday: e.target.value })} placeholder="ex. 10" />

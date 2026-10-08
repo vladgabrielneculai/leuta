@@ -433,7 +433,7 @@ export default function LoanDetail() {
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <label className="block">
                   <span className="mb-1 block text-[12px] text-ink-faint">Sumă lunară (lei)</span>
-                  <input className="field num" type="number" inputMode="decimal" min={0} step={50} value={sc.extraMonthly}
+                  <input className="field num" type="number" inputMode="decimal" min={0} step="0.01" value={sc.extraMonthly}
                     onChange={(e) => setSc({ ...sc, extraMonthly: Number(e.target.value) || 0 })} />
                 </label>
                 <label className="block">
@@ -448,7 +448,7 @@ export default function LoanDetail() {
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
                   <span className="mb-1 block text-[12px] text-ink-faint">Sumă (lei)</span>
-                  <input className="field num" type="number" inputMode="decimal" min={0} step={1000} value={sc.oneTimeAmount}
+                  <input className="field num" type="number" inputMode="decimal" min={0} step="0.01" value={sc.oneTimeAmount}
                     onChange={(e) => setSc({ ...sc, oneTimeAmount: Number(e.target.value) || 0 })} />
                 </label>
                 <label className="block">

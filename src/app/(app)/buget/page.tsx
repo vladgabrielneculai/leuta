@@ -88,7 +88,8 @@ export default function BudgetPage() {
   if (!s) return <Skeleton />;
   const t = s.totals;
 
-  const sum = Number(custom.needs) + Number(custom.wants) + Number(custom.savings);
+  // Rotunjit la 2 zecimale: 33,33 + 33,33 + 33,34 trebuie să dea exact 100.
+  const sum = Math.round((Number(custom.needs) + Number(custom.wants) + Number(custom.savings)) * 100) / 100;
   const saveCustom = async () => {
     await api("/api/settings", "PUT", { custom_needs: custom.needs, custom_wants: custom.wants, custom_savings: custom.savings });
     reload();
@@ -189,7 +190,7 @@ export default function BudgetPage() {
           {BUCKETS.map((b) => (
             <div key={b} className="w-32">
               <Field label={`${BUCKET_LABEL[b]} (%)`}>
-                <input className="field num" type="number" min={0} max={100} value={custom[b]} onChange={(e) => setCustom({ ...custom, [b]: e.target.value })} />
+                <input className="field num" type="number" inputMode="decimal" min={0} max={100} step="0.01" value={custom[b]} onChange={(e) => setCustom({ ...custom, [b]: e.target.value })} />
               </Field>
             </div>
           ))}
