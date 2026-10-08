@@ -206,6 +206,7 @@ src/
 ├── components/         componente React (formulare, securitate, bonul, site)
 ├── lib/                logica: calcul credite, buget, curs BNR, inflație, notificări, autentificare
 └── proxy.ts            sesiune, CSRF și alegerea paginilor după domeniu
+brand/                  sigla oficială: SVG, PNG, PDF și fișierele pentru înregistrarea mărcii
 supabase/migrations/    schema bazei de date, în ordine
 tests/                  testele end-to-end ale API-ului
 public/                 iconițe, capturi de ecran, sigla din emailuri
