@@ -48,6 +48,7 @@ O aplicație web de buget personal pentru România: venituri, cheltuieli, credit
 - [Teste](#teste)
 - [Securitate](#securitate)
 - [Structura proiectului](#structura-proiectului)
+- [Licență](#licență)
 
 ## Ce face
 
@@ -106,7 +107,7 @@ Site-ul de prezentare (leuta.ro) și aplicația (app.leuta.ro) sunt același pro
 
 ## Pornire locală
 
-Ai nevoie de **Node.js 20+** și **PostgreSQL** (local sau un proiect Supabase).
+Instrucțiunile sunt pentru autor și pentru colaboratorii care au acordul lui (vezi [Licență](#licență)). Ai nevoie de **Node.js 20+** și **PostgreSQL** (local sau un proiect Supabase).
 
 ```bash
 git clone https://github.com/vladgabrielneculai/leuta.git
@@ -211,3 +212,7 @@ public/                 iconițe, capturi de ecran, sigla din emailuri
 ```
 
 Pentru modificări la baza de date, adaugă o migrare nouă numerotată în `supabase/migrations` (de ex. `0011_….sql`) în loc să le editezi pe cele existente.
+
+## Licență
+
+© 2026 Vlad Gabriel Neculai. **Toate drepturile rezervate.** Codul e public doar pentru consultare: copierea, modificarea, distribuirea sau rularea unei copii a aplicației nu sunt permise fără acordul scris al autorului. Detalii în [LICENSE](LICENSE).
