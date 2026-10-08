@@ -6,7 +6,8 @@
 
 | Componentă | Unde |
 |---|---|
-| Aplicația (Next.js 16) | https://leuta.vercel.app — Vercel, regiunea `fra1` (Frankfurt); vechea adresă `buget-personal-beta.vercel.app` redirecționează aici |
+| Site-ul de prezentare | https://leuta.ro — același proiect Vercel, paginile din `src/app/(site)` |
+| Aplicația (Next.js 16) | https://app.leuta.ro — Vercel, regiunea `fra1` (Frankfurt); vechile adrese `leuta.vercel.app` și `buget-personal-beta.vercel.app` redirecționează aici |
 | Baza de date (Postgres) | Supabase, proiectul „Leuța” (`eu-central-1`) |
 | Codul | GitHub `vladgabrielneculai/buget-personal` — orice push pe `main` se publică automat |
 | Bot Telegram | [@leuta_app_bot](https://t.me/leuta_app_bot) — se conectează din *Setări → Notificări* |
@@ -16,7 +17,7 @@
 ## 🎨 Aspect
 
 - Temă de zi și de noapte („bancnotă pe catifea”): *Auto* urmează setarea telefonului/calculatorului, iar butonul ☀️/🌙 din bara aplicației (sau *Setări → Aspect*) o forțează. Alegerea se ține minte pe dispozitiv; schimbarea e animată.
-- Paleta e inspirată din bancnotele românești (1 leu verde, 5 lei mov, 10 lei roșu, 50 lei galben, 100 lei albastru); culorile sunt variabile CSS în `src/app/globals.css`, folosite de clasele Tailwind și de grafice.
+- Paleta e inspirată din bancnotele românești (1 leu verde, 5 lei mov, 10 lei roșu, 50 lei galben, 100 lei albastru); culorile sunt variabile CSS în `src/app/(app)/globals.css` (site-ul de prezentare: `src/app/(site)/site.css`), folosite de clasele Tailwind și de grafice.
 - Sigla: o monedă verde cu chenar guilloche și un „L” cu piciorul ascendent (`src/components/Logo.tsx`, `src/app/icon.svg`).
 
 ## 📱 Pe telefon
@@ -79,10 +80,18 @@ Se deschide ca o aplicație separată, cu bara de navigare jos (Panou · Luna ·
 | `TELEGRAM_BOT_TOKEN` | token-ul de la @BotFather (opțional, pentru Telegram) |
 | `RESEND_API_KEY` | cheia API Resend (opțional, pentru email) |
 | `RESEND_FROM` | opțional, ex. `Leuța <buget@domeniul-tau.ro>`; implicit `onboarding@resend.dev`, care trimite doar către adresa contului Resend |
-| `APP_URL` | opțional, adresa principală (`https://leuta.vercel.app`) pentru linkurile din emailuri și webhook-ul Telegram |
-| `WAITLIST_KEY` | opțional, cheie secretă comună cu site-ul de prezentare (`leuta-landing-page`, aceeași valoare acolo); fără ea lista de așteptare e închisă |
+| `APP_URL` | adresa aplicației (`https://app.leuta.ro`), pentru linkurile din emailuri, webhook-ul Telegram și redirecționările de pe site |
+| `SITE_HOSTS` | opțional, adresele site-ului de prezentare, separate prin virgulă (implicit `leuta.ro,www.leuta.ro`) |
+| `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_APP_URL` | opțional, adresele folosite în paginile site-ului (implicit `https://leuta.ro` și `https://app.leuta.ro`) |
+| `NEXT_PUBLIC_GA_ID` | opțional, Google Analytics 4 doar pe site, pornit numai după acordul vizitatorului |
 
 Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiectul e pe celălalt cluster (`aws-0`), aplicația comută singură.
+
+## 🌐 Site-ul de prezentare (leuta.ro)
+
+- Același proiect și același deploy ca aplicația. `src/proxy.ts` alege după adresă: pe `leuta.ro` arată paginile din `src/app/(site)/site` la adresele scurte (`/`, `/confidentialitate`, `/termeni`, `/cookies`) și trimite orice altă pagină la `app.leuta.ro`; pe adresa aplicației, paginile legale merg la fel, iar prima pagină a site-ului se vede la `/site` (util în previzualizările Vercel).
+- Componentele sunt în `src/components/site`, datele site-ului (operator, adrese, versiunea acordului) în `src/lib/site/config.ts`. Cât timp operatorul nu e completat acolo, site-ul nu se indexează.
+- Formularul „Cere invitație” scrie direct în lista de așteptare (`/api/waitlist`), pe care o vezi în *Administrare*.
 
 ## 🗄️ Baza de date
 
@@ -95,7 +104,7 @@ Se folosește pooler-ul Supabase în mod *transaction* (port 6543). Dacă proiec
 Teste end-to-end ale API-ului (autentificare, protecția rutelor, CRUD, copiere lună, categorii, backup):
 
 ```bash
-BASE_URL=https://leuta.vercel.app TEST_USER=<utilizator> TEST_PASS=<parola> npm test
+BASE_URL=https://app.leuta.ro TEST_USER=<utilizator> TEST_PASS=<parola> npm test
 ```
 
 Testele își creează propriile date (luna `1999-01`) și le șterg la final. Cu `TEST_USER2`/`TEST_PASS2` (un al doilea cont) se verifică și izolarea datelor între conturi; dacă `TEST_USER` e administrator, se testează și fluxul de invitație (contul de test creat e șters la final).

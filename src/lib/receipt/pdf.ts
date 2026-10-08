@@ -249,7 +249,7 @@ function render(c: Cursor, r: Receipt) {
   c.center("Păstrați bonul pentru evidența", 6.2, { color: SOFT });
   c.center("bugetului dumneavoastră.", 6.2, { color: SOFT });
   c.gap(3);
-  c.center("leuta.vercel.app", 6.2, { color: FAINT });
+  c.center("leuta.ro", 6.2, { color: FAINT });
   c.gap(14 + TOOTH_H + 12);
 }
 
@@ -281,7 +281,7 @@ export async function renderReceiptPdf(r: Receipt): Promise<Uint8Array> {
   doc.setTitle(`Bonul lunii ${monthLabel(r.month)} · Leuța`);
   doc.setAuthor("Leuța");
   doc.setSubject("Venituri și cheltuieli lunare");
-  doc.setCreator("Leuța · leuta.vercel.app");
+  doc.setCreator("Leuța · leuta.ro");
   doc.setLanguage("ro-RO");
 
   const measure = new Cursor(fonts, null, 0);
