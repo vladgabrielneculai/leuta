@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Loan } from "@/lib/loan";
-import { lei, pct } from "@/lib/util";
+import { lei, pct, termLabel } from "@/lib/util";
 import { api, Field } from "./ui";
 
 export type LoanDraft = Omit<Loan, "id">;
@@ -42,7 +42,7 @@ export default function LoanForm({
 }) {
   const [d, setD] = useState<LoanDraft>(initial ?? emptyLoan());
   const [years, setYears] = useState(String(+((initial?.term_months ?? 360) / 12).toFixed(2)));
-  const [fixedYears, setFixedYears] = useState(String((initial?.fixed_months ?? 36) / 12));
+  const [fixedYears, setFixedYears] = useState(String(+((initial?.fixed_months ?? 36) / 12).toFixed(2)));
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hasStartedInPast, setHasStartedInPast] = useState<boolean>(
@@ -53,12 +53,15 @@ export default function LoanForm({
   );
 
   const set = <K extends keyof LoanDraft>(k: K, v: LoanDraft[K]) => setD({ ...d, [k]: v });
-  const n = (v: string) => (v === "" ? 0 : Number(v));
+  const n = (v: string) => (v === "" ? 0 : Number(v.replace(",", ".")));
+  // Anii pot avea zecimale (ex. 28,33 ani); creditul se calculează pe luni întregi.
+  const monthsOf = (v: string) => Math.round(n(v) * 12);
+  const monthsHint = (v: string) => (monthsOf(v) > 0 ? `= ${termLabel(monthsOf(v))} (${monthsOf(v)} rate)` : undefined);
 
   const submit = async () => {
     setErr(null);
-    const term = Math.round(n(years) * 12);
-    const fixed = Math.round(n(fixedYears) * 12);
+    const term = monthsOf(years);
+    const fixed = monthsOf(fixedYears);
     if (d.principal <= 0) return setErr("Introdu suma împrumutată.");
     if (term <= 0) return setErr("Perioada trebuie să fie mai mare decât zero.");
     if (fixed > term) return setErr("Perioada fixă nu poate depăși durata creditului.");
@@ -97,8 +100,8 @@ export default function LoanForm({
         <Field label="Data acordării" hint="Prima rată se consideră în luna următoare">
           <input className="field" type="date" value={d.start_date} onChange={(e) => set("start_date", e.target.value)} required />
         </Field>
-        <Field label="Durata (ani)">
-          <input className="field num" type="number" min="1" step="0.5" value={years} onChange={(e) => setYears(e.target.value)} required />
+        <Field label="Durata (ani)" hint={monthsHint(years) ?? "Poți scrie și zecimale, ex. 28,33"}>
+          <input className="field num" type="number" min="0.08" step="any" inputMode="decimal" value={years} onChange={(e) => setYears(e.target.value)} required />
         </Field>
         <Field label="Tipul ratelor" hint="Verifică în graficul de rambursare de la bancă">
           <select className="field" value={d.schedule_type} onChange={(e) => set("schedule_type", e.target.value as LoanDraft["schedule_type"])}>
@@ -216,8 +219,8 @@ export default function LoanForm({
           <Field label="Dobândă fixă (% pe an)">
             <input className="field num" type="number" min="0" step="0.01" value={d.fixed_rate || ""} onChange={(e) => set("fixed_rate", n(e.target.value))} />
           </Field>
-          <Field label="Perioada fixă (ani)" hint="0 dacă e variabilă de la început">
-            <input className="field num" type="number" min="0" step="0.5" value={fixedYears} onChange={(e) => setFixedYears(e.target.value)} />
+          <Field label="Perioada fixă (ani)" hint={monthsHint(fixedYears) ?? "0 dacă e variabilă de la început"}>
+            <input className="field num" type="number" min="0" step="any" inputMode="decimal" value={fixedYears} onChange={(e) => setFixedYears(e.target.value)} />
           </Field>
           <Field label="Marja băncii (%)">
             <input className="field num" type="number" min="0" step="0.01" value={d.margin || ""} onChange={(e) => set("margin", n(e.target.value))} />
