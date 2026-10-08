@@ -9,6 +9,7 @@ import Logo from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { ReceiptFooter } from "./receipt";
 import { QuickAddProvider, useQuickAdd } from "./QuickAdd";
+import RecoveryCheck from "./RecoveryCheck";
 
 // Iconițe (trasee SVG 24×24) folosite în bara de jos și în meniul „Mai mult” de pe telefon.
 const ICON = {
@@ -203,6 +204,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<StatusUser | null>(null);
   const [secured, setSecured] = useState(true);
+  const [recoveryDue, setRecoveryDue] = useState(false);
   // Îndemnul spre Face ID / 2FA poate fi amânat (câteva zile), ca să nu ocupe mereu partea de sus a ecranului.
   const [securitySnoozed, setSecuritySnoozed] = useState(true);
   useEffect(() => {
@@ -229,7 +231,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   useEffect(() => {
-    api<{ setupNeeded: boolean; authenticated: boolean; user: StatusUser | null; secured?: boolean; onboardingPending?: boolean }>("/api/auth/status")
+    api<{ setupNeeded: boolean; authenticated: boolean; user: StatusUser | null; secured?: boolean; recoveryCheckDue?: boolean; onboardingPending?: boolean }>("/api/auth/status")
       .then((res) => {
         if (res.setupNeeded) {
           if (path !== "/setup") window.location.replace("/setup");
@@ -238,6 +240,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         } else {
           setUser(res.user);
           setSecured(res.secured !== false);
+          setRecoveryDue(!!res.recoveryCheckDue);
           if (isAuthPage) window.location.replace(res.onboardingPending ? "/bun-venit" : "/");
           // Un cont nou trece întâi prin ghidul de început (îl poate amâna de acolo).
           else if (res.onboardingPending && path !== "/bun-venit") window.location.replace("/bun-venit");
@@ -484,6 +487,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           </div>
         )}
         {children}
+        <RecoveryCheck due={recoveryDue} />
         <ReceiptFooter seed={path} />
       </main>
     </div>

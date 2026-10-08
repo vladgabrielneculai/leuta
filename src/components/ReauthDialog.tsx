@@ -92,11 +92,6 @@ export default function ReauthDialog() {
   };
 
   const field = CODE_FIELD[mode];
-  const switchTo = (m: CodeMode) => {
-    setMode(m);
-    setValue("");
-    setError(null);
-  };
 
   return (
     <Modal open={open} onClose={() => finish(false)} title="Confirmă că ești tu">
@@ -128,11 +123,6 @@ export default function ReauthDialog() {
           <button type="submit" className={`${methods.includes("biometric") ? "btn-ghost border border-line" : "btn-primary"} w-full justify-center py-2.5`} disabled={busy || !value}>
             {busy ? "Se verifică…" : "Confirmă"}
           </button>
-          {methods.includes("totp") && (
-            <button type="button" className="text-center text-[12.5px] text-albastru hover:underline" onClick={() => switchTo(mode === "totp" ? "recovery" : "totp")}>
-              {mode === "totp" ? "Nu ai telefonul la tine? Folosește un cod de recuperare" : "Folosește codul din aplicația de autentificare"}
-            </button>
-          )}
         </form>
       )}
       {!methods && !error && <p className="text-[13px] text-ink-soft">Se pregătește…</p>}

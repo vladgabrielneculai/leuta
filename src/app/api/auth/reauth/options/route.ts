@@ -7,8 +7,9 @@ import { credentialsForUser, relyingParty, saveChallenge } from "@/lib/webauthn"
 export const dynamic = "force-dynamic";
 
 /**
- * Cum își poate confirma utilizatorul identitatea: Face ID / amprentă, cod 2FA, cod de recuperare (dacă are
- * vreuna dintre protecții) sau parola (dacă nu are niciuna).
+ * Cum își poate confirma utilizatorul identitatea: Face ID / amprentă, cod 2FA sau parola (dacă nu are nicio
+ * protecție). Codul de recuperare e doar pentru urgențe: îl oferim aici numai contului fără 2FA, care altfel
+ * ar rămâne blocat pe un dispozitiv fără Face ID / amprentă.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
       methods.push("biometric");
     }
     if (factors.totp) methods.push("totp");
-    methods.push("recovery");
+    else methods.push("recovery");
     const res = NextResponse.json({ methods, options });
     if (options) await saveChallenge(res, "reauth", options.challenge, session.id);
     return res;

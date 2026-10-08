@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentSession, isProtected, isSetupComplete, secondFactors } from "@/lib/auth";
+import { getCurrentSession, isProtected, isSetupComplete, recoveryCheckDue, secondFactors } from "@/lib/auth";
 import { getDbFor } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -21,12 +21,13 @@ export async function GET() {
   } catch {
     return NextResponse.json({ error: "Baza de date nu răspunde. Încearcă din nou." }, { status: 503 });
   }
-  const [secured, brief] = session
+  const [secured, brief, checkDue] = session
     ? await Promise.all([
         secondFactors(session.id).then(isProtected).catch(() => true),
         profileBrief(session.id).catch(() => ({ firstName: "", onboardingPending: false })),
+        recoveryCheckDue(session.id).catch(() => false),
       ])
-    : [undefined, null];
+    : [undefined, null, false];
   return NextResponse.json({
     setupNeeded: !setupComplete,
     authenticated: !!session,
@@ -34,6 +35,8 @@ export async function GET() {
       ? { id: session.id, username: session.username, isAdmin: session.is_admin, firstName: brief?.firstName ?? "" }
       : null,
     secured,
+    // Verificarea periodică a codurilor de recuperare (are rost doar cât contul e protejat).
+    recoveryCheckDue: !!secured && checkDue,
     onboardingPending: brief?.onboardingPending ?? false,
   });
 }

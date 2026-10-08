@@ -293,8 +293,36 @@ export async function regenerateRecoveryCodes(userId: number): Promise<string[]>
     await tx
       .prepare(`INSERT INTO recovery_codes (user_id, code_hash) VALUES ${codes.map(() => "(?, ?)").join(",")}`)
       .run(...codes.flatMap((c) => [userId, sha256(normalizeRecoveryCode(c))]));
+    // Lista tocmai a fost văzută și salvată: următoarea verificare periodică abia peste RECOVERY_CHECK_DAYS.
+    await tx.prepare("UPDATE users SET recovery_checked_at = now() WHERE id = ?").run(userId);
   });
   return codes;
+}
+
+/** La câte zile cerem un cod de recuperare, ca verificare că lista e încă la tine. */
+export const RECOVERY_CHECK_DAYS = 90;
+
+/** E timpul pentru verificarea periodică: contul e protejat, are coduri și n-a mai fost verificat de 3 luni. */
+export async function recoveryCheckDue(userId: number): Promise<boolean> {
+  const row = await (await getDb())
+    .prepare(
+      `SELECT (recovery_checked_at IS NULL OR recovery_checked_at < now() - interval '${RECOVERY_CHECK_DAYS} days')
+              AND EXISTS (SELECT 1 FROM recovery_codes r WHERE r.user_id = u.id AND r.used_at IS NULL) AS due
+       FROM users u WHERE u.id = ?`,
+    )
+    .get<{ due: boolean }>(userId);
+  return !!row?.due;
+}
+
+/** Verifică un cod de recuperare FĂRĂ să-l consume (verificarea periodică) și reînnoiește data verificării. */
+export async function checkRecoveryCode(userId: number, code: string): Promise<boolean> {
+  const db = await getDb();
+  const hit = await db
+    .prepare("SELECT 1 FROM recovery_codes WHERE user_id = ? AND code_hash = ? AND used_at IS NULL")
+    .get(userId, sha256(normalizeRecoveryCode(code)));
+  if (!hit) return false;
+  await db.prepare("UPDATE users SET recovery_checked_at = now() WHERE id = ?").run(userId);
+  return true;
 }
 
 /** Consumă un cod de recuperare (o singură folosire). */

@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
         .run(result.authenticationInfo.newCounter, credential.id);
     } else if (body.totpCode && factors.totp) {
       if (!(await useTotpCode(session.id, String(body.totpCode).slice(0, 20)))) return fail("cod 2FA greșit", "Codul nu este corect sau a expirat.");
-    } else if (body.recoveryCode) {
+    } else if (body.recoveryCode && !factors.totp) {
       if (!(await useRecoveryCode(session.id, String(body.recoveryCode).slice(0, 40)))) {
         return fail("cod de recuperare greșit", "Codul de recuperare nu este corect sau a fost deja folosit.");
       }
