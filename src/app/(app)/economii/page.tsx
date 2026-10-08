@@ -322,10 +322,10 @@ export default function SavingsPage() {
             <div className="flex flex-col gap-3">
               <h3 className="text-[16px] font-semibold">Proiecție</h3>
               <Field label="Contribuție lunară (lei)" hint={avgInvest ? `Media ta: ${lei(avgInvest)}` : undefined}>
-                <input className="field num" type="number" min={0} value={p.monthly} onChange={(e) => setProj({ ...p, monthly: e.target.value })} />
+                <input className="field num" type="number" inputMode="decimal" min={0} step="0.01" value={p.monthly} onChange={(e) => setProj({ ...p, monthly: e.target.value })} />
               </Field>
               <Field label="Randament anual brut (%)" hint={`După impozit de ${pct(tax)}: ${pct((Number(p.rate) || 0) * (1 - tax / 100))}`}>
-                <input className="field num" type="number" step={0.5} value={p.rate} onChange={(e) => setProj({ ...p, rate: e.target.value })} />
+                <input className="field num" type="number" inputMode="decimal" step="0.01" value={p.rate} onChange={(e) => setProj({ ...p, rate: e.target.value })} />
               </Field>
               <Field label="Orizont (ani)">
                 <input className="field num" type="number" min={1} max={40} value={p.years} onChange={(e) => setProj({ ...p, years: e.target.value })} />
@@ -388,10 +388,10 @@ export default function SavingsPage() {
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Suma țintă (lei)" hint={goal.type === "emergency" ? `Gol = automat (${s.emergency.months} luni de nevoi esențiale)` : undefined}>
-                <input className="field num" type="number" min={0} value={goal.target} onChange={(e) => setGoal({ ...goal, target: e.target.value })} required={goal.type === "goal"} />
+                <input className="field num" type="number" inputMode="decimal" min={0} step="0.01" value={goal.target} onChange={(e) => setGoal({ ...goal, target: e.target.value })} required={goal.type === "goal"} />
               </Field>
               <Field label="Deja strâns (lei)" hint="Suma existentă înainte de a folosi aplicația">
-                <input className="field num" type="number" min={0} value={goal.initial} onChange={(e) => setGoal({ ...goal, initial: e.target.value })} />
+                <input className="field num" type="number" inputMode="decimal" min={0} step="0.01" value={goal.initial} onChange={(e) => setGoal({ ...goal, initial: e.target.value })} />
               </Field>
               {goal.type === "goal" && (
                 <Field label="Termen (opțional)">
@@ -433,7 +433,7 @@ export default function SavingsPage() {
                 </select>
               </Field>
               <Field label="Randament anual așteptat (%)">
-                <input className="field num" type="number" step={0.1} value={inv.expected_return} onChange={(e) => setInv({ ...inv, expected_return: e.target.value })} />
+                <input className="field num" type="number" inputMode="decimal" step="0.01" value={inv.expected_return} onChange={(e) => setInv({ ...inv, expected_return: e.target.value })} />
               </Field>
             </div>
             <div className="form-actions sm:justify-between">

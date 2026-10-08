@@ -207,7 +207,7 @@ export default function OnboardingPage() {
             <div className="flex flex-col gap-5">
               <GoalsRiskFields d={draft} set={set} />
               <Field label="Ai deja bani puși deoparte pentru urgențe? (opțional)" hint="Devin punctul de plecare al fondului tău de urgență.">
-                <input className="field num" type="number" inputMode="decimal" min={0} step={100} value={fundSaved} onChange={(e) => setFundSaved(e.target.value)} placeholder="ex. 5000" />
+                <input className="field num" type="number" inputMode="decimal" min={0} step="0.01" value={fundSaved} onChange={(e) => setFundSaved(e.target.value)} placeholder="ex. 5000" />
               </Field>
               <label className="flex items-start gap-3 rounded-lg border border-line bg-sheet p-3.5">
                 <input type="checkbox" className="mt-0.5 h-[18px] w-[18px] shrink-0" checked={trackInvestments} onChange={(e) => setTrackInvestments(e.target.checked)} />

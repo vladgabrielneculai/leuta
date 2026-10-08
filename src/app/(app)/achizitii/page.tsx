@@ -293,7 +293,7 @@ export default function AffordabilityPage() {
                   className="field num font-display text-[22px] font-bold text-ink"
                   type="number"
                   min={100}
-                  step={500}
+                  step="0.01"
                   value={totalPrice || ""}
                   onChange={(e) => setTotalPrice(Math.max(0, Number(e.target.value) || 0))}
                 />
@@ -355,7 +355,7 @@ export default function AffordabilityPage() {
                       type="number"
                       min={0}
                       max={totalPrice}
-                      step={500}
+                      step="0.01"
                       value={downPayment || ""}
                       onChange={(e) => setDownPayment(Math.min(totalPrice, Number(e.target.value) || 0))}
                     />
@@ -397,7 +397,7 @@ export default function AffordabilityPage() {
                       type="number"
                       min={1}
                       max={35}
-                      step={0.1}
+                      step="0.01"
                       value={loanInterestRate || ""}
                       onChange={(e) => setLoanInterestRate(Number(e.target.value) || 0)}
                     />

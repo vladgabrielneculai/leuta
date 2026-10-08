@@ -14,9 +14,9 @@ const PALETTE = ["#3D7A4E", "#5E9A6C", "#2E5C8A", "#4A7BA8", "#27496D", "#6A4E99
 
 const PARAMS: { key: string; label: string; hint: string; step: number; investmentOnly?: boolean }[] = [
   { key: "emergency_months", label: "Luni în fondul de urgență", hint: "Între 3 și 6 este recomandat; 6+ dacă venitul e variabil", step: 1 },
-  { key: "expected_invest_return", label: "Randament anual așteptat (%)", hint: "Folosit la comparația rambursare vs investiție", step: 0.5, investmentOnly: true },
-  { key: "invest_tax_pct", label: "Impozit pe câștigul din investiții (%)", hint: "Verifică nivelul actual pentru tipul tău de investiție", step: 1, investmentOnly: true },
-  { key: "inflation_pct", label: "Inflație estimată (%)", hint: "Pentru valoarea proiecțiilor în bani de azi", step: 0.5 },
+  { key: "expected_invest_return", label: "Randament anual așteptat (%)", hint: "Folosit la comparația rambursare vs investiție", step: 0.01, investmentOnly: true },
+  { key: "invest_tax_pct", label: "Impozit pe câștigul din investiții (%)", hint: "Verifică nivelul actual pentru tipul tău de investiție", step: 0.01, investmentOnly: true },
+  { key: "inflation_pct", label: "Inflație estimată (%)", hint: "Pentru valoarea proiecțiilor în bani de azi", step: 0.01 },
 ];
 
 function CategoryRow({

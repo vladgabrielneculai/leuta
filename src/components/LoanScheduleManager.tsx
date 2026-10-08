@@ -333,7 +333,8 @@ export default function LoanScheduleManager({
               className="field num font-semibold"
               type="number"
               min={100}
-              step={500}
+              step="0.01"
+              inputMode="decimal"
               value={testAmount || ""}
               onChange={(e) => setTestAmount(Number(e.target.value) || 0)}
             />
