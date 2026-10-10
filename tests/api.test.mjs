@@ -181,6 +181,9 @@ test("invitații: cont nou dintr-un link de o singură folosire, fără acces de
   assert.equal(status.onboardingPending, true);
   assert.equal(status.user.isAdmin, false);
   assert.equal((await asNew("/api/admin/users")).status, 403, "fără acces la administrare");
+  assert.equal((await asNew("/api/db/info")).status, 403, "fără informații despre baza de date");
+  assert.equal((await asNew("/api/db/table?table=entries")).status, 403, "fără explorarea tabelelor");
+  assert.equal((await call("/api/db/info")).status, 200, "administratorul vede în continuare baza de date");
   assert.deepEqual(await (await asNew("/api/crud/loans")).json(), [], "fără creditele altora");
 
   // Profilul influențează fondul de urgență.

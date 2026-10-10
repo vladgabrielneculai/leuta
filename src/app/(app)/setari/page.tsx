@@ -106,6 +106,8 @@ export default function SettingsPage() {
   } = useApp();
   const { data: cats, reload } = useApi<Category[]>("/api/crud/categories");
   const { data: settings } = useApi<Record<string, string>>("/api/settings");
+  // Informațiile despre baza de date (mărime, tabele, rânduri) sunt doar pentru administrator.
+  const { data: status } = useApi<{ user: { isAdmin: boolean } | null }>("/api/auth/status");
   const [params, setParams] = useState<Record<string, string>>({});
   const [newCat, setNewCat] = useState({ name: "", kind: "variable" as Kind, bucket: "needs" as Bucket });
   const [toast, setToast] = useState<string | null>(null);
@@ -250,13 +252,15 @@ export default function SettingsPage() {
 
           <AccountSecurity onToast={(msg) => setToast(msg)} />
 
-          <DatabaseManager
-            onToast={(msg) => setToast(msg)}
-            onRefresh={() => {
-              reload();
-              bump();
-            }}
-          />
+          {status?.user?.isAdmin && (
+            <DatabaseManager
+              onToast={(msg) => setToast(msg)}
+              onRefresh={() => {
+                reload();
+                bump();
+              }}
+            />
+          )}
 
           <Panel title="Modul Investiții" summary={params.enable_investments === "1" ? "Pornit" : "Oprit"}>
             <div className="flex flex-wrap items-center justify-between gap-4">
