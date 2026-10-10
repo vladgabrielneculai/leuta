@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "@/lib/http";
+import { requireAdmin } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,10 @@ const ALLOWED_TABLES = [
   "inflation_rates",
 ];
 
+// Explorarea tabelelor e doar pentru administrator (și el vede doar rândurile proprii, prin RLS).
 export async function GET(req: NextRequest) {
+  const auth = await requireAdmin();
+  if ("response" in auth) return auth.response;
   const table = req.nextUrl.searchParams.get("table");
   if (!table || !ALLOWED_TABLES.includes(table)) {
     return NextResponse.json({ error: "Tabel invalid sau restricționat." }, { status: 400 });
@@ -42,6 +46,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const auth = await requireAdmin();
+  if ("response" in auth) return auth.response;
   const table = req.nextUrl.searchParams.get("table");
   const id = req.nextUrl.searchParams.get("id");
   if (!table || !ALLOWED_TABLES.includes(table) || !id) {

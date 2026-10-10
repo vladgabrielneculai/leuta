@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +9,10 @@ const TABLES = [
   "investments", "investment_values", "planned_purchases", "user_settings", "fx_rates", "inflation_rates",
 ];
 
+/** Mărimea bazei de date și tabelele ei: doar pentru administrator. */
 export async function GET() {
+  const auth = await requireAdmin();
+  if ("response" in auth) return auth.response;
   const db = await getDb();
   // Un singur round-trip: numărul de rânduri pentru fiecare tabel + mărimea bazei de date.
   const counts = await db
