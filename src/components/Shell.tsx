@@ -203,6 +203,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<StatusUser | null>(null);
   const [secured, setSecured] = useState(true);
+  const [beta, setBeta] = useState(false);
   // Îndemnul spre 2FA poate fi amânat (câteva zile), ca să nu ocupe mereu partea de sus a ecranului.
   const [securitySnoozed, setSecuritySnoozed] = useState(true);
   useEffect(() => {
@@ -229,8 +230,9 @@ export default function Shell({ children }: { children: ReactNode }) {
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   useEffect(() => {
-    api<{ setupNeeded: boolean; authenticated: boolean; user: StatusUser | null; secured?: boolean; onboardingPending?: boolean }>("/api/auth/status")
+    api<{ setupNeeded: boolean; authenticated: boolean; user: StatusUser | null; secured?: boolean; onboardingPending?: boolean; beta?: boolean }>("/api/auth/status")
       .then((res) => {
+        setBeta(!!res.beta);
         if (res.setupNeeded) {
           if (path !== "/setup") window.location.replace("/setup");
         } else if (!res.authenticated) {
@@ -334,8 +336,9 @@ export default function Shell({ children }: { children: ReactNode }) {
           <Link href="/" className="group flex items-center gap-2.5">
             <Logo className="h-10 w-10 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105" />
             <div>
-              <div className="font-display text-[22px] font-bold leading-none tracking-[-0.03em] text-ink transition-colors group-hover:text-leu">
+              <div className="flex items-center gap-1.5 font-display text-[22px] font-bold leading-none tracking-[-0.03em] text-ink transition-colors group-hover:text-leu">
                 Leuța
+                {beta && <span className="rounded-full bg-mov/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-mov" title="Versiunea de test">Beta</span>}
               </div>
               <div className="mt-1.5 flex gap-1" aria-hidden>
                 {["var(--c-leu)", "var(--c-mov)", "var(--c-rosu)", "var(--c-galben)", "var(--c-albastru)"].map((c) => (
@@ -375,6 +378,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <Link href="/" className="flex min-w-0 items-center gap-2">
             <Logo className="h-8 w-8 shrink-0" />
             <span className="font-display text-[19px] font-bold tracking-[-0.03em]">Leuța</span>
+            {beta && <span className="rounded-full bg-mov/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-mov" title="Versiunea de test">Beta</span>}
           </Link>
           <div className="flex shrink-0 items-center gap-1.5">
             <ThemeToggle className="h-9 w-9" />

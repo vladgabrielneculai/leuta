@@ -4,6 +4,7 @@ import {
   clearFailedLogins, createSession, isLockedOut, LOCKOUT_MESSAGE, logAuthEvent, recordFailedLogin, requestMeta,
   sessionCookieOptions,
 } from "@/lib/auth";
+import { BETA_DENIED_MESSAGE, hasBetaAccess } from "@/lib/beta";
 import { getSystemDb as getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
 import { clearChallengeCookie, credentialById, relyingParty, takeChallenge } from "@/lib/webauthn";
@@ -47,6 +48,12 @@ export async function POST(req: NextRequest) {
       .prepare("SELECT id, username FROM users WHERE id = ? AND disabled_at IS NULL")
       .get<{ id: number; username: string }>(credential.userId);
     if (!user) return fail("utilizator inexistent sau dezactivat");
+    if (!hasBetaAccess(user.username)) {
+      await logAuthEvent(user.id, false, "passkey", meta, "fără acces la beta");
+      const res = NextResponse.json({ error: BETA_DENIED_MESSAGE }, { status: 403 });
+      clearChallengeCookie(res);
+      return res;
+    }
 
     await clearFailedLogins(meta.ip, user.id);
     await logAuthEvent(user.id, true, "passkey", meta);
