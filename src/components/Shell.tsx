@@ -22,6 +22,7 @@ const ICON = {
   settings: "M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4",
   admin: "M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z",
   import: "M12 3v12M7 10l5 5 5-5M4 17v3h16v-3",
+  repeat: "M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3",
 };
 
 const NAV = [
@@ -35,7 +36,10 @@ const NAV = [
   { href: "/setari", label: "Setări", color: "var(--c-ink-faint)", icon: ICON.settings },
 ];
 // Funcționalități noi, vizibile doar pe versiunea beta (după „Luna curentă”).
-const BETA_NAV = [{ href: "/import", label: "Import extras", color: "var(--c-mov)", icon: ICON.import }];
+const BETA_NAV = [
+  { href: "/import", label: "Import extras", color: "var(--c-mov)", icon: ICON.import },
+  { href: "/abonamente", label: "Abonamente", color: "var(--c-galben)", icon: ICON.repeat },
+];
 // Vizibil doar administratorului: invitații și lista conturilor.
 const ADMIN_NAV = { href: "/admin", label: "Administrare", color: "var(--c-mov)", icon: ICON.admin };
 

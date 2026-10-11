@@ -10,9 +10,10 @@ import type { Summary } from "@/lib/analytics";
 import { celebrateOnce } from "@/lib/confetti";
 import { currentMonth, eur, lei, monthLabel, pct, r2 } from "@/lib/util";
 import { Leader, ReceiptMeta } from "@/components/receipt";
+import { ScheduledAlerts } from "@/components/ScheduledAlerts";
 import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Skeleton, Stat, useApi, useApp } from "@/components/ui";
 
-type S = Summary & { fxError: string | null };
+type S = Summary & { fxError: string | null; beta?: boolean };
 
 const kLei = (v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `${Math.round(v)}`);
 
@@ -147,6 +148,7 @@ export default function Dashboard() {
 
   return (
     <>
+      {s.beta && month === currentMonth() && <ScheduledAlerts />}
       {s.fxError && (
         <p className="mb-4 rounded-md bg-galben-tint px-3 py-2 text-[13px]">
           Cursul BNR nu a putut fi actualizat ({s.fxError}). Sumele în euro folosesc ultimul curs salvat.

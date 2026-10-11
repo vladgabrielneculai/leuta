@@ -10,7 +10,7 @@
     "build:exe": "powershell -ExecutionPolicy Bypass -File ./build-exe.ps1",
     "shortcut": "powershell -ExecutionPolicy Bypass -File ./creeaza-scurtatura-desktop.ps1",
     "test": "node --test tests/api.test.mjs",
-    "test:unit": "node --experimental-strip-types --no-warnings --test tests/statementImport.test.mjs"
+    "test:unit": "node --experimental-strip-types --no-warnings --test tests/statementImport.test.mjs tests/scheduled.test.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
