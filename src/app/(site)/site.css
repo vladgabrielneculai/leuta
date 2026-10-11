@@ -267,3 +267,279 @@ details[open] .faq-plus { transform: rotate(45deg); }
   .printing, .rise { animation: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
 }
+
+/* ------------------------------------------------------------------ lumea de la început (ScrollWorld.tsx) */
+.sw-stage {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 45%, rgb(var(--sheet) / 0.9), transparent 70%),
+    rgb(var(--paper));
+}
+.sw-scene {
+  position: absolute;
+  inset: 0;
+  perspective: 1000px;
+  perspective-origin: 50% 45%;
+}
+.sw-world {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.sw-item, .sw-thing {
+  position: absolute;
+  left: 0;
+  top: 0;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+.sw-thing { margin: -45px 0 0 -90px; }
+.sw-floor {
+  position: absolute;
+  left: -3000px;
+  top: 0;
+  width: 6000px;
+  height: 14000px;
+  transform-origin: 50% 0;
+  transform: translate3d(0, 420px, 1200px) rotateX(-90deg);
+  background-image:
+    linear-gradient(rgb(var(--line-strong) / 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--line-strong) / 0.35) 1px, transparent 1px);
+  background-size: 160px 160px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 95%);
+  mask-image: linear-gradient(to bottom, #000 40%, transparent 95%);
+}
+/* ceața de la orizont și marginile ecranului */
+.sw-fog {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 30% 14% at 50% 45%, rgb(var(--paper) / 0.85), transparent 100%),
+    linear-gradient(to bottom, rgb(var(--paper)) 0, transparent 14%, transparent 86%, rgb(var(--paper)) 100%);
+}
+
+/* bancnotă stilizată în culorile reale (1 leu verde, 5 mov, 10 roșu, 50 galben, 100 albastru) */
+.sw-note {
+  position: relative;
+  width: 180px;
+  height: 90px;
+  border-radius: 6px;
+  background:
+    repeating-radial-gradient(circle at 70% 50%, transparent 0 5px, color-mix(in srgb, var(--note) 14%, transparent) 5px 6px),
+    linear-gradient(120deg, color-mix(in srgb, var(--note) 26%, rgb(var(--sheet))), color-mix(in srgb, var(--note) 12%, rgb(var(--sheet))));
+  border: 1.5px solid color-mix(in srgb, var(--note) 70%, transparent);
+  box-shadow: 0 14px 30px rgb(var(--shadow) / 0.16);
+  color: var(--note);
+  font-weight: 700;
+}
+.sw-note-value { position: absolute; left: 10px; top: 6px; font-size: 22px; line-height: 1; }
+.sw-note-value-b { left: auto; top: auto; right: 10px; bottom: 6px; }
+.sw-note-word { position: absolute; left: 10px; bottom: 8px; font-size: 10px; letter-spacing: 0.3em; }
+.sw-note-seal {
+  position: absolute;
+  right: 30px;
+  top: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px dashed color-mix(in srgb, var(--note) 70%, transparent);
+}
+.sw-coin {
+  width: 70px;
+  height: 70px;
+  margin: 10px 0 0 55px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 26px;
+  color: rgb(var(--galben));
+  background: radial-gradient(circle at 35% 30%, rgb(var(--galben-tint)), color-mix(in srgb, rgb(var(--galben)) 45%, rgb(var(--sheet))));
+  box-shadow: inset 0 0 0 4px color-mix(in srgb, rgb(var(--galben)) 55%, transparent), 0 10px 24px rgb(var(--shadow) / 0.18);
+}
+
+/* bonul mic de jos: cât s-a alocat până acum */
+.sw-hud {
+  position: absolute;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  width: min(calc(100vw - 32px), 420px);
+  padding: 12px 16px 14px;
+  border-radius: 8px;
+  background: rgb(var(--sheet) / 0.9);
+  box-shadow: 0 1px 2px rgb(var(--shadow) / 0.14), 0 12px 30px rgb(var(--shadow) / 0.12);
+  backdrop-filter: blur(6px);
+}
+.sw-hud span[style] { transition: width 80ms linear; }
+.sw-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: rgb(var(--ink-faint));
+}
+.sw-hint-line { width: 1px; height: 36px; background: linear-gradient(rgb(var(--ink-faint)), transparent); animation: sw-hint 1.8s ease-in-out infinite; transform-origin: top; }
+@keyframes sw-hint { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); } 100% { transform: scaleY(1); opacity: 0; } }
+
+/* ------------------------------------------------------------------ finalul: POS, card și bonul care iese din fantă */
+.sw-pos {
+  position: relative;
+  width: 250px;
+  margin-top: -6px;
+  padding: 18px 18px 20px;
+  border-radius: 26px 26px 34px 34px;
+  background: linear-gradient(160deg, #2b2a27, #141311 70%);
+  box-shadow: inset 0 0 0 1.5px #3c3a35, inset 0 2px 0 rgb(255 255 255 / 0.06), 0 30px 60px rgb(var(--shadow) / 0.3), 0 8px 18px rgb(var(--shadow) / 0.25);
+  color: #e9e4d9;
+}
+.sw-pos-slot {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: -4px;
+  height: 10px;
+  border-radius: 6px;
+  background: #0a0a09;
+  box-shadow: inset 0 -2px 0 rgb(255 255 255 / 0.08);
+}
+.sw-pos-screen {
+  position: relative;
+  height: 128px;
+  margin-top: 6px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(#24313a, #1a242b);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), inset 0 10px 30px rgb(0 0 0 / 0.35);
+  transition: background 0.35s ease;
+}
+.sw-pos[data-state="ok"] .sw-pos-screen { background: linear-gradient(#2f6b44, #1f4d30); }
+.sw-pos-wait, .sw-pos-ok {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.sw-pos-ok { opacity: 0; transform: scale(0.9); }
+.sw-pos[data-state="ok"] .sw-pos-wait { opacity: 0; transform: scale(1.05); }
+.sw-pos[data-state="ok"] .sw-pos-ok { opacity: 1; transform: none; }
+.sw-pos-check {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e9f5ec;
+  color: #2f6b44;
+  font-size: 22px;
+  font-weight: 700;
+}
+.sw-pos-waves { display: flex; gap: 3px; height: 16px; align-items: center; }
+.sw-pos-waves i {
+  display: block;
+  width: 6px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  opacity: 0.3;
+  animation: sw-wave 1.2s ease-in-out infinite;
+}
+.sw-pos-waves i:nth-child(2) { height: 18px; animation-delay: 0.15s; }
+.sw-pos-waves i:nth-child(3) { height: 22px; animation-delay: 0.3s; }
+@keyframes sw-wave { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+.sw-pos-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 14px; }
+.sw-pos-keys span {
+  display: grid;
+  place-items: center;
+  height: 28px;
+  border-radius: 7px;
+  background: #34322e;
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  font-size: 13px;
+  font-weight: 600;
+}
+.sw-pos-fn { margin-top: 9px; }
+.sw-pos-fn span { color: #fff; }
+
+.sw-card {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  width: 210px;
+  height: 132px;
+  margin-left: -105px;
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #f4efe4;
+  background:
+    radial-gradient(circle at 85% 15%, rgb(255 255 255 / 0.22), transparent 40%),
+    linear-gradient(135deg, #3d7a4e, #234a2f 60%, #1b3a25);
+  box-shadow: 0 24px 40px rgb(0 0 0 / 0.35), inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  transform-origin: 50% 80%;
+  will-change: transform, opacity;
+  z-index: 2;
+}
+.sw-card-chip {
+  position: absolute;
+  left: 16px;
+  top: 40px;
+  width: 34px;
+  height: 26px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #e9cf86, #b89236);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.2);
+}
+.sw-card-nfc { position: absolute; left: 58px; top: 42px; font-size: 13px; font-weight: 700; letter-spacing: -0.2em; opacity: 0.8; }
+.sw-card-num { position: absolute; left: 16px; bottom: 32px; font-size: 12.5px; letter-spacing: 0.06em; }
+.sw-card-name { position: absolute; left: 16px; bottom: 13px; font-size: 10px; letter-spacing: 0.16em; opacity: 0.8; }
+
+/* textul scenei: în stânga pe calculator, sus pe telefon */
+.sw-caption {
+  position: absolute;
+  left: max(24px, calc(50% - 560px));
+  top: 50%;
+  width: min(330px, calc(50% - 230px));
+  transform: translateY(-50%);
+}
+.sw-cap {
+  display: none;
+  margin-top: 12px;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.08;
+  animation: rise 0.6s cubic-bezier(.2, .7, .2, 1) both;
+}
+.sw-caption[data-step="0"] .sw-cap-0,
+.sw-caption[data-step="1"] .sw-cap-1,
+.sw-caption[data-step="2"] .sw-cap-2 { display: block; }
+.sw-cta {
+  position: absolute;
+  left: max(24px, calc(50% - 560px));
+  top: calc(50% + 120px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: min(330px, calc(50% - 230px));
+  transform: translateY(var(--rise, 20px));
+}
+@media (max-width: 900px) {
+  .sw-caption { left: 16px; right: 16px; top: 76px; width: auto; transform: none; text-align: center; }
+  .sw-caption > p:last-child { display: none; }
+  .sw-cap { font-size: 22px; margin-top: 6px; }
+  .sw-cta { left: 50%; top: auto; bottom: max(20px, env(safe-area-inset-bottom)); width: max-content; flex-wrap: nowrap; transform: translate(-50%, var(--rise, 20px)); }
+}
