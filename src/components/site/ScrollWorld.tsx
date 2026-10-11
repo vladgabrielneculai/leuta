@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties, type MutableRefObject, type RefObject } from "react";
+import { forwardRef, useEffect, useRef, type CSSProperties, type MutableRefObject, type RefObject } from "react";
 import { SITE } from "@/lib/site/config";
 import { money } from "@/lib/site/format";
 import { ease, measure, range, usePrefersReducedMotion } from "@/lib/site/scroll";
@@ -113,13 +113,23 @@ function World() {
   const left = useRef<HTMLSpanElement>(null);
   const perDay = useRef<HTMLSpanElement>(null);
   const caption = useRef<HTMLDivElement>(null);
+  const captionInline = useRef<HTMLDivElement>(null);
+  const finale = useRef<HTMLDivElement>(null);
   const fog = useRef<HTMLDivElement>(null);
   const cta = useRef<HTMLDivElement>(null);
   const narrow = useRef(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 640px)");
-    const onMq = () => (narrow.current = mq.matches);
+    // pe ecrane joase, textul și bonul de la final se micșorează ca să încapă între bară și butoane
+    const fit = () => {
+      const el = finale.current;
+      if (el) el.style.setProperty("--fit", String(Math.min(1, (window.innerHeight - 190) / Math.max(1, el.offsetHeight))));
+    };
+    const onMq = () => {
+      narrow.current = mq.matches;
+      fit();
+    };
     onMq();
     mq.addEventListener("change", onMq);
 
@@ -144,6 +154,7 @@ function World() {
     };
     window.addEventListener("scroll", wake, { passive: true });
     window.addEventListener("resize", wake);
+    window.addEventListener("resize", fit);
 
     const render = (p: number) => {
       const z = ease(range(p, 0, TRAVEL)) * (END - 80); // camera, care se oprește chiar în fața bonului
@@ -198,10 +209,12 @@ function World() {
       if (perDay.current) perDay.current.textContent = money((BUDGET - total) / DAYS_LEFT);
 
       set(fog.current, "opacity", (1 - range(q, 0, 0.1)).toFixed(3)); // la bon nu mai e ceață
-      if (caption.current) {
-        fade(caption.current, range(q, 0, 0.05));
-        const s = q < 0.3 ? "0" : q < 0.66 ? "1" : "2";
-        if (caption.current.dataset.step !== s) caption.current.dataset.step = s;
+      // textul scenei: în stânga pe calculator, deasupra bonului pe telefon (unul dintre ele e ascuns din CSS)
+      const s = q < 0.3 ? "0" : q < 0.66 ? "1" : "2";
+      for (const el of [caption.current, captionInline.current]) {
+        if (!el) continue;
+        set(el, "opacity", range(q, 0, 0.05).toFixed(3));
+        if (el.dataset.step !== s) el.dataset.step = s;
       }
       if (cta.current) {
         const show = ease(range(q, 0.8, 0.92));
@@ -232,6 +245,7 @@ function World() {
       cancelAnimationFrame(raf);
       window.removeEventListener("scroll", wake);
       window.removeEventListener("resize", wake);
+      window.removeEventListener("resize", fit);
       mq.removeEventListener("change", onMq);
     };
   }, []);
@@ -262,7 +276,10 @@ function World() {
               <Intro />
             </div>
             <div ref={(el) => void (items.current[CHAPTERS.length + 1] = el)} className="sw-item" style={at(-END)}>
-              <Spending lines={lines} spent={spent} spentBar={spentBar} left={left} perDay={perDay} />
+              <div ref={finale} className="sw-finale">
+                <Caption ref={captionInline} className="sw-caption-inline" />
+                <Spending lines={lines} spent={spent} spentBar={spentBar} left={left} perDay={perDay} />
+              </div>
             </div>
           </div>
         </div>
@@ -285,15 +302,7 @@ function World() {
           </div>
         </div>
 
-        <div ref={caption} className="sw-caption" data-step="0" style={{ opacity: 0, visibility: "hidden" }}>
-          <p className="kicker">Cheltuieli variabile · octombrie</p>
-          <h2 className="sw-cap sw-cap-0">Cheltuiești.</h2>
-          <h2 className="sw-cap sw-cap-1">Leuța ține socoteala.</h2>
-          <h2 className="sw-cap sw-cap-2">Și îți spune cât mai poți cheltui.</h2>
-          <p className="mt-3 text-[14.5px] leading-relaxed text-ink-soft sm:text-[16px]">
-            Fiecare cheltuială intră pe bonul lunii, la categoria ei. Vezi pe loc cât ai cheltuit din buget și cât îți rămâne pe zi.
-          </p>
-        </div>
+        <Caption ref={caption} className="sw-caption" />
 
         <div ref={cta} className="sw-cta" style={{ opacity: 0, visibility: "hidden" }}>
           <a href="#invitatie" className="btn-primary">
@@ -312,6 +321,21 @@ function World() {
     </section>
   );
 }
+
+/** Textul scenei de la final, în trei pași (`data-step`). */
+const Caption = forwardRef<HTMLDivElement, { className: string }>(function Caption({ className }, ref) {
+  return (
+    <div ref={ref} className={className} data-step="0" style={{ opacity: 0 }}>
+      <p className="kicker">Cheltuieli variabile · octombrie</p>
+      <h2 className="sw-cap sw-cap-0">Cheltuiești.</h2>
+      <h2 className="sw-cap sw-cap-1">Leuța ține socoteala.</h2>
+      <h2 className="sw-cap sw-cap-2">Și îți spune cât mai poți cheltui.</h2>
+      <p className="sw-cap-text mt-3 text-[14.5px] leading-relaxed text-ink-soft sm:text-[16px]">
+        Fiecare cheltuială intră pe bonul lunii, la categoria ei. Vezi pe loc cât ai cheltuit din buget și cât îți rămâne pe zi.
+      </p>
+    </div>
+  );
+});
 
 function Intro() {
   return (

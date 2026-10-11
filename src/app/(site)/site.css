@@ -424,9 +424,9 @@ details[open] .faq-plus { transform: rotate(45deg); }
   line-height: 1.08;
   animation: rise 0.5s cubic-bezier(.2, .7, .2, 1) both;
 }
-.sw-caption[data-step="0"] .sw-cap-0,
-.sw-caption[data-step="1"] .sw-cap-1,
-.sw-caption[data-step="2"] .sw-cap-2 { display: block; }
+[data-step="0"] > .sw-cap-0,
+[data-step="1"] > .sw-cap-1,
+[data-step="2"] > .sw-cap-2 { display: block; }
 .sw-cta {
   position: absolute;
   left: max(24px, calc(50% - 560px));
@@ -437,9 +437,14 @@ details[open] .faq-plus { transform: rotate(45deg); }
   width: min(330px, calc(50% - 240px));
   transform: translateY(var(--rise, 20px));
 }
+/* pe telefon textul stă deasupra bonului, în aceeași coloană, deci nu se poate suprapune peste el */
+.sw-caption-inline { display: none; }
+.sw-finale { display: flex; flex-direction: column; align-items: center; transform: scale(var(--fit, 1)); transform-origin: 50% 50%; }
 @media (max-width: 900px) {
-  .sw-caption { left: 16px; right: 16px; top: 74px; width: auto; transform: none; text-align: center; }
-  .sw-caption > p:last-child { display: none; }
-  .sw-cap { font-size: 21px; margin-top: 4px; }
+  .sw-caption { display: none; }
+  .sw-caption-inline { display: block; width: min(90vw, 400px); margin-bottom: 18px; text-align: center; }
+  .sw-caption-inline .sw-cap-text { display: none; }
+  .sw-cap { font-size: 22px; margin-top: 6px; }
+  .sw-caption-inline .sw-cap { min-height: 2.2em; } /* două rânduri rezervate: bonul nu sare când se schimbă textul */
   .sw-cta { left: 50%; top: auto; bottom: max(20px, env(safe-area-inset-bottom)); width: max-content; flex-wrap: nowrap; transform: translate(-50%, var(--rise, 20px)); }
 }
