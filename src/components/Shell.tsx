@@ -21,6 +21,8 @@ const ICON = {
   profile: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-6 8-6s8 2 8 6",
   settings: "M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4",
   admin: "M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z",
+  import: "M12 3v12M7 10l5 5 5-5M4 17v3h16v-3",
+  repeat: "M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3",
 };
 
 const NAV = [
@@ -32,6 +34,11 @@ const NAV = [
   { href: "/buget", label: "Metode de buget", color: "var(--c-rosu)", icon: ICON.budget },
   { href: "/profil", label: "Profilul meu", color: "var(--c-leu)", icon: ICON.profile },
   { href: "/setari", label: "Setări", color: "var(--c-ink-faint)", icon: ICON.settings },
+];
+// Funcționalități noi, vizibile doar pe versiunea beta (după „Luna curentă”).
+const BETA_NAV = [
+  { href: "/import", label: "Import extras", color: "var(--c-mov)", icon: ICON.import },
+  { href: "/abonamente", label: "Abonamente", color: "var(--c-galben)", icon: ICON.repeat },
 ];
 // Vizibil doar administratorului: invitații și lista conturilor.
 const ADMIN_NAV = { href: "/admin", label: "Administrare", color: "var(--c-mov)", icon: ICON.admin };
@@ -203,6 +210,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<StatusUser | null>(null);
   const [secured, setSecured] = useState(true);
+  const [beta, setBeta] = useState(false);
   // Îndemnul spre 2FA poate fi amânat (câteva zile), ca să nu ocupe mereu partea de sus a ecranului.
   const [securitySnoozed, setSecuritySnoozed] = useState(true);
   useEffect(() => {
@@ -229,8 +237,9 @@ export default function Shell({ children }: { children: ReactNode }) {
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   useEffect(() => {
-    api<{ setupNeeded: boolean; authenticated: boolean; user: StatusUser | null; secured?: boolean; onboardingPending?: boolean }>("/api/auth/status")
+    api<{ setupNeeded: boolean; authenticated: boolean; user: StatusUser | null; secured?: boolean; onboardingPending?: boolean; beta?: boolean }>("/api/auth/status")
       .then((res) => {
+        setBeta(!!res.beta);
         if (res.setupNeeded) {
           if (path !== "/setup") window.location.replace("/setup");
         } else if (!res.authenticated) {
@@ -275,9 +284,10 @@ export default function Shell({ children }: { children: ReactNode }) {
     );
   }
 
+  const navItems = [...NAV.slice(0, 2), ...(beta ? BETA_NAV : []), ...NAV.slice(2), ...(user?.isAdmin ? [ADMIN_NAV] : [])];
   const nav = (
     <nav className="flex flex-col gap-1" aria-label="Navigare principală">
-      {(user?.isAdmin ? [...NAV, ADMIN_NAV] : NAV).map((n) => {
+      {navItems.map((n) => {
         const isCurrent = active(n.href);
         return (
           <Link
@@ -334,8 +344,9 @@ export default function Shell({ children }: { children: ReactNode }) {
           <Link href="/" className="group flex items-center gap-2.5">
             <Logo className="h-10 w-10 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105" />
             <div>
-              <div className="font-display text-[22px] font-bold leading-none tracking-[-0.03em] text-ink transition-colors group-hover:text-leu">
+              <div className="flex items-center gap-1.5 font-display text-[22px] font-bold leading-none tracking-[-0.03em] text-ink transition-colors group-hover:text-leu">
                 Leuța
+                {beta && <span className="rounded-full bg-mov/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-mov" title="Versiunea de test">Beta</span>}
               </div>
               <div className="mt-1.5 flex gap-1" aria-hidden>
                 {["var(--c-leu)", "var(--c-mov)", "var(--c-rosu)", "var(--c-galben)", "var(--c-albastru)"].map((c) => (
@@ -375,6 +386,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <Link href="/" className="flex min-w-0 items-center gap-2">
             <Logo className="h-8 w-8 shrink-0" />
             <span className="font-display text-[19px] font-bold tracking-[-0.03em]">Leuța</span>
+            {beta && <span className="rounded-full bg-mov/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-mov" title="Versiunea de test">Beta</span>}
           </Link>
           <div className="flex shrink-0 items-center gap-1.5">
             <ThemeToggle className="h-9 w-9" />
@@ -406,7 +418,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             <div className="flex flex-col gap-4">
               {/* Pe telefon, secțiunile sunt dale cu iconiță: se recunosc dintr-o privire și se ating ușor. */}
               <nav className="grid grid-cols-3 gap-2" aria-label="Toate secțiunile">
-                {(user?.isAdmin ? [...NAV, ADMIN_NAV] : NAV).map((n) => {
+                {navItems.map((n) => {
                   const isCurrent = active(n.href);
                   return (
                     <Link

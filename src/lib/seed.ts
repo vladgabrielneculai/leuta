@@ -6,6 +6,8 @@ export async function clearAllFinancialData(dbArg?: DbInterface): Promise<void> 
   await db.transaction(async (db) => {
     await db.exec(`
       DELETE FROM entries;
+      DELETE FROM import_rules;
+      DELETE FROM scheduled_entries;
       DELETE FROM loan_prepayments;
       DELETE FROM loan_schedules;
       DELETE FROM loans;
