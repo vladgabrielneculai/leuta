@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 // Ordinea respectă cheile străine (părinții înaintea copiilor).
 const ORDER = [
   "categories", "goals", "investments", "loans", "entries",
-  "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases",
+  "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases", "import_rules",
 ] as const;
 
 // coloană → tabelul părinte al cărui id îl referă
@@ -26,6 +26,7 @@ const FKS: Record<string, Record<string, string>> = {
   investment_values: { investment_id: "investments" },
   loan_prepayments: { loan_id: "loans" },
   loan_schedules: { loan_id: "loans" },
+  import_rules: { category_id: "categories" },
 };
 
 const HAS_ID = new Set(["categories", "goals", "investments", "loans", "entries", "loan_prepayments", "loan_schedules", "planned_purchases"]);
@@ -91,7 +92,11 @@ export async function POST(req: NextRequest) {
             const mapped = idMap[parent]?.get(rec[col]);
             rec[col] = mapped ?? null; // părinte lipsă din backup → legătură goală, nu rând orfan
           }
-          if ((t === "investment_values" && rec.investment_id === null) || (FKS[t]?.loan_id && rec.loan_id === null)) continue;
+          if (
+            (t === "investment_values" && rec.investment_id === null) ||
+            (FKS[t]?.loan_id && rec.loan_id === null) ||
+            (t === "import_rules" && rec.category_id === null)
+          ) continue;
           const keys = Object.keys(rec);
           if (keys.some((k) => !/^[a-z_]+$/.test(k))) throw new Error(`Coloană invalidă în ${t}`);
           const res = await tx
