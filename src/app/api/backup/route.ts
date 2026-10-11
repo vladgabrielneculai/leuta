@@ -16,20 +16,21 @@ export const dynamic = "force-dynamic";
 
 // Ordinea respectă cheile străine (părinții înaintea copiilor).
 const ORDER = [
-  "categories", "goals", "investments", "loans", "entries",
+  "categories", "goals", "investments", "loans", "scheduled_entries", "entries",
   "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases", "import_rules",
 ] as const;
 
 // coloană → tabelul părinte al cărui id îl referă
 const FKS: Record<string, Record<string, string>> = {
   entries: { category_id: "categories", goal_id: "goals", investment_id: "investments" },
+  scheduled_entries: { category_id: "categories" },
   investment_values: { investment_id: "investments" },
   loan_prepayments: { loan_id: "loans" },
   loan_schedules: { loan_id: "loans" },
   import_rules: { category_id: "categories" },
 };
 
-const HAS_ID = new Set(["categories", "goals", "investments", "loans", "entries", "loan_prepayments", "loan_schedules", "planned_purchases"]);
+const HAS_ID = new Set(["categories", "goals", "investments", "loans", "scheduled_entries", "entries", "loan_prepayments", "loan_schedules", "planned_purchases"]);
 
 // Exportul (toate datele financiare) și restaurarea (le înlocuiește) cer identitatea confirmată recent.
 export async function GET() {
@@ -40,7 +41,9 @@ export async function GET() {
   dump.user_settings = await db.prepare("SELECT key, value FROM user_settings").all();
   for (const t of ORDER) {
     const rows = await db.prepare(`SELECT * FROM ${t}`).all<Record<string, unknown>>();
-    dump[t] = rows.map(({ user_id: _owner, ...rest }) => rest); // proprietarul nu face parte din backup
+    // Proprietarul nu face parte din backup. Nici legătura intrare → programare: versiunea din producție nu o
+    // cunoaște, iar la restaurare programarea își știe oricum ultima lună creată (`last_month`).
+    dump[t] = rows.map(({ user_id: _owner, scheduled_id: _schedule, ...rest }) => rest);
   }
   const stamp = new Date().toISOString().slice(0, 10);
   return new NextResponse(JSON.stringify({ version: 2, exported: new Date().toISOString(), data: dump }, null, 2), {
