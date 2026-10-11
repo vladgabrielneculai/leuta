@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  */
 
 const FINANCIAL = [
-  "categories", "goals", "investments", "loans", "entries",
+  "categories", "goals", "investments", "loans", "scheduled_entries", "entries",
   "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases", "import_rules",
 ] as const;
 
