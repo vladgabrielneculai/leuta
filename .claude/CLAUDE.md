@@ -22,3 +22,9 @@ Dacă da, **avertizează utilizatorul explicit și cere confirmarea ÎNAINTE** d
 Preferă migrări compatibile cu versiunea din producție (doar adăugări: tabele noi, coloane opționale), ca aplicația de pe `main` să funcționeze în continuare cât timp funcționalitatea e testată pe `staging`.
 
 Dacă funcționalitatea nu atinge structura bazei de date, spune asta pe scurt („Fără modificări la baza de date.”).
+
+## Commit-uri
+
+- Toate commit-urile se fac cu autorul **Vlad Gabriel Neculai `<81146225+vladgabrielneculai@users.noreply.github.com>`** (setat automat din `.claude/settings.json`; dacă lipsește, rulează `git config user.name` / `git config user.email` cu aceste valori înainte de commit).
+- **Nu adăuga linia `Co-Authored-By:`** în mesajele de commit. Repository-ul e privat și Vercel (planul Hobby) blochează deploy-urile pentru commit-urile cu alt autor sau co-autor decât proprietarul contului.
+- Lucrează doar pe `main`, `staging` și branch-ul curent; branch-urile vechi se șterg după merge.

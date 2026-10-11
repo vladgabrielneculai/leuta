@@ -80,7 +80,7 @@ O aplicație web de buget personal pentru România: venituri, cheltuieli, credit
 
 **Aspect**
 - Temă de zi și de noapte, cu o paletă inspirată din bancnotele românești.
-- Se instalează pe telefon ca aplicație (PWA) și are o variantă Windows (`Leuta.exe`).
+- Se instalează pe telefon ca aplicație (PWA).
 
 ## Cum se folosește
 
@@ -89,8 +89,6 @@ Aplicația rulează online la **[app.leuta.ro](https://app.leuta.ro)**. Conturil
 **Pe telefon**, deschide adresa în browser și adaug-o pe ecranul principal:
 - iPhone (Safari): Share → *Add to Home Screen*
 - Android (Chrome): meniul ⋮ → *Install app*
-
-**Pe Windows**, `Leuta.exe` deschide versiunea online într-o fereastră separată (cu iconiță în tray). Se construiește cu `npm run build:exe`; adresa se citește din `Leuta.url.txt`, iar scurtătura de pe Desktop se face cu `npm run shortcut`.
 
 ## Tehnologii
 
