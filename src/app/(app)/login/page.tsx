@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { api, Field } from "@/components/ui";
 import { parseInviteCode } from "@/lib/invite";
 import { biometricLabel, loginWithPasskey, passkeyErrorMessage, passkeysSupported } from "@/lib/passkeyClient";
+import { BETA_DENIED_MESSAGE } from "@/lib/beta";
 import { SITE } from "@/lib/site/config";
 
 /** Animația de început rămâne montată cât timp se verifică sesiunea și după, ca să nu se reia de la capăt. */
@@ -43,7 +44,9 @@ function LoginScreen() {
   useEffect(() => {
     setSupported(passkeysSupported());
     setBioLabel(biometricLabel());
-    if (new URLSearchParams(window.location.search).has("cont-nou")) setTab("new");
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("cont-nou")) setTab("new");
+    if (params.get("beta") === "0") setError(BETA_DENIED_MESSAGE);
     api<{ setupNeeded: boolean; authenticated: boolean }>("/api/auth/status")
       .then((res) => {
         if (res.setupNeeded) {

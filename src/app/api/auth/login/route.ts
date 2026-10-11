@@ -4,6 +4,7 @@ import {
   isSetupComplete, LOCKOUT_MESSAGE, logAuthEvent, recordFailedLogin, requestMeta, secondFactors, sessionCookieOptions,
   useTotpCode, verifyPassword,
 } from "@/lib/auth";
+import { BETA_DENIED_MESSAGE, hasBetaAccess } from "@/lib/beta";
 import { getSystemDb as getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
 
@@ -89,6 +90,12 @@ export async function POST(req: NextRequest) {
     if (user.disabled_at) {
       await logAuthEvent(user.id, false, method, meta, "cont dezactivat");
       return NextResponse.json({ error: DISABLED_MESSAGE }, { status: 403 });
+    }
+
+    // Tot după autentificarea completă: pe beta intră doar testerii.
+    if (!hasBetaAccess(user.username)) {
+      await logAuthEvent(user.id, false, method, meta, "fără acces la beta");
+      return NextResponse.json({ error: BETA_DENIED_MESSAGE }, { status: 403 });
     }
 
     await clearFailedLogins(meta.ip, user.id);
