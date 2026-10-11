@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 const FINANCIAL = [
   "categories", "goals", "investments", "loans", "entries",
-  "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases",
+  "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases", "import_rules",
 ] as const;
 
 const strip = (rows: Record<string, unknown>[]) => rows.map(({ user_id: _owner, ...rest }) => rest);
