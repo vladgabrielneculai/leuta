@@ -68,6 +68,12 @@ O aplicație web de buget personal pentru România: venituri, cheltuieli, credit
 - Fondul de urgență măsurat în luni de cheltuieli, obiective cu termen și suma lunară necesară.
 - Curs BNR și inflația din România (INS) preluate automat.
 
+**Vacanțe**
+- Cheltuielile din concedii, separat de bugetul lunar: fiecare vacanță are perioada și moneda locului (EUR, TRY, HUF…).
+- Banii pe care îi ai deja (cash, card în valută) se trec direct în moneda lor; cheltuielile scad din ei, fără conversii. Vezi cât ți-a rămas și cât poți cheltui pe zi.
+- Pe categorii (cazare, transport, mâncare…) și pe zile, cu un echivalent orientativ în lei: cursul la care ai cumpărat valuta sau cursul BNR.
+- Cât ești în vacanță, Panoul arată un card cu banii rămași, iar butonul „+” trece cheltuiala direct la vacanță.
+
 **Notificări**
 - Telegram: reminder seara, scadențe, alerte de buget. Botului îi poți scrie `45 mâncare` sau `+5000 salariu` și intrarea apare în aplicație.
 - Email (Resend): rezumat săptămânal și bilanțul lunii.
@@ -200,7 +206,7 @@ Ai găsit o problemă de securitate? Te rog să nu deschizi un issue public: scr
 ```
 src/
 ├── app/
-│   ├── (app)/          paginile aplicației: panou, luna, credite, economii, setări, admin…
+│   ├── (app)/          paginile aplicației: panou, luna, credite, economii, vacanțe, setări, admin…
 │   ├── (site)/         site-ul de prezentare și paginile legale (leuta.ro)
 │   └── api/            rutele API: autentificare, CRUD, import grafic, cron, Telegram…
 ├── components/         componente React (formulare, securitate, bonul, site)
@@ -212,7 +218,7 @@ tests/                  testele end-to-end ale API-ului
 public/                 iconițe, capturi de ecran, sigla din emailuri
 ```
 
-Pentru modificări la baza de date, adaugă o migrare nouă numerotată în `supabase/migrations` (de ex. `0011_….sql`) în loc să le editezi pe cele existente.
+Pentru modificări la baza de date, adaugă o migrare nouă numerotată în `supabase/migrations` (de ex. `0012_….sql`) în loc să le editezi pe cele existente.
 
 ## Licență
 
