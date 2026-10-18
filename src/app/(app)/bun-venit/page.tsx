@@ -5,6 +5,7 @@ import LoanForm from "@/components/LoanForm";
 import Logo from "@/components/Logo";
 import { GoalsRiskFields, PersonalFields, WorkFields, fromDraft, toDraft, type ProfileDraft } from "@/components/ProfileFields";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { enableTour } from "@/components/Tour";
 import { api, Field, Modal, Skeleton, useApi } from "@/components/ui";
 import type { Loan } from "@/lib/loan";
 import type { Profile } from "@/lib/profile";
@@ -107,6 +108,8 @@ export default function OnboardingPage() {
       await sideEffects();
       const finishing = step === STEPS.length - 2;
       await saveProfile(finishing ? { onboardingDone: true } : {});
+      // Contul nou își vede apoi turul aplicației, câte un pas scurt pe fiecare pagină.
+      if (finishing) await enableTour();
       setStep(step + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
@@ -120,6 +123,7 @@ export default function OnboardingPage() {
     setBusy(true);
     try {
       await saveProfile({ onboardingDone: true });
+      await enableTour();
     } catch {
       // Chiar dacă salvarea pică, nu ținem utilizatorul blocat în ghid.
     }

@@ -8,6 +8,7 @@ import SecurityCenter from "@/components/SecurityCenter";
 import NotificationSettings from "@/components/NotificationSettings";
 import { ThemeChooser } from "@/components/ThemeToggle";
 import DatabaseManager from "@/components/DatabaseManager";
+import { useTourReplay } from "@/components/Tour";
 
 type Category = { id: number; name: string; kind: Kind; bucket: Bucket; color: string };
 const PALETTE = ["#3D7A4E", "#5E9A6C", "#2E5C8A", "#4A7BA8", "#27496D", "#6A4E99", "#8A6BB8", "#B5456A", "#C9657F", "#DB8BA4", "#C99A1E", "#8A989C"];
@@ -120,6 +121,7 @@ export default function SettingsPage() {
   const [params, setParams] = useState<Record<string, string>>({});
   const [newCat, setNewCat] = useState({ name: "", kind: "variable" as Kind, bucket: "needs" as Bucket });
   const [toast, setToast] = useState<string | null>(null);
+  const replayTour = useTourReplay();
   const [tab, setTab] = useTab<SettingsTab>("setari", "general", SETTINGS_TABS.map((t) => t.key));
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -202,7 +204,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Setări" intro="Categoriile, aspectul, notificările, securitatea și parametrii calculelor." />
 
-      <Tabs tabs={SETTINGS_TABS} value={tab} onChange={setTab} className="mb-5" label="Secțiunile setărilor" />
+      <Tabs tabs={SETTINGS_TABS} value={tab} onChange={setTab} className="mb-5" label="Secțiunile setărilor" data-tour="setari-tabs" />
 
       {tab === "general" && (
         <div className="grid gap-4 lg:gap-6 xl:grid-cols-[1.4fr_1fr] xl:items-start">
@@ -252,9 +254,18 @@ export default function SettingsPage() {
           <Panel title="Aspect" summary="Temă de zi, de noapte sau automată">
             <p className="mb-3 text-[13px] text-ink-soft">
               Tema de zi sau de noapte. „Auto” o schimbă singură după setarea telefonului sau a calculatorului. Alegerea se
-              păstrează pe fiecare dispozitiv; o poți schimba rapid și din butonul ☀️/🌙 din bara aplicației.
+              păstrează pe fiecare dispozitiv; o poți schimba rapid și din butonul ☀️/🌙 din meniu (pe telefon, din „Mai mult”).
             </p>
             <ThemeChooser />
+          </Panel>
+
+          <Panel title="Tutorial" tour="setari-tour">
+            <p className="mb-3 text-[13px] text-ink-soft">
+              Turul aplicației îți arată, pe fiecare pagină, unde găsești lucrurile importante. Îl poți relua oricând.
+            </p>
+            <button type="button" className="btn-primary" onClick={() => replayTour()}>
+              ▶ Redă tutorialul
+            </button>
           </Panel>
 
           </div>

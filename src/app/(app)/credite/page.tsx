@@ -68,7 +68,7 @@ export default function LoansPage() {
         actions={
           <>
             <button className="btn-ghost" onClick={() => setImporting(true)}>📄 Adaugă din grafic PDF</button>
-            <button className="btn-primary" onClick={() => setAdding(true)}>Adaugă credit</button>
+            <button className="btn-primary" data-tour="credite-add" onClick={() => setAdding(true)}>Adaugă credit</button>
           </>
         }
       />

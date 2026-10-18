@@ -38,8 +38,9 @@ const KIND_INFO: Record<Kind, { color: string; help: string }> = {
  * deschis în fiecare secțiune și butoane „Editează / Șterge” pe fiecare rând.
  */
 function KindSection({
-  kind, entries, cats, goals, invs, rate,
+  kind, entries, cats, goals, invs, rate, tour,
 }: {
+  tour?: string;
   kind: Kind;
   entries: Entry[];
   cats: Category[];
@@ -56,6 +57,7 @@ function KindSection({
 
   return (
     <Panel
+      tour={tour}
       title={
         <span className="flex items-center gap-2" title={info.help}>
           <span className="h-3.5 w-1.5 rounded-sm" style={{ background: info.color }} />
@@ -194,7 +196,7 @@ export default function MonthPage() {
         actions={
           <>
             {/* Copierea e pasul principal doar într-o lună goală; după aceea devine o acțiune secundară. */}
-            <button className={entries && entries.length > 0 ? "btn-ghost" : "btn-primary"} onClick={copyPrev} title={`Copiază intrările marcate „lunar” din ${monthLabel(addMonths(month, -1))}`}>
+            <button data-tour="luna-copy" className={entries && entries.length > 0 ? "btn-ghost" : "btn-primary"} onClick={copyPrev} title={`Copiază intrările marcate „lunar” din ${monthLabel(addMonths(month, -1))}`}>
               <span className="sm:hidden">Copiază lunarele</span>
               <span className="hidden sm:inline">Copiază intrările lunare din {monthLabel(addMonths(month, -1))}</span>
             </button>
@@ -207,7 +209,7 @@ export default function MonthPage() {
 
       {/* Pe telefon bilanțul complet e la final; sus rămâne doar esențialul lunii. */}
       {t && (
-        <div className="panel mb-6 grid grid-cols-3 divide-x divide-dashed divide-line-strong px-1 py-3 text-center xl:hidden">
+        <div data-tour="luna-balance" className="panel mb-6 grid grid-cols-3 divide-x divide-dashed divide-line-strong px-1 py-3 text-center xl:hidden">
           {[
             { label: "Intrat", value: t.income, cls: "text-ink" },
             { label: "Ieșit", value: t.income - t.unallocated, cls: "text-ink" },
@@ -232,6 +234,7 @@ export default function MonthPage() {
               <KindSection
                 key={k}
                 kind={k}
+                tour={k === "income" ? "luna-section" : undefined}
                 rate={rate}
                 entries={entries.filter((e) => e.kind === k)}
                 cats={k === "saving" ? cats.filter((c) => c.kind === "saving") : cats.filter((c) => c.kind === k)}
@@ -243,7 +246,7 @@ export default function MonthPage() {
         </div>
 
         <aside className="xl:sticky xl:top-8 xl:self-start flex flex-col gap-5">
-          <Panel title="Bilanțul lunii">
+          <Panel title="Bilanțul lunii" tour="luna-balance">
             {t ? (
               <MonthBalance
                 rate={rate}
