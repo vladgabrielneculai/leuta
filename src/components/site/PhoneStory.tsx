@@ -140,7 +140,7 @@ export default function PhoneStory() {
 
   return (
     <section ref={ref} id="functii" className="relative" style={{ height: `${STEPS.length * 110 + 30}vh` }} aria-label="Cum arată aplicația">
-      <div className="sticky top-0 flex h-[100svh] items-center overflow-hidden pt-16">
+      <div className="sticky top-0 flex h-svh items-center overflow-hidden pt-16">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-4 px-4 sm:px-6 md:grid-cols-[1fr_auto] md:gap-12">
           {/* Textul pasului curent */}
           <div className="min-h-[150px] md:min-h-0">
@@ -150,7 +150,7 @@ export default function PhoneStory() {
                 {String(active + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")} · {s.kicker}
               </p>
               <h2 className="mt-3 text-[26px] font-bold leading-[1.08] sm:text-[44px]">{s.title}</h2>
-              <p className="mt-3 max-w-[32rem] text-[14.5px] text-ink-soft sm:text-[17px]">{s.text}</p>
+              <p className="mt-3 max-w-lg text-[14.5px] text-ink-soft sm:text-[17px]">{s.text}</p>
             </div>
             {/* Lista pașilor, ca rândurile unui bon */}
             <ol className="mt-10 hidden max-w-sm space-y-2 text-[14px] md:block">
@@ -158,7 +158,7 @@ export default function PhoneStory() {
                 <li key={st.kicker} className="flex items-baseline gap-2 transition-colors" style={{ color: i === active ? "rgb(var(--ink))" : "rgb(var(--ink-faint))" }}>
                   <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: i <= active ? st.color : "rgb(var(--line-strong))" }} />
                   <span className={i === active ? "font-semibold" : ""}>{st.kicker}</span>
-                  <span className="leader-dots min-w-[1rem] flex-1" />
+                  <span className="leader-dots min-w-4 flex-1" />
                   <span className="num">{i < active ? "✓" : i === active ? "•" : ""}</span>
                 </li>
               ))}
@@ -166,7 +166,7 @@ export default function PhoneStory() {
           </div>
 
           <div className="flex justify-center">
-            <Phone width="min(74vw, calc((100svh - 300px) * 0.45), 340px)" className="md:![--pw:min(360px,calc((100svh_-_130px)*0.45))]">
+            <Phone width="min(74vw, calc((100svh - 300px) * 0.45), 340px)" className="md:[--pw:min(360px,calc((100svh-130px)*0.45))]!">
               {(Object.keys(FULL) as (keyof typeof FULL)[]).map((k) => (
                 <img key={k} ref={setImg(k)} src={`/ecrane/${k}.webp`} alt="" width={780} style={{ top: 0, opacity: 0 }} decoding="async" />
               ))}

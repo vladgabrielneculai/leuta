@@ -44,7 +44,7 @@ export function ChoiceCards<T extends string>({
             aria-checked={on}
             onClick={() => onChange(on ? "" : o.v)}
             className={`min-h-[44px] min-w-0 rounded-lg border px-2.5 py-2.5 text-left sm:px-3 transition-all duration-150 active:scale-[0.98] ${
-              on ? "border-albastru bg-albastru-tint text-ink shadow-sm" : "border-line bg-field text-ink-soft hover:border-line-strong hover:text-ink"
+              on ? "border-albastru bg-albastru-tint text-ink shadow-xs" : "border-line bg-field text-ink-soft hover:border-line-strong hover:text-ink"
             }`}
           >
             <span className="flex items-center gap-2 text-[14px] font-semibold">

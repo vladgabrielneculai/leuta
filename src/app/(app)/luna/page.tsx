@@ -209,7 +209,7 @@ function KindSection({
     <Panel
       title={
         <span className="flex items-center gap-2">
-          <span className="h-3.5 w-1.5 rounded-sm" style={{ background: info.color }} />
+          <span className="h-3.5 w-1.5 rounded-xs" style={{ background: info.color }} />
           {KIND_LABEL[kind]}
         </span>
       }
@@ -230,11 +230,11 @@ function KindSection({
               <li key={e.id} className="group relative -mx-2 flex items-start gap-2.5 rounded-md px-2 py-2 sm:mx-0 sm:gap-3 sm:px-0 sm:py-1.5">
                 <button
                   type="button"
-                  className="absolute inset-0 z-[1] rounded-md active:bg-ink/[0.06] sm:hidden"
+                  className="absolute inset-0 z-1 rounded-md active:bg-ink/6 sm:hidden"
                   onClick={() => quickAdd({ entry: e })}
                   aria-label={`Modifică ${kind === "saving" ? nameOfDest(e) : catMap.get(e.category_id ?? 0)?.name ?? "intrarea"}, ${e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}`}
                 />
-                <span className="mt-[7px] h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
+                <span className="mt-[7px] h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
                 <div className="min-w-0 flex-1 pt-px">
                   <Leader
                     label={
@@ -247,7 +247,7 @@ function KindSection({
                   {(e.description || e.recurring || e.currency === "EUR") && (
                     <div className="flex items-baseline justify-between gap-3 text-[12.5px] text-ink-soft">
                       <span className="min-w-0 truncate">
-                        {e.recurring ? <span className="mr-1.5 rounded-sm border border-albastru/40 px-1 font-mono text-[10px] uppercase tracking-wide text-albastru">lunar</span> : null}
+                        {e.recurring ? <span className="mr-1.5 rounded-xs border border-albastru/40 px-1 font-mono text-[10px] uppercase tracking-wide text-albastru">lunar</span> : null}
                         {e.description}
                       </span>
                       {e.currency === "EUR" && <span className="num shrink-0 text-ink-faint">= {lei(e.amount * rate)}</span>}
@@ -255,7 +255,7 @@ function KindSection({
                   )}
                 </div>
                 {/* Pe ecran mare: butoane text, vizibile la hover. Pe telefon se atinge rândul. */}
-                <div className="hidden shrink-0 justify-end sm:flex sm:w-[8.5rem] sm:opacity-60 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+                <div className="hidden shrink-0 justify-end sm:flex sm:w-34 sm:opacity-60 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
                   <button
                     className="btn-ghost px-2"
                     aria-label="Editează"
@@ -290,7 +290,7 @@ function KindSection({
           <div className="flex gap-2.5 pt-2 sm:gap-3">
             <span className="w-2.5 shrink-0" />
             <Leader className="min-w-0 flex-1" strong label={<span className="font-mono text-[13px] uppercase tracking-[0.06em]">Subtotal</span>} value={lei(total)} />
-            <span className="hidden shrink-0 sm:block sm:w-[8.5rem]" />
+            <span className="hidden shrink-0 sm:block sm:w-34" />
           </div>
         </div>
       )}
@@ -472,7 +472,7 @@ export default function MonthPage() {
               <div className="rule-dashed" aria-hidden />
               <Leader label={<span className="text-ink-soft">Din bani proprii</span>} value={<span className="font-semibold text-mov">{lei(outOfPocketFood)}</span>} />
               {foodTotal > 0 ? (
-                <div className="mt-1 rounded-sm border border-dashed border-line-strong p-2 text-[12px] text-ink-soft">
+                <div className="mt-1 rounded-xs border border-dashed border-line-strong p-2 text-[12px] text-ink-soft">
                   {mealTicketTotal >= foodTotal ? (
                     <span className="text-leu font-medium">✓ Tichetele acoperă 100% din cheltuielile cu alimentele!</span>
                   ) : (
@@ -500,7 +500,7 @@ function Row({ label, value, color, rate }: { label: string; value: number; colo
       className="text-[14px]"
       label={
         <span className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: color }} />
+          <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: color }} />
           {label}
         </span>
       }
