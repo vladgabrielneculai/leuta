@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "@/lib/http";
 import { getDb } from "@/lib/db";
-import { TABLES } from "@/lib/crud";
+import { TABLES, VALIDATE } from "@/lib/crud";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +54,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ table:
     const { table } = await context.params;
     const c = cfg(table);
     const data = clean(await req.json(), c.columns);
+    VALIDATE[table]?.(data, true);
 
     // Verificare specifică pentru categorii: doar dacă nu există deja, se creează
     if (table === "categories") {
@@ -90,6 +91,7 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ table: 
     const data = clean(body, c.columns);
     const keys = Object.keys(data);
     if (!body.id || !keys.length) throw new Error("Lipsesc datele de actualizat");
+    VALIDATE[table]?.(data, false);
 
     // Verificare specifică la modificare categorii: previne redenumirea într-o categorie deja existentă
     if (table === "categories" && data.name) {

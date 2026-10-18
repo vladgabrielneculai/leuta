@@ -5,13 +5,21 @@ const MULTI_DAY_URL = "https://curs.bnr.ro/nbrfxrates10days.xml";
 const YEAR_URL = (y: number) => `https://curs.bnr.ro/files/xml/years/nbrfxrates${y}.xml`;
 const FALLBACK = 5.0;
 
-function parseCubes(xml: string): [string, number][] {
-  const out: [string, number][] = [];
+type Parsed = { eur: [string, number][]; all: [string, string, number][] };
+
+/** Cursul EUR (pentru buget) și toate monedele publicate (pentru vacanțe), în lei pe o unitate. */
+function parseCubes(xml: string): Parsed {
+  const out: Parsed = { eur: [], all: [] };
   const cubeRe = /<Cube date="(\d{4}-\d{2}-\d{2})">([\s\S]*?)<\/Cube>/g;
+  const rateRe = /<Rate currency="([A-Z]{3})"(?:\s+multiplier="(\d+)")?[^>]*>([\d.]+)<\/Rate>/g;
   let m: RegExpExecArray | null;
   while ((m = cubeRe.exec(xml))) {
-    const eur = /<Rate currency="EUR"[^>]*>([\d.]+)<\/Rate>/.exec(m[2]);
-    if (eur) out.push([m[1], Number(eur[1])]);
+    let r: RegExpExecArray | null;
+    while ((r = rateRe.exec(m[2]))) {
+      const ron = Number(r[3]) / Number(r[2] ?? 1); // ex. 100 HUF = 1,2345 lei → 0,012345 lei pe forint
+      out.all.push([m[1], r[1], ron]);
+      if (r[1] === "EUR") out.eur.push([m[1], Number(r[3])]);
+    }
   }
   return out;
 }
@@ -36,13 +44,24 @@ async function fetchText(url: string) {
 }
 
 /** Salvează cursurile într-un singur INSERT (un an întreg = ~250 rânduri, deci un singur round-trip). */
-async function store(rates: [string, number][]) {
-  if (!rates.length) return;
+async function store({ eur: rates, all }: Parsed) {
   const db = await getDb();
-  const placeholders = rates.map(() => "(?, ?)").join(",");
-  await db
-    .prepare(`INSERT INTO fx_rates (date, eur_ron) VALUES ${placeholders} ON CONFLICT (date) DO UPDATE SET eur_ron = EXCLUDED.eur_ron`)
-    .run(...rates.flat());
+  if (rates.length) {
+    const placeholders = rates.map(() => "(?, ?)").join(",");
+    await db
+      .prepare(`INSERT INTO fx_rates (date, eur_ron) VALUES ${placeholders} ON CONFLICT (date) DO UPDATE SET eur_ron = EXCLUDED.eur_ron`)
+      .run(...rates.flat());
+  }
+  // Un an întreg are ~9.000 de cursuri: le scriem în bucăți, ca să nu depășim limita de parametri a Postgres.
+  for (let i = 0; i < all.length; i += 2000) {
+    const chunk = all.slice(i, i + 2000);
+    await db
+      .prepare(
+        `INSERT INTO fx_rates_currency (date, currency, ron) VALUES ${chunk.map(() => "(?, ?, ?)").join(",")}
+         ON CONFLICT (currency, date) DO UPDATE SET ron = EXCLUDED.ron`,
+      )
+      .run(...chunk.flat());
+  }
 }
 
 // O singură reîmprospătare în desfășurare per instanță: dacă pagina cere /api/summary și
@@ -72,7 +91,7 @@ async function doRefreshRates(months: string[], force: boolean): Promise<{ ok: b
   const recentlyFailed = Date.now() - lastAttempt < 15 * 60 * 1000;
   if (force || (stale && !recentlyFailed)) {
     await setSetting("fx_last_attempt", String(Date.now()));
-    let parsed: [string, number][] = [];
+    let parsed: Parsed = { eur: [], all: [] };
     try {
       const xml = await fetchText(DAILY_URL);
       parsed = parseCubes(xml);
@@ -86,7 +105,7 @@ async function doRefreshRates(months: string[], force: boolean): Promise<{ ok: b
       }
     }
 
-    if (parsed.length > 0) {
+    if (parsed.eur.length > 0) {
       await store(parsed);
       await setSetting("fx_last_fetch", String(Date.now()));
       error = undefined;
@@ -148,4 +167,57 @@ export async function latestRate(): Promise<RateInfo> {
     .prepare("SELECT date, eur_ron FROM fx_rates ORDER BY date DESC LIMIT 1")
     .get<{ date: string; eur_ron: number }>();
   return row ? { rate: row.eur_ron, date: row.date, estimated: false } : { rate: FALLBACK, date: null, estimated: true };
+}
+
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+
+/**
+ * Descarcă istoricul pe anul datei pentru toate monedele, dacă în cele 10 zile dinaintea ei nu avem
+ * niciun curs salvat (vacanță din alt an sau prima folosire după ce s-a adăugat tabelul).
+ * Cel mult o încercare pe zi pentru fiecare an.
+ */
+async function ensureCurrencyHistory(date: string) {
+  const y = Number(date.slice(0, 4));
+  if (y < 2005 || y > new Date().getFullYear()) return;
+  const from = isoDay(new Date(Date.parse(date) - 10 * 86_400_000));
+  const has = await (await getDb())
+    .prepare("SELECT 1 FROM fx_rates_currency WHERE currency = 'EUR' AND date BETWEEN ? AND ? LIMIT 1")
+    .get(from, date);
+  if (has) return;
+  const tried = await setting(`fx_cur_year_${y}`);
+  if (tried && Date.now() - Number(tried) < 24 * 3600 * 1000) return;
+  await setSetting(`fx_cur_year_${y}`, String(Date.now()));
+  try {
+    await store(parseCubes(await fetchText(YEAR_URL(y))));
+  } catch {
+    // BNR indisponibil: rămâne cursul cel mai apropiat pe care îl avem
+  }
+}
+
+/**
+ * Cursul BNR (lei pentru o unitate) al fiecărei monede, la data dată: ultimul publicat până atunci sau,
+ * pentru o dată dinaintea istoricului salvat, primul de după (marcat estimativ).
+ * `null` = moneda nu e cotată de BNR (ex. dinarul tunisian); RON nu apare, cursul lui e 1.
+ */
+export async function currencyRates(currencies: string[], date: string): Promise<Record<string, RateInfo | null>> {
+  const codes = [...new Set(currencies)].filter((c) => /^[A-Z]{3}$/.test(c) && c !== "RON");
+  const out: Record<string, RateInfo | null> = {};
+  if (!codes.length) return out;
+  const day = date > isoDay(new Date()) ? isoDay(new Date()) : date;
+  await ensureCurrencyHistory(day);
+  const db = await getDb();
+  for (const c of codes) {
+    const before = await db
+      .prepare("SELECT date, ron FROM fx_rates_currency WHERE currency = ? AND date <= ? ORDER BY date DESC LIMIT 1")
+      .get<{ date: string; ron: number }>(c, day);
+    const after = before
+      ? undefined
+      : await db
+          .prepare("SELECT date, ron FROM fx_rates_currency WHERE currency = ? AND date > ? ORDER BY date ASC LIMIT 1")
+          .get<{ date: string; ron: number }>(c, day);
+    const row = before ?? after;
+    if (row) out[c] = { rate: row.ron, date: row.date, estimated: !before };
+    else out[c] = c === "EUR" ? await rateForMonth(day.slice(0, 7)) : null;
+  }
+  return out;
 }

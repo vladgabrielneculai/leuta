@@ -10,6 +10,7 @@ import type { Summary } from "@/lib/analytics";
 import { celebrateOnce } from "@/lib/confetti";
 import { currentMonth, eur, lei, monthLabel, pct, r2 } from "@/lib/util";
 import { Leader, ReceiptMeta } from "@/components/receipt";
+import ActiveTripCard from "@/components/ActiveTripCard";
 import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Skeleton, Stat, useApi, useApp } from "@/components/ui";
 
 type S = Summary & { fxError: string | null };
@@ -154,6 +155,8 @@ export default function Dashboard() {
       )}
 
       <LeuBand s={s} />
+
+      <ActiveTripCard />
 
       {/* Simulator rapid de decizie achiziții */}
       {/* Ca un cupon decupat: chenar punctat. */}
