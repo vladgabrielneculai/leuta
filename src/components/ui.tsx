@@ -407,7 +407,7 @@ export function PageHeader({ title, intro, actions }: { title: string; intro?: R
           <h1 className="text-[24px] font-bold leading-tight sm:text-[31px]">{title}</h1>
           {intro && <p className="mt-1.5 text-[14px] text-ink-soft sm:text-[15px]">{intro}</p>}
         </div>
-        {actions && <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap [&>*]:w-full sm:[&>*]:w-auto [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}
+        {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto [&>*]:min-w-[40%] [&>*]:flex-1 sm:[&>*]:min-w-0 sm:[&>*]:flex-none [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}
       </div>
       <div className="rule-double mt-4" aria-hidden />
     </header>
@@ -682,3 +682,120 @@ export const chartTooltipStyle = {
   contentStyle: { background: "var(--c-sheet)", border: "1px dashed var(--c-ink-faint)", borderRadius: 2, fontSize: 12.5, fontFamily: '"IBM Plex Mono", ui-monospace, monospace' },
   labelStyle: { color: "var(--c-ink)", fontWeight: 600 },
 };
+
+// ---------- Tab-uri și inele de progres ----------
+
+/**
+ * Tab-ul ales pe o pagină, ținut minte pe durata sesiunii (ex. revii pe Panou și ești tot pe „Evoluție”).
+ * `key` trebuie să fie unic pe pagină.
+ */
+export function useTab<T extends string>(key: string, initial: T, allowed: readonly T[]) {
+  const [tab, setTabState] = useState<T>(initial);
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(`tab:${key}`) as T | null;
+      if (saved && allowed.includes(saved)) setTabState(saved);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const setTab = useCallback(
+    (t: T) => {
+      setTabState(t);
+      try {
+        sessionStorage.setItem(`tab:${key}`, t);
+      } catch {}
+    },
+    [key],
+  );
+  return [tab, setTab] as const;
+}
+
+/**
+ * Comutator de secțiuni (tab-uri) pentru paginile cu mult conținut: se vede o singură secțiune odată.
+ * Pe telefon ocupă toată lățimea; pe ecran mare, doar cât e nevoie.
+ */
+export function Tabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+  className = "",
+  label = "Secțiuni",
+  ...rest
+}: {
+  /** `short` e eticheta folosită pe telefon, când cea completă nu încape. */
+  tabs: readonly { key: T; label: string; short?: string; badge?: ReactNode }[];
+  value: T;
+  onChange: (t: T) => void;
+  className?: string;
+  label?: string;
+  "data-tour"?: string;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label={label}
+      className={`flex gap-1 overflow-x-auto rounded-md border border-line bg-paper p-1 [scrollbar-width:none] sm:inline-flex ${className}`}
+      data-tour={rest["data-tour"]}
+    >
+      {tabs.map((t) => {
+        const on = t.key === value;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => onChange(t.key)}
+            className={`flex min-h-[38px] flex-1 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[4px] px-3 text-[13px] font-medium transition-colors sm:flex-none sm:px-4 ${
+              on ? "bg-sheet text-ink shadow-[0_1px_2px_rgb(var(--shadow)/0.15)]" : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            {t.short ? (
+              <>
+                <span className="sm:hidden">{t.short}</span>
+                <span className="hidden sm:inline">{t.label}</span>
+              </>
+            ) : (
+              t.label
+            )}
+            {t.badge}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Inel de progres (0–100%), cu procentul în mijloc. */
+export function Ring({ value, color = "var(--c-leu)", size = 76, stroke = 8, children }: { value: number; color?: string; size?: number; stroke?: number; children?: ReactNode }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const target = Math.max(0, Math.min(100, value));
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(target));
+    return () => cancelAnimationFrame(id);
+  }, [target]);
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--c-line)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - shown / 100)}
+          className="transition-[stroke-dashoffset] duration-700 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-center">
+        {children ?? <span className="num font-display text-[15px] font-semibold">{Math.round(target)}%</span>}
+      </div>
+    </div>
+  );
+}
