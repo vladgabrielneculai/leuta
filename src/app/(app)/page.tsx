@@ -11,7 +11,7 @@ import { celebrateOnce } from "@/lib/confetti";
 import { currentMonth, eur, lei, monthLabel, pct, r2 } from "@/lib/util";
 import { ReceiptMeta } from "@/components/receipt";
 import { ScheduledAlerts } from "@/components/ScheduledAlerts";
-import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Ring, Skeleton, Stat, Tabs, useApi, useApp, useTab } from "@/components/ui";
+import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Ring, Skeleton, Stat, STAT_STRIP, Tabs, useApi, useApp, useTab } from "@/components/ui";
 
 type S = Summary & { fxError: string | null; beta?: boolean };
 
@@ -172,7 +172,7 @@ export default function Dashboard() {
 
       {/* Pe telefon cifrele cheie stau pe un singur rând care se derulează lateral, nu pe trei rânduri. */}
       <div
-        className="panel mb-6 flex snap-x snap-mandatory gap-6 overflow-x-auto p-4 [scrollbar-width:none] sm:grid sm:grid-cols-3 sm:gap-x-6 sm:gap-y-5 sm:overflow-visible sm:p-5 xl:grid-cols-5 [&>*]:min-w-[46%] [&>*]:snap-start sm:[&>*]:min-w-0"
+        className={`panel mb-6 xl:grid-cols-5 ${STAT_STRIP}`}
         data-tour="stats"
       >
         <Stat label="Cheltuit" accent="var(--c-rosu)" hint={<Delta now={t.spent} before={s.prev?.spent} invert />}>

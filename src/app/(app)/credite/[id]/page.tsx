@@ -12,7 +12,7 @@ import { addMonths, currentMonth, lei, monthDiff, monthLabel, pct, r2, termLabel
 import { confetti } from "@/lib/confetti";
 import LoanForm from "@/components/LoanForm";
 import LoanScheduleManager from "@/components/LoanScheduleManager";
-import { api, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Skeleton, Stat, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
+import { api, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Ring, Skeleton, Stat, STAT_STRIP, Tabs, Toast, TrashIcon, useApi, useApp, useTab } from "@/components/ui";
 
 type SimWithStatus = SimResult & { status: LoanStatus };
 type SimResponse = {
@@ -34,6 +34,14 @@ const monthName = (d: string) => monthLabel(d.slice(0, 7)).split(" ")[0];
 async function runSim(loanId: number, scenario: Record<string, unknown>) {
   return api<SimResponse>("/api/simulate", "POST", { loanId, scenario });
 }
+
+const LOAN_TABS = [
+  { key: "situatie", label: "Situație" },
+  { key: "simulator", label: "Simulator" },
+  { key: "plati", label: "Plăți anticipate", short: "Anticipate" },
+  { key: "grafic", label: "Grafic rate" },
+] as const;
+type LoanTab = (typeof LOAN_TABS)[number]["key"];
 
 export default function LoanDetail() {
   const params = useParams();
@@ -57,6 +65,8 @@ export default function LoanDetail() {
   const [adjCurrentBalance, setAdjCurrentBalance] = useState<number>(0);
   const [adjustSaving, setAdjustSaving] = useState(false);
   const { data: settings } = useApi<Record<string, string>>("/api/settings");
+  const [simChart, setSimChart] = useState<"sold" | "rata">("sold");
+  const [tab, setTab] = useTab<LoanTab>(`credit-${id}`, "situatie", ["situatie", "simulator", "plati", "grafic"]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -255,7 +265,7 @@ export default function LoanDetail() {
         }
       />
 
-      <div className="panel mb-6 grid grid-cols-2 gap-6 p-5 sm:grid-cols-3 2xl:grid-cols-6">
+      <div className={`panel mb-6 2xl:grid-cols-6 ${STAT_STRIP}`}>
         <Stat label="Bani deja plătiți" accent="var(--c-leu)" hint={`${lei(st.principalPaid)} principal · ${lei(st.interestPaid)} dobândă`}>
           <Money value={st.totalPaidSoFar} size="lg" tone="leu" />
         </Stat>
@@ -271,6 +281,11 @@ export default function LoanDetail() {
           <Money value={original.totalInterest - actual.totalInterest} size="lg" tone="leu" />
         </Stat>
       </div>
+
+      <Tabs tabs={LOAN_TABS} value={tab} onChange={setTab} className="mb-5" label="Secțiunile creditului" data-tour="loan-tabs" />
+
+      {tab === "situatie" && (
+        <>
 
       {/* Situația la zi din aplicația băncii + asigurări anuale */}
       {(loan.status_date || annualMonthly > 0 || rateJump) && (
@@ -320,63 +335,56 @@ export default function LoanDetail() {
         </Panel>
       )}
 
-      {/* Situația banilor deja plătiți & Raportare la zi */}
+      {/* Cât s-a plătit până acum: inelul arată principalul achitat, bara împarte banii plătiți în principal și dobândă. */}
       <Panel
         className="mb-6"
-        title="Bani deja plătiți & Situația la zi"
+        title="Cât ai plătit până acum"
         aside={
           <div className="flex flex-wrap items-center gap-2">
-            <button className="btn-ghost text-[13px] py-1" onClick={openAdjustModal}>
-              ⚡ Ajustează conform extrasului bancar
+            <button className="btn-ghost py-1 text-[13px]" onClick={openAdjustModal}>
+              ⚡ Ajustează după extras
             </button>
-            <button className="btn-ghost text-[13px] py-1" onClick={() => setEditing(true)}>
+            <button className="btn-ghost py-1 text-[13px]" onClick={() => setEditing(true)}>
               ✏️ Editează contractul
             </button>
           </div>
         }
       >
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 [&>div]:p-3 sm:[&>div]:p-4">
-          <div className="rounded-lg border border-leu/30 bg-leu-tint/30 p-4">
-            <div className="text-[12px] font-medium text-ink-soft">Total plătit până în prezent</div>
-            <div className="num font-display text-[18px] sm:text-[22px] font-bold text-leu mt-0.5">{lei(st.totalPaidSoFar)}</div>
-            <div className="text-[12px] text-ink-soft mt-1">
-              {st.installmentsPaidCount} rate achitate ({pct(st.paidPct, 1)} din principal)
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+          <Ring value={st.paidPct} color="var(--c-leu)" size={104} stroke={10}>
+            <span className="flex flex-col leading-tight">
+              <span className="num font-display text-[18px] font-semibold">{pct(st.paidPct, 0)}</span>
+              <span className="text-[10.5px] text-ink-faint">achitat</span>
+            </span>
+          </Ring>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <span className="text-[13px] text-ink-soft">
+                Total plătit · {st.installmentsPaidCount} rate
+              </span>
+              <span className="num font-display text-[20px] font-semibold text-leu">{lei(st.totalPaidSoFar)}</span>
             </div>
-          </div>
-          <div className="rounded-lg border border-line bg-paper p-4">
-            <div className="text-[12px] font-medium text-ink-soft">Principal restituit băncii</div>
-            <div className="num font-semibold text-[16px] sm:text-[18px] text-ink mt-0.5">{lei(st.principalPaid)}</div>
-            <div className="text-[12px] text-ink-soft mt-1">
-              Din totalul împrumutat de {lei(loan.principal)}
+            <div className="mt-2 flex h-3 w-full overflow-hidden rounded-full bg-line" role="img" aria-label="Principal și dobândă plătite">
+              <div className="h-full bg-leu" style={{ width: `${st.totalPaidSoFar > 0 ? (st.principalPaid / st.totalPaidSoFar) * 100 : 0}%` }} />
+              <div className="h-full bg-rosu" style={{ width: `${st.totalPaidSoFar > 0 ? (st.interestPaid / st.totalPaidSoFar) * 100 : 0}%` }} />
             </div>
-          </div>
-          <div className="rounded-lg border border-line bg-paper p-4">
-            <div className="text-[12px] font-medium text-ink-soft">Dobândă plătită băncii</div>
-            <div className="num font-semibold text-[16px] sm:text-[18px] text-ink mt-0.5">{lei(st.interestPaid)}</div>
-            <div className="text-[12px] text-ink-soft mt-1">
-              Cost al creditului suportat până acum
-            </div>
-          </div>
-          <div className="rounded-lg border border-mov/30 bg-mov-tint/30 p-4">
-            <div className="text-[12px] font-medium text-ink-soft">Sold curent datorat</div>
-            <div className="num font-display text-[18px] sm:text-[22px] font-bold text-mov mt-0.5">{lei(st.balance)}</div>
-            <div className="text-[12px] text-ink-soft mt-1">
-              {st.remainingMonths} luni rămase din contract
-            </div>
-          </div>
-        </div>
-
-        {/* Progresie vizuală plată principal */}
-        <div className="mt-4 pt-4 border-t border-line">
-          <div className="mb-1.5 flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-[13px]">
-            <span className="font-medium text-ink">Progres rambursare principal: <strong className="text-leu">{pct(st.paidPct, 1)}</strong></span>
-            <span className="text-ink-soft">{lei(st.principalPaid)} achitați din {lei(loan.principal)} total</span>
-          </div>
-          <div className="h-3 w-full rounded-full bg-line overflow-hidden">
-            <div
-              className="h-full rounded-full bg-leu transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(0, st.paidPct))}%` }}
-            />
+            <ul className="num mt-3 grid gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-3">
+              <li className="flex items-center gap-2" title={`Din totalul împrumutat de ${lei(loan.principal)}`}>
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-leu" />
+                <span className="text-ink-soft">Principal</span>
+                <span className="ml-auto font-medium sm:ml-0">{lei(st.principalPaid)}</span>
+              </li>
+              <li className="flex items-center gap-2" title="Costul creditului suportat până acum">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-rosu" />
+                <span className="text-ink-soft">Dobândă</span>
+                <span className="ml-auto font-medium sm:ml-0">{lei(st.interestPaid)}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-mov" />
+                <span className="text-ink-soft">Rămas</span>
+                <span className="ml-auto font-medium sm:ml-0">{lei(st.balance)} · {st.remainingMonths} luni</span>
+              </li>
+            </ul>
           </div>
         </div>
       </Panel>
@@ -396,8 +404,11 @@ export default function LoanDetail() {
         </div>
       </Panel>
 
+        </>
+      )}
+
       {/* Schema de rambursare & Recalculare */}
-      <LoanScheduleManager
+      {tab === "grafic" && <LoanScheduleManager
         loan={loan}
         simResult={actual}
         customSchedule={data.customSchedule}
@@ -419,8 +430,10 @@ export default function LoanDetail() {
           setToast("Plata anticipată a fost adăugată");
           confetti({ count: 90 });
         }}
-      />
+      />}
 
+      {tab === "simulator" && (
+        <>
       {/* Simulator */}
       <Panel className="mb-6" title="Simulator de plăți anticipate">
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -506,9 +519,16 @@ export default function LoanDetail() {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-6 xl:grid-cols-2">
-          <div>
-            <h3 className="mb-2 text-[15px] font-semibold">Soldul în timp</h3>
+        {/* Un singur grafic odată: soldul în timp sau rata lunară în cele două variante. */}
+        <div className="mt-8">
+          <Tabs
+            tabs={[{ key: "sold", label: "Soldul în timp" }, { key: "rata", label: "Rata lunară" }] as const}
+            value={simChart}
+            onChange={setSimChart}
+            label="Graficul simulării"
+            className="mb-3 !p-0.5 [&_button]:min-h-[32px] [&_button]:text-[12.5px]"
+          />
+          {simChart === "sold" ? (
             <div className="h-[280px]">
               <ResponsiveContainer>
                 <LineChart data={balanceChart} margin={{ top: 6, right: 8, left: -6, bottom: 0 }}>
@@ -526,9 +546,7 @@ export default function LoanDetail() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </div>
-          <div>
-            <h3 className="mb-2 text-[15px] font-semibold">Rata lunară în cele două variante</h3>
+          ) : (
             <div className="h-[280px]">
               <ResponsiveContainer>
                 <LineChart data={paymentChart} margin={{ top: 6, right: 8, left: -6, bottom: 0 }}>
@@ -542,11 +560,11 @@ export default function LoanDetail() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </div>
+          )}
         </div>
       </Panel>
 
-      <div className="mb-6 grid gap-6 xl:grid-cols-2">
+      <div className="mb-6">
         {/* Rambursare vs investiție */}
         {settings?.enable_investments === "1" ? (
           <Panel title={`Plătesc ${lei(sc.oneTimeAmount)} în avans sau îi investesc?`}>
@@ -597,6 +615,12 @@ export default function LoanDetail() {
           </Panel>
         )}
 
+      </div>
+        </>
+      )}
+
+      {tab === "plati" && (
+        <div className="mb-6">
         {/* Plăți anticipate înregistrate */}
         <Panel title="Plăți anticipate făcute">
           <form
@@ -648,9 +672,11 @@ export default function LoanDetail() {
             </ul>
           )}
         </Panel>
-      </div>
+        </div>
+      )}
 
       {/* Grafic de rambursare */}
+      {tab === "grafic" && (
       <Panel
         title="Graficul de rambursare"
         aside={
@@ -734,6 +760,7 @@ export default function LoanDetail() {
           </table>
         </div>
       </Panel>
+      )}
 
       <Modal open={adjustOpen} onClose={() => setAdjustOpen(false)} title="Ajustează soldul conform băncii">
         <div className="flex flex-col gap-4">

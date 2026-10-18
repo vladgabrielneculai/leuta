@@ -485,6 +485,13 @@ export function Panel({
   );
 }
 
+/**
+ * Rândul de cifre cheie (în <div className="panel …">): pe telefon stă pe un singur rând care se derulează lateral,
+ * în loc de trei rânduri de câte două; pe ecran mare, grilă. Coloanele grilei se adaugă la folosire (ex. `xl:grid-cols-5`).
+ */
+export const STAT_STRIP =
+  "flex snap-x snap-mandatory gap-6 overflow-x-auto p-4 [scrollbar-width:none] sm:grid sm:grid-cols-3 sm:gap-x-6 sm:gap-y-5 sm:overflow-visible sm:p-5 [&>*]:min-w-[46%] [&>*]:shrink-0 [&>*]:snap-start sm:[&>*]:min-w-0";
+
 export function Stat({
   label,
   children,
