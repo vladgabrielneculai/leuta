@@ -18,6 +18,7 @@ export const dynamic = "force-dynamic";
 const ORDER = [
   "categories", "goals", "investments", "loans", "scheduled_entries", "entries",
   "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases", "import_rules",
+  "trips", "trip_funds", "trip_expenses",
 ] as const;
 
 // coloană → tabelul părinte al cărui id îl referă
@@ -28,9 +29,11 @@ const FKS: Record<string, Record<string, string>> = {
   loan_prepayments: { loan_id: "loans" },
   loan_schedules: { loan_id: "loans" },
   import_rules: { category_id: "categories" },
+  trip_funds: { trip_id: "trips" },
+  trip_expenses: { trip_id: "trips" },
 };
 
-const HAS_ID = new Set(["categories", "goals", "investments", "loans", "scheduled_entries", "entries", "loan_prepayments", "loan_schedules", "planned_purchases"]);
+const HAS_ID = new Set(["categories", "goals", "investments", "loans", "scheduled_entries", "entries", "loan_prepayments", "loan_schedules", "planned_purchases", "trips"]);
 
 // Exportul (toate datele financiare) și restaurarea (le înlocuiește) cer identitatea confirmată recent.
 export async function GET() {
@@ -98,6 +101,7 @@ export async function POST(req: NextRequest) {
           if (
             (t === "investment_values" && rec.investment_id === null) ||
             (FKS[t]?.loan_id && rec.loan_id === null) ||
+            (FKS[t]?.trip_id && rec.trip_id === null) ||
             (t === "import_rules" && rec.category_id === null)
           ) continue;
           const keys = Object.keys(rec);

@@ -39,4 +39,64 @@ export const TABLES: Record<string, { columns: string[]; filters: string[]; orde
     filters: ["financing_type", "priority"],
     order: "id DESC",
   },
+  trips: {
+    columns: ["name", "destination", "start_date", "end_date", "currency", "budget", "notes"],
+    filters: [],
+    order: "start_date DESC, id DESC",
+  },
+  trip_funds: { columns: ["trip_id", "label", "amount", "currency", "rate_ron"], filters: ["trip_id"], order: "id" },
+  trip_expenses: {
+    columns: ["trip_id", "date", "category", "description", "amount", "currency"],
+    filters: ["trip_id"],
+    order: "date DESC, id DESC",
+  },
+};
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+function currencyCode(v: unknown) {
+  const c = String(v ?? "").trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(c)) throw new Error("Moneda trebuie să fie un cod din 3 litere (ex. EUR, USD, TRY).");
+  return c;
+}
+
+function positive(v: unknown, what: string) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`${what} trebuie să fie mai mare decât 0.`);
+  return n;
+}
+
+/**
+ * Verificări înainte de scriere, pe tabelele care le cer. `data` conține doar coloanele trimise
+ * (la modificare pot lipsi unele), deci verificăm doar ce există; la adăugare, câmpurile obligatorii.
+ */
+export const VALIDATE: Record<string, (data: Record<string, unknown>, isNew: boolean) => void> = {
+  trips(d, isNew) {
+    if (isNew || "name" in d) {
+      d.name = String(d.name ?? "").trim();
+      if (!d.name) throw new Error("Dă un nume vacanței.");
+    }
+    for (const k of ["start_date", "end_date"]) {
+      if ((isNew || k in d) && !ISO_DAY.test(String(d[k] ?? ""))) throw new Error("Alege perioada vacanței.");
+    }
+    if (d.start_date && d.end_date && String(d.end_date) < String(d.start_date)) {
+      throw new Error("Vacanța nu se poate termina înainte să înceapă.");
+    }
+    if (isNew || "currency" in d) d.currency = currencyCode(d.currency);
+    if ("budget" in d) {
+      const b = Number(d.budget || 0);
+      if (!Number.isFinite(b) || b < 0) throw new Error("Bugetul nu poate fi negativ.");
+      d.budget = b;
+    }
+  },
+  trip_funds(d, isNew) {
+    if (isNew || "amount" in d) d.amount = positive(d.amount, "Suma");
+    if (isNew || "currency" in d) d.currency = currencyCode(d.currency);
+    if ("rate_ron" in d) d.rate_ron = d.rate_ron === null || d.rate_ron === "" ? null : positive(d.rate_ron, "Cursul");
+  },
+  trip_expenses(d, isNew) {
+    if (isNew || "amount" in d) d.amount = positive(d.amount, "Suma");
+    if (isNew || "currency" in d) d.currency = currencyCode(d.currency);
+    if ((isNew || "date" in d) && !ISO_DAY.test(String(d.date ?? ""))) throw new Error("Alege data cheltuielii.");
+  },
 };
