@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 const TABLES = [
   "entries", "loans", "loan_prepayments", "loan_schedules", "categories", "goals",
-  "investments", "investment_values", "planned_purchases", "user_settings", "fx_rates", "inflation_rates",
+  "investments", "investment_values", "planned_purchases", "trips", "trip_funds", "trip_expenses", "user_settings", "fx_rates", "inflation_rates",
 ];
 
 /** Mărimea bazei de date și tabelele ei: doar pentru administrator. */

@@ -90,6 +90,14 @@ export function termLabel(months: number): string {
   return y ? `${ys} ${ms}` : ms;
 }
 
+/** „1.234,50”, „1234.5” sau „45,5” devin număr; altceva dă NaN. */
+export function parseAmount(raw: string) {
+  let s = raw.replace(/\s/g, "");
+  if (s.includes(",") && s.includes(".")) s = s.replace(/\./g, "");
+  s = s.replace(",", ".");
+  return /^\d*\.?\d+$|^\d+\.$/.test(s) ? Number(s) : NaN;
+}
+
 export function clamp(n: number, lo: number, hi: number) {
   return Math.min(hi, Math.max(lo, n));
 }
