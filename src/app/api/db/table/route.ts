@@ -17,6 +17,9 @@ const ALLOWED_TABLES = [
   "user_settings",
   "fx_rates",
   "planned_purchases",
+  "trips",
+  "trip_funds",
+  "trip_expenses",
   "inflation_rates",
 ];
 
