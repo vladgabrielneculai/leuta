@@ -400,7 +400,7 @@ export function Money({
 export function PageHeader({ title, intro, actions }: { title: string; intro?: ReactNode; actions?: ReactNode }) {
   const { month } = useApp();
   return (
-    <header className="mb-6 sm:mb-8">
+    <header className="mb-6 sm:mb-8" data-tour="title">
       <ReceiptMeta month={month} label={monthLabel(month, true)} />
       <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
         <div className="max-w-2xl">
@@ -440,7 +440,10 @@ export function Panel({
   children,
   className = "",
   pad = true,
+  tour,
 }: {
+  /** Numele elementului pentru tutorial (`data-tour`). */
+  tour?: string;
   title?: ReactNode;
   aside?: ReactNode;
   /** Un rând scurt afișat sub titlu cât timp panoul e pliat (ex. „23 de categorii”). */
@@ -453,7 +456,7 @@ export function Panel({
   const [open, setOpen] = useState(false);
   const shown = !collapsible || open;
   return (
-    <section className={`panel ${className}`}>
+    <section className={`panel ${className}`} data-tour={tour}>
       {(title || aside) && (
         // Pe telefon, butoanele „fantomă” din antet primesc contur, ca să se vadă că sunt butoane când trec sub titlu.
         <div className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 pb-3 pt-3.5 sm:px-5 [&_.btn-ghost]:border [&_.btn-ghost]:border-line [&_.btn-ghost]:bg-field/60 sm:[&_.btn-ghost]:border-0 sm:[&_.btn-ghost]:bg-transparent">

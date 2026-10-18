@@ -210,7 +210,7 @@ export default function SavingsPage() {
         }
       />
 
-      <Panel
+      <Panel tour="econ-fund"
         className="mb-6"
         title="Fondul de urgență"
         aside={emergency && <button className="btn-ghost" onClick={() => openGoalEditor(emergency)}>Editează</button>}

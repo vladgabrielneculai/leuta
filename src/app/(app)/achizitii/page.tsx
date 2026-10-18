@@ -244,7 +244,7 @@ export default function AffordabilityPage() {
       <div className="mb-6 grid gap-6 lg:grid-cols-12">
         {/* Coloana Stângă: Formular Configurare */}
         <div className="lg:col-span-6 flex flex-col gap-4">
-          <Panel title="Configurare achiziție / investiție">
+          <Panel tour="ach-form" title="Configurare achiziție / investiție">
             {/* Preset-uri rapide */}
             <div className="mb-4">
               <label className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft mb-2 block">
@@ -424,7 +424,7 @@ export default function AffordabilityPage() {
 
         {/* Coloana Dreaptă: Verdict Financiar & Decizie */}
         <div className="lg:col-span-6 flex flex-col gap-4">
-          <Panel
+          <Panel tour="ach-verdict"
             title="Verdict financiar & Analiză de decizie"
           >
             {/* Banner verdict mare */}

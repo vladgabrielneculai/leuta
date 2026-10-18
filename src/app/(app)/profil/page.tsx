@@ -87,7 +87,7 @@ export default function ProfilePage() {
         >
           {/* Un singur formular, împărțit în trei tab-uri: modificările se păstrează când treci de la unul la altul. */}
           <div>
-            <Tabs tabs={PROFILE_TABS} value={tab} onChange={setTab} className="mb-4" label="Secțiunile profilului" />
+            <Tabs tabs={PROFILE_TABS} value={tab} onChange={setTab} className="mb-4" label="Secțiunile profilului" data-tour="profil-tabs" />
             <Panel title={PROFILE_TABS.find((t) => t.key === tab)?.label}>
               {tab === "personal" && <PersonalFields d={draft} set={set} />}
               {tab === "munca" && <WorkFields d={draft} set={set} />}

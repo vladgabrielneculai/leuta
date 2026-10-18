@@ -156,6 +156,7 @@ export default function BudgetPage() {
             onChange={setPicked}
             className="mb-4"
             label="Metoda de buget"
+            data-tour="buget-methods"
           />
           <div className="mb-6">
             <MethodCard m={current} income={t.income} best={current.key === best.key} />

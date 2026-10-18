@@ -9,6 +9,7 @@ import Logo from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { ReceiptFooter } from "./receipt";
 import { QuickAddProvider, useQuickAdd } from "./QuickAdd";
+import { TourProvider } from "./Tour";
 
 // Iconițe (trasee SVG 24×24) folosite în bara de jos și în meniul „Mai mult” de pe telefon.
 const ICON = {
@@ -325,6 +326,7 @@ export default function Shell({ children }: { children: ReactNode }) {
 
   return (
     <QuickAddProvider>
+    <TourProvider>
     <div className="min-h-screen overflow-x-clip lg:grid lg:grid-cols-[256px_1fr]">
       {/* Meniul lateral are înălțimea ecranului; pe ecrane joase (sau cu zoom) se derulează separat de pagină,
           ca indicatorii de jos (cursul EUR, inflația) să rămână accesibili. */}
@@ -502,6 +504,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         <ReceiptFooter seed={path} />
       </main>
     </div>
+    </TourProvider>
     </QuickAddProvider>
   );
 }
