@@ -10,6 +10,7 @@ import type { Summary } from "@/lib/analytics";
 import { celebrateOnce } from "@/lib/confetti";
 import { currentMonth, eur, lei, monthLabel, pct, r2 } from "@/lib/util";
 import { ReceiptMeta } from "@/components/receipt";
+import ActiveTripCard from "@/components/ActiveTripCard";
 import { ScheduledAlerts } from "@/components/ScheduledAlerts";
 import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Ring, Skeleton, Stat, STAT_STRIP, Tabs, useApi, useApp, useTab } from "@/components/ui";
 
@@ -169,6 +170,8 @@ export default function Dashboard() {
       )}
 
       <LeuBand s={s} />
+
+      <ActiveTripCard />
 
       {/* Pe telefon cifrele cheie stau pe un singur rând care se derulează lateral, nu pe trei rânduri. */}
       <div
