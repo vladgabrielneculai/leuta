@@ -32,7 +32,7 @@ export default function Header({ home = true }: { home?: boolean }) {
   const anchor = (id: string) => (home ? `#${id}` : `/#${id}`);
 
   return (
-    <header className={`fixed inset-x-0 top-0 z-50 transition-[background-color,box-shadow] duration-300 ${scrolled ? "bg-paper/90 shadow-[0_1px_0_rgb(var(--line))] backdrop-blur" : ""}`}>
+    <header className={`fixed inset-x-0 top-0 z-50 transition-[background-color,box-shadow] duration-300 ${scrolled ? "bg-paper/90 shadow-[0_1px_0_rgb(var(--line))] backdrop-blur-sm" : ""}`}>
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5" aria-label="Leuța, pagina principală">
           <img src="/icon-192.png" alt="" width={34} height={34} className="rounded-full" />
@@ -47,7 +47,7 @@ export default function Header({ home = true }: { home?: boolean }) {
           <a href={`${SITE.appUrl}/login`} className="hidden rounded-md px-3 py-2 text-[14px] font-medium text-ink-soft hover:bg-sheet hover:text-ink sm:inline-flex">
             Intră în cont
           </a>
-          <a href={anchor("invitatie")} className="btn-primary !min-h-[38px] !px-4 !py-1.5 !text-[14px]">
+          <a href={anchor("invitatie")} className="btn-primary min-h-[38px]! px-4! py-1.5! text-[14px]!">
             Cere invitație
           </a>
         </div>

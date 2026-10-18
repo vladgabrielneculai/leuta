@@ -41,7 +41,7 @@ export function Leader({
     <div className={className}>
       <div className={`flex items-baseline gap-1.5 ${strong ? "font-semibold" : ""}`}>
         <span className="min-w-0">{label}</span>
-        <span className="leader-dots min-w-[0.75rem] flex-1 sm:min-w-[1.5rem]" aria-hidden />
+        <span className="leader-dots min-w-3 flex-1 sm:min-w-6" aria-hidden />
         <span className="num shrink-0 whitespace-nowrap text-right">{value}</span>
       </div>
       {sub && <div className="mt-0.5 text-right text-[12px] text-ink-faint num">{sub}</div>}

@@ -75,7 +75,7 @@ function LeuBand({ s }: { s: S }) {
       <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 lg:grid-cols-5">
         {segments.map((seg) => (
           <div key={seg.key} className="flex items-start gap-2 text-[13px]">
-            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: seg.color }} />
+            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: seg.color }} />
             <div>
               <div className="text-ink-soft">{seg.label}</div>
               <div className="num font-medium">
@@ -224,7 +224,7 @@ export default function Dashboard() {
               return (
                 <li key={i} className="rounded-md border-l-[3px] py-1 pl-3" style={{ borderColor: st.color }}>
                   <div className="flex items-baseline gap-2">
-                    <span className="shrink-0 rounded px-1.5 text-[11px] font-medium" style={{ background: st.bg, color: st.color }}>
+                    <span className="shrink-0 rounded-sm px-1.5 text-[11px] font-medium" style={{ background: st.bg, color: st.color }}>
                       {st.label}
                     </span>
                     <span className="font-medium leading-snug">{sg.title}</span>
@@ -263,7 +263,7 @@ export default function Dashboard() {
                       <Leader
                         label={
                           <span className="flex items-center gap-2">
-                            <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: c.color }} />
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: c.color }} />
                             {c.name}
                           </span>
                         }

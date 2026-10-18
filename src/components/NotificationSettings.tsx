@@ -104,7 +104,7 @@ export default function NotificationSettings({ onToast }: { onToast: (msg: strin
 
   return (
     <Panel title="Notificări">
-      {error && <div className="mb-3 rounded bg-rosu-tint p-2.5 text-[13px] font-medium text-rosu">{error}</div>}
+      {error && <div className="mb-3 rounded-sm bg-rosu-tint p-2.5 text-[13px] font-medium text-rosu">{error}</div>}
 
       {/* Telegram */}
       <div className="mb-4 rounded-lg border border-line p-3">

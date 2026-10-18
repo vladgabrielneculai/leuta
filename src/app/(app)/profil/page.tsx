@@ -209,7 +209,7 @@ function DeleteAccount({ username, onClose }: { username: string; onClose: () =>
           <button type="button" className="btn-ghost" onClick={onClose}>
             Renunță
           </button>
-          <button type="submit" className="btn-primary !bg-rosu hover:!bg-rosu/85" disabled={busy || typed.trim() !== username}>
+          <button type="submit" className="btn-primary bg-rosu! hover:bg-rosu/85!" disabled={busy || typed.trim() !== username}>
             {busy ? "Se șterge…" : "Șterge definitiv contul"}
           </button>
         </div>

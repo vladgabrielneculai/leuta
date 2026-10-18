@@ -121,7 +121,7 @@ export default function DatabaseManager({ onToast, onRefresh }: { onToast: (msg:
         <div className="rounded-md border border-line bg-sheet p-3.5 text-[13px]">
           <div className="flex items-center justify-between gap-2">
             <span className="font-semibold text-ink">Baza de date Postgres (Supabase):</span>
-            <span className="rounded bg-paper px-2 py-0.5 font-mono text-[12px] text-ink-soft">
+            <span className="rounded-sm bg-paper px-2 py-0.5 font-mono text-[12px] text-ink-soft">
               {info?.sizeFormatted ?? "–"}
             </span>
           </div>
@@ -192,7 +192,7 @@ export default function DatabaseManager({ onToast, onRefresh }: { onToast: (msg:
             </button>
           </div>
 
-          <div className="max-h-[380px] overflow-auto rounded border border-line">
+          <div className="max-h-[380px] overflow-auto rounded-sm border border-line">
             {!tableData ? (
               <p className="p-4 text-center text-ink-soft text-[13px]">Se încarcă tabelul…</p>
             ) : tableData.rows.length === 0 ? (

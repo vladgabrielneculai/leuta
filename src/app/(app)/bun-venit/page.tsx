@@ -130,7 +130,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-paper">
-      <header className="sticky top-0 z-30 border-b border-line bg-paper/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-line bg-paper/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Logo className="h-8 w-8" />
@@ -247,7 +247,7 @@ export default function OnboardingPage() {
       </main>
 
       {/* Navigarea între pași: mereu la îndemână, jos. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl gap-2">
           {current.key === "done" ? (
             <a href="/" className="btn-primary min-h-[48px] flex-1 text-[15px] font-semibold">Mergi la panou →</a>
