@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BUCKET_LABEL, KIND_LABEL, type Bucket, type Kind } from "@/lib/util";
-import { api, CollapsiblePanels, downloadFile, Field, PageHeader, Panel, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
+import { api, downloadFile, Field, PageHeader, Panel, Tabs, Toast, TrashIcon, useApi, useApp, useTab } from "@/components/ui";
 import AccountSecurity from "@/components/AccountSecurity";
 import SecurityCenter from "@/components/SecurityCenter";
 import NotificationSettings from "@/components/NotificationSettings";
@@ -90,6 +90,15 @@ function CategoryRow({
 }
 
 
+const SETTINGS_TABS = [
+  { key: "general", label: "General" },
+  { key: "calcule", label: "Calcule" },
+  { key: "notificari", label: "Notificări" },
+  { key: "securitate", label: "Securitate" },
+  { key: "date", label: "Date" },
+] as const;
+type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
+
 export default function SettingsPage() {
   const {
     bump,
@@ -111,6 +120,7 @@ export default function SettingsPage() {
   const [params, setParams] = useState<Record<string, string>>({});
   const [newCat, setNewCat] = useState({ name: "", kind: "variable" as Kind, bucket: "needs" as Bucket });
   const [toast, setToast] = useState<string | null>(null);
+  const [tab, setTab] = useTab<SettingsTab>("setari", "general", SETTINGS_TABS.map((t) => t.key));
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -190,11 +200,12 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Setări" intro="Categoriile, notificările, securitatea și parametrii calculelor." />
+      <PageHeader title="Setări" intro="Categoriile, aspectul, notificările, securitatea și parametrii calculelor." />
 
-      {/* Pe telefon și tabletă, fiecare secțiune e pliată: se vede lista de titluri, iar o secțiune se deschide la atingere. */}
-      <CollapsiblePanels>
-      <div className="grid gap-4 lg:gap-6 xl:grid-cols-[1.4fr_1fr]">
+      <Tabs tabs={SETTINGS_TABS} value={tab} onChange={setTab} className="mb-5" label="Secțiunile setărilor" />
+
+      {tab === "general" && (
+        <div className="grid gap-4 lg:gap-6 xl:grid-cols-[1.4fr_1fr] xl:items-start">
         <Panel title="Categorii" summary={cats ? `${cats.length} categorii · nevoi și dorințe` : undefined}>
           <p className="mb-4 text-[13px] text-ink-soft">
             Pentru cheltuieli, atinge „Nevoie” / „Dorință” ca să schimbi tipul. Asta decide cum se calculează metodele de buget.
@@ -237,7 +248,7 @@ export default function SettingsPage() {
           </form>
         </Panel>
 
-        <div className="flex flex-col gap-4 lg:gap-6">
+          <div className="flex flex-col gap-4 lg:gap-6">
           <Panel title="Aspect" summary="Temă de zi, de noapte sau automată">
             <p className="mb-3 text-[13px] text-ink-soft">
               Tema de zi sau de noapte. „Auto” o schimbă singură după setarea telefonului sau a calculatorului. Alegerea se
@@ -246,22 +257,13 @@ export default function SettingsPage() {
             <ThemeChooser />
           </Panel>
 
-          <NotificationSettings onToast={(msg) => setToast(msg)} />
+          </div>
+        </div>
+      )}
 
-          <SecurityCenter onToast={(msg) => setToast(msg)} />
-
-          <AccountSecurity onToast={(msg) => setToast(msg)} />
-
-          {status?.user?.isAdmin && (
-            <DatabaseManager
-              onToast={(msg) => setToast(msg)}
-              onRefresh={() => {
-                reload();
-                bump();
-              }}
-            />
-          )}
-
+      {tab === "calcule" && (
+        <div className="grid gap-4 lg:gap-6 xl:grid-cols-2 xl:items-start">
+          <div className="flex flex-col gap-4 lg:gap-6">
           <Panel title="Modul Investiții" summary={params.enable_investments === "1" ? "Pornit" : "Oprit"}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -318,6 +320,7 @@ export default function SettingsPage() {
             </form>
           </Panel>
 
+          </div>
           <Panel title="Curs valutar și inflație" summary={`1 € = ${eurRate.toFixed(4)} lei · inflație ${inflationRate.toFixed(1)}%`}>
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-[13px] text-ink-soft">Curs BNR</span>
@@ -366,6 +369,23 @@ export default function SettingsPage() {
             </div>
           </Panel>
 
+        </div>
+      )}
+
+      {tab === "notificari" && <div className="max-w-3xl">{/* Telegram și e-mail */}
+          <NotificationSettings onToast={(msg) => setToast(msg)} />
+      </div>}
+
+      {tab === "securitate" && (
+        <div className="grid gap-4 lg:gap-6 xl:grid-cols-2 xl:items-start">
+          <SecurityCenter onToast={(msg) => setToast(msg)} />
+
+          <AccountSecurity onToast={(msg) => setToast(msg)} />
+        </div>
+      )}
+
+      {tab === "date" && (
+        <div className="grid gap-4 lg:gap-6 xl:grid-cols-2 xl:items-start">
           <Panel title="Copie de siguranță" summary="Export și restaurare (fișier JSON)">
             <p className="mb-3 text-[13px] text-ink-soft">
               Datele stau în baza de date Supabase. Exportă periodic un fișier JSON și păstrează-l pe NAS sau în cloud.
@@ -391,9 +411,18 @@ export default function SettingsPage() {
               />
             </div>
           </Panel>
+          {status?.user?.isAdmin && (
+            <DatabaseManager
+              onToast={(msg) => setToast(msg)}
+              onRefresh={() => {
+                reload();
+                bump();
+              }}
+            />
+          )}
+
         </div>
-      </div>
-      </CollapsiblePanels>
+      )}
       <Toast message={toast} onDone={() => setToast(null)} />
     </>
   );

@@ -694,11 +694,14 @@ export const chartTooltipStyle = {
 
 /**
  * Tab-ul ales pe o pagină, ținut minte pe durata sesiunii (ex. revii pe Panou și ești tot pe „Evoluție”).
- * `key` trebuie să fie unic pe pagină.
+ * `key` trebuie să fie unic pe pagină. Un `#tab` în adresă are prioritate.
  */
 export function useTab<T extends string>(key: string, initial: T, allowed: readonly T[]) {
   const [tab, setTabState] = useState<T>(initial);
   useEffect(() => {
+    // Un link poate deschide direct un tab (ex. /setari#securitate); altfel, ultimul tab ales în sesiune.
+    const fromHash = window.location.hash.slice(1) as T;
+    if (allowed.includes(fromHash)) return setTabState(fromHash);
     try {
       const saved = sessionStorage.getItem(`tab:${key}`) as T | null;
       if (saved && allowed.includes(saved)) setTabState(saved);

@@ -9,7 +9,7 @@ import {
   type TripDetail, type TripExpense, type TripFund,
 } from "@/lib/trips";
 import { FundForm, TripExpenseForm, TripForm } from "@/components/Trips";
-import { api, Bar, Empty, Modal, PageHeader, Panel, PencilIcon, Skeleton, Stat, Toast, useApi, useApp } from "@/components/ui";
+import { api, Bar, Empty, Modal, PageHeader, Panel, PencilIcon, Skeleton, Stat, STAT_STRIP, Toast, useApi, useApp } from "@/components/ui";
 
 /** „mâine”, „în 5 zile”, „în 21 de zile”. */
 function untilLabel(n: number) {
@@ -139,7 +139,7 @@ export default function TripPage() {
         }
       />
 
-      <div className="panel mb-6 grid grid-cols-2 gap-6 p-5 lg:grid-cols-4">
+      <div className={`panel mb-6 lg:!grid-cols-4 ${STAT_STRIP}`}>
         <Stat label="Cheltuit" accent="var(--c-rosu)" hint={wallet.filter((w) => w.code !== trip.currency && w.spent > 0).map((w) => `+ ${fmtCur(w.spent, w.code)}`).join(" ")}>
           <span className="num font-display text-[17px] font-semibold sm:text-[20px]">{fmtCur(main.spent, trip.currency)}</span>
         </Stat>

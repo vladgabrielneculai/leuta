@@ -479,7 +479,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       <main key={path} className="page-enter mx-auto w-full max-w-[1240px] px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-8 sm:pt-6 lg:py-10">
         {!secured && !securitySnoozed && !path.startsWith("/setari") && (
           <div className="mb-4 flex items-center gap-1 rounded-lg border border-galben/40 bg-galben-tint text-[13px] sm:mb-5">
-            <Link href="/setari" className="flex min-w-0 flex-1 items-center justify-between gap-3 py-2.5 pl-3.5 hover:underline sm:py-3 sm:pl-4">
+            <Link href="/setari#securitate" className="flex min-w-0 flex-1 items-center justify-between gap-3 py-2.5 pl-3.5 hover:underline sm:py-3 sm:pl-4">
               <span>
                 🔐 <strong>Protejează-ți contul cu autentificarea în doi pași (2FA)</strong>
                 <span className="hidden sm:inline">

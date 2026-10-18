@@ -8,7 +8,7 @@ import type { Summary } from "@/lib/analytics";
 import { addMonths, lei, monthLabel, pct, r2, termLabel } from "@/lib/util";
 import BankScheduleImport, { type BankImportResult } from "@/components/BankScheduleImport";
 import LoanForm, { emptyLoan } from "@/components/LoanForm";
-import { api, Bar, chartTooltipStyle, Empty, Modal, Money, PageHeader, Panel, Skeleton, Stat, useApi, useApp } from "@/components/ui";
+import { api, Bar, chartTooltipStyle, Empty, Modal, Money, PageHeader, Panel, Skeleton, Stat, STAT_STRIP, useApi, useApp } from "@/components/ui";
 import { loanFieldsFromSchedule, loanNameFromMeta } from "@/lib/loanImport";
 
 export default function LoansPage() {
@@ -82,7 +82,7 @@ export default function LoansPage() {
         </Empty>
       ) : (
         <>
-          <div className="panel mb-6 grid grid-cols-2 gap-6 p-5 lg:grid-cols-5">
+          <div className={`panel mb-6 lg:grid-cols-5 ${STAT_STRIP}`}>
             <Stat
               label="Bani deja achitați"
               accent="var(--c-leu)"
