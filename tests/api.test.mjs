@@ -148,7 +148,7 @@ test("conturile nu își văd datele unul altuia (doar dacă TEST_USER2/TEST_PAS
 test("backup-ul conține toate tabelele financiare", async () => {
   const r = await call("/api/backup");
   assert.equal(r.status, 200);
-  for (const t of ["user_settings", "categories", "entries", "loans", "goals", "loan_schedules", "planned_purchases"]) {
+  for (const t of ["user_settings", "categories", "entries", "loans", "goals", "loan_schedules", "planned_purchases", "trips", "trip_funds", "trip_expenses"]) {
     assert.ok(Array.isArray(r.json.data[t]), t);
   }
 });
@@ -297,4 +297,41 @@ test("bonul lunii: PDF pentru o lună validă, 400 pentru o lună invalidă", as
   assert.equal(bytes.subarray(0, 5).toString(), "%PDF-");
   assert.equal((await call("/api/receipt?month=1999-13")).status, 400);
   assert.equal((await call("/api/receipt?month=1999-01", { auth: false })).status, 401);
+});
+
+test("vacanțe: sumele rămân în moneda lor, banii avuți scad, nimic nu ajunge în bugetul lunar", async () => {
+  const before = (await call("/api/summary?month=1999-07")).json.totals.spent;
+  const trip = await call("/api/crud/trips", {
+    method: "POST",
+    body: { name: "[test] Vacanță", destination: "Thassos", start_date: "1999-07-10", end_date: "1999-07-17", currency: "eur", budget: "" },
+  });
+  assert.equal(trip.status, 200);
+  assert.equal(trip.json.currency, "EUR", "codul monedei se scrie cu majuscule");
+  const id = trip.json.id;
+  try {
+    // Validări: perioadă inversată, monedă invalidă, sumă zero.
+    assert.equal((await call("/api/crud/trips", { method: "POST", body: { name: "[test] x", start_date: "1999-07-10", end_date: "1999-07-01", currency: "EUR" } })).status, 400);
+    assert.equal((await call("/api/crud/trip_expenses", { method: "POST", body: { trip_id: id, date: "1999-07-11", amount: 10, currency: "EURO" } })).status, 400);
+    assert.equal((await call("/api/crud/trip_funds", { method: "POST", body: { trip_id: id, amount: 0, currency: "EUR" } })).status, 400);
+
+    const fund = await call("/api/crud/trip_funds", { method: "POST", body: { trip_id: id, label: "cash", amount: 1000, currency: "EUR", rate_ron: 5 } });
+    assert.equal(fund.status, 200);
+    for (const [amount, currency, category] of [[48, "EUR", "mancare"], [300, "EUR", "cazare"], [150, "RON", "transport"]]) {
+      const r = await call("/api/crud/trip_expenses", { method: "POST", body: { trip_id: id, date: "1999-07-11", category, amount, currency } });
+      assert.equal(r.status, 200);
+    }
+
+    const d = (await call(`/api/trips/${id}`)).json;
+    assert.equal(d.expenses.length, 3);
+    assert.equal(d.expenses.find((e) => e.category === "mancare").amount, 48, "suma rămâne în euro, neconvertită");
+    const listed = (await call("/api/trips")).json.find((t) => t.id === id);
+    assert.deepEqual(listed.funds, { EUR: 1000 });
+    assert.deepEqual(listed.spent, { EUR: 348, RON: 150 });
+
+    assert.equal((await call("/api/summary?month=1999-07")).json.totals.spent, before, "bugetul lunar nu se schimbă");
+  } finally {
+    await call(`/api/crud/trips?id=${id}`, { method: "DELETE" });
+  }
+  assert.equal((await call(`/api/trips/${id}`)).status, 404, "vacanța ștearsă");
+  assert.equal((await call(`/api/crud/trip_expenses?trip_id=${id}`)).json.length, 0, "cheltuielile s-au șters odată cu ea");
 });
