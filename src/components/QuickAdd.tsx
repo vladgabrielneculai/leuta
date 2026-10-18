@@ -1,13 +1,16 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { lei, eur, monthLabel, type Currency, type Kind } from "@/lib/util";
+import { lei, eur, monthLabel, parseAmount, type Currency, type Kind } from "@/lib/util";
+import { activeTrip, type TripListItem } from "@/lib/trips";
 import { api, Modal, Toast, useApi, useApp } from "./ui";
+import { TripExpenseForm } from "./Trips";
 
 /**
  * Adăugarea rapidă, din butonul „+” al barei de jos (pe telefon): suma întâi, apoi categoria dintr-o atingere.
  * Aceeași fereastră editează și șterge o intrare existentă (atingi rândul din „Luna curentă”).
- * Intrarea se trece în luna analizată, cea din bara de sus.
+ * Intrarea se trece în luna analizată, cea din bara de sus. Cât timp ești în vacanță, fereastra are și
+ * varianta „Vacanță”: cheltuiala merge la vacanța în curs, în moneda ei, nu în bugetul lunar.
  */
 
 type Category = { id: number; name: string; kind: Kind; color: string };
@@ -25,7 +28,7 @@ export type QuickEntry = {
   recurring: number;
 };
 
-type OpenArgs = { kind?: Kind; entry?: QuickEntry };
+type OpenArgs = { kind?: Kind; entry?: QuickEntry; /** deschide direct varianta pentru vacanța în curs */ trip?: boolean };
 const QuickAddCtx = createContext<(args?: OpenArgs) => void>(() => undefined);
 
 /** Deschide fereastra de adăugare (opțional cu tipul ales) sau de editare a unei intrări. */
@@ -40,14 +43,6 @@ const KINDS: { kind: Kind; label: string; color: string }[] = [
   { kind: "saving", label: "Economii", color: "var(--c-galben)" },
 ];
 
-/** „1.234,50”, „1234.5” sau „45,5” devin număr; altceva dă NaN. */
-export function parseAmount(raw: string) {
-  let s = raw.replace(/\s/g, "");
-  if (s.includes(",") && s.includes(".")) s = s.replace(/\./g, "");
-  s = s.replace(",", ".");
-  return /^\d*\.?\d+$|^\d+\.$/.test(s) ? Number(s) : NaN;
-}
-
 export function QuickAddProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<OpenArgs | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -58,7 +53,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   return (
     <QuickAddCtx.Provider value={open}>
       {children}
-      {state && <QuickAddSheet key={state.entry?.id ?? state.kind ?? "nou"} args={state} onClose={() => setState(null)} onDone={setToast} />}
+      {state && <QuickAddSheet key={state.entry?.id ?? state.kind ?? (state.trip ? "vacanta" : "nou")} args={state} onClose={() => setState(null)} onDone={setToast} />}
       <Toast message={toast} onDone={() => setToast(null)} />
     </QuickAddCtx.Provider>
   );
@@ -78,6 +73,12 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const [busy, setBusy] = useState(false);
   const amountRef = useRef<HTMLInputElement>(null);
 
+  // Vacanța în curs (doar la adăugare): implicit cheltuiala merge acolo, cu comutator înapoi la luna curentă.
+  const { data: trips } = useApi<TripListItem[]>(editing ? null : "/api/trips");
+  const trip = trips ? activeTrip(trips) : null;
+  const [forTrip, setForTrip] = useState(args.trip ?? !args.kind);
+  const tripMode = !!trip && forTrip;
+
   const { data: cats } = useApi<Category[]>("/api/crud/categories");
   const { data: goals } = useApi<Goal[]>("/api/crud/goals");
   const { data: invs } = useApi<Investment[]>("/api/crud/investments");
@@ -89,8 +90,8 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
 
   // Suma e primul lucru de completat: tastatura numerică apare imediat (doar la adăugare).
   useEffect(() => {
-    if (!editing) amountRef.current?.focus();
-  }, [editing]);
+    if (!editing && !tripMode) amountRef.current?.focus();
+  }, [editing, tripMode]);
 
   const changeKind = (k: Kind) => {
     setKind(k);
@@ -159,129 +160,165 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     }`;
 
   return (
-    <Modal open onClose={onClose} title={editing ? "Modifică intrarea" : `Adaugă în ${monthLabel(month)}`}>
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        {/* Tipul intrării: cheltuiala e cea mai des folosită, deci prima. */}
-        <div className="grid grid-cols-4 gap-1 rounded-md border border-line bg-paper p-1" role="radiogroup" aria-label="Tip">
-          {KINDS.map((k) => (
+    <Modal open onClose={onClose} title={editing ? "Modifică intrarea" : tripMode ? `Cheltuială de vacanță` : `Adaugă în ${monthLabel(month)}`}>
+      {trip && (
+        <div className="mb-4 grid grid-cols-2 gap-1 rounded-md border border-line bg-paper p-1" role="radiogroup" aria-label="Unde se trece">
+          {[
+            { on: false, label: `Bugetul lunii`, hint: monthLabel(month).replace(/^./, (c) => c.toUpperCase()) },
+            { on: true, label: `🧳 Vacanță`, hint: trip.name },
+          ].map((o) => (
             <button
-              key={k.kind}
+              key={o.label}
               type="button"
               role="radio"
-              aria-checked={kind === k.kind}
-              onClick={() => changeKind(k.kind)}
-              className={`flex min-h-[40px] flex-col items-center justify-center rounded-[4px] px-1 text-[12.5px] font-medium leading-tight transition-colors ${
-                kind === k.kind ? "bg-sheet text-ink shadow-[0_1px_2px_rgb(var(--shadow)/0.15)]" : "text-ink-soft"
+              aria-checked={forTrip === o.on}
+              onClick={() => setForTrip(o.on)}
+              className={`flex min-h-[44px] min-w-0 flex-col items-center justify-center rounded-[4px] px-2 text-[13px] font-medium leading-tight transition-colors ${
+                forTrip === o.on ? "bg-sheet text-ink shadow-[0_1px_2px_rgb(var(--shadow)/0.15)]" : "text-ink-soft"
               }`}
             >
-              <span className="mb-1 h-1 w-6 rounded-full" style={{ background: k.color, opacity: kind === k.kind ? 1 : 0.45 }} aria-hidden />
-              {k.label}
+              {o.label}
+              <span className="mt-0.5 w-full truncate text-center text-[11px] font-normal text-ink-faint">{o.hint}</span>
             </button>
           ))}
         </div>
-
-        <div>
-          <div className="flex items-stretch gap-2">
-            <input
-              ref={amountRef}
-              className="field num min-w-0 flex-1 !py-3 !text-[26px] font-semibold"
-              inputMode="decimal"
-              enterKeyHint="done"
-              autoComplete="off"
-              placeholder="0,00"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value.replace(/[^\d.,\s]/g, ""));
-                setErr(null);
-              }}
-              aria-label="Sumă"
-            />
-            <div className="grid shrink-0 grid-rows-2 gap-1" role="radiogroup" aria-label="Monedă">
-              {(["RON", "EUR"] as Currency[]).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  role="radio"
-                  aria-checked={currency === c}
-                  onClick={() => setCurrency(c)}
-                  className={`w-16 rounded-md border text-[13px] font-semibold ${currency === c ? "border-ink bg-ink text-sheet" : "border-line-strong/70 bg-field text-ink-soft"}`}
-                >
-                  {c === "RON" ? "lei" : "€"}
-                </button>
-              ))}
-            </div>
-          </div>
-          {currency === "EUR" && value > 0 && <p className="mt-1 text-right text-[12px] text-ink-faint num">≈ {lei(value * eurRate)}</p>}
-        </div>
-
-        <div>
-          <span className="label">{kind === "saving" ? "Unde merg banii" : "Categoria"}</span>
-          {kind === "saving" ? (
-            <div className="flex flex-wrap gap-1.5">
-              {[{ v: "", name: "Economii generale" }, ...(goals ?? []).map((g) => ({ v: `g:${g.id}`, name: g.name })), ...investments.map((i) => ({ v: `i:${i.id}`, name: i.name }))].map((d) => (
-                <button key={d.v} type="button" className={chip(dest === d.v)} aria-pressed={dest === d.v} onClick={() => setDest(d.v)}>
-                  {d.name}
-                </button>
-              ))}
-            </div>
-          ) : !cats ? (
-            <p className="text-[13px] text-ink-faint">Se încarcă…</p>
-          ) : kindCats.length === 0 ? (
-            <p className="text-[13px] text-ink-soft">Nu ai categorii pentru acest tip. Le poți adăuga din Setări.</p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {kindCats.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={chip(categoryId === c.id)}
-                  aria-pressed={categoryId === c.id}
-                  onClick={() => {
-                    setCategoryId(c.id);
-                    setErr(null);
-                  }}
-                >
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: c.color }} aria-hidden />
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <input
-          className="field"
-          placeholder="Descriere (opțional)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          aria-label="Descriere"
+      )}
+      {tripMode ? (
+        <TripExpenseForm
+          trip={trip}
+          currencies={Object.keys(trip.funds)}
+          onSaved={(msg) => {
+            bump();
+            onDone(msg);
+            onClose();
+          }}
         />
+      ) : (
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+        >
+          {/* Tipul intrării: cheltuiala e cea mai des folosită, deci prima. */}
+          <div className="grid grid-cols-4 gap-1 rounded-md border border-line bg-paper p-1" role="radiogroup" aria-label="Tip">
+            {KINDS.map((k) => (
+              <button
+                key={k.kind}
+                type="button"
+                role="radio"
+                aria-checked={kind === k.kind}
+                onClick={() => changeKind(k.kind)}
+                className={`flex min-h-[40px] flex-col items-center justify-center rounded-[4px] px-1 text-[12.5px] font-medium leading-tight transition-colors ${
+                  kind === k.kind ? "bg-sheet text-ink shadow-[0_1px_2px_rgb(var(--shadow)/0.15)]" : "text-ink-soft"
+                }`}
+              >
+                <span className="mb-1 h-1 w-6 rounded-full" style={{ background: k.color, opacity: kind === k.kind ? 1 : 0.45 }} aria-hidden />
+                {k.label}
+              </button>
+            ))}
+          </div>
 
-        <label className="flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Se poate copia în luna următoare">
-          <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
-          <span>Se repetă lunar</span>
-        </label>
+          <div>
+            <div className="flex items-stretch gap-2">
+              <input
+                ref={amountRef}
+                className="field num min-w-0 flex-1 !py-3 !text-[26px] font-semibold"
+                inputMode="decimal"
+                enterKeyHint="done"
+                autoComplete="off"
+                placeholder="0,00"
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value.replace(/[^\d.,\s]/g, ""));
+                  setErr(null);
+                  // Ai început să scrii înainte să se încarce vacanțele: rămâi pe bugetul lunii.
+                  if (!trips) setForTrip(false);
+                }}
+                aria-label="Sumă"
+              />
+              <div className="grid shrink-0 grid-rows-2 gap-1" role="radiogroup" aria-label="Monedă">
+                {(["RON", "EUR"] as Currency[]).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    role="radio"
+                    aria-checked={currency === c}
+                    onClick={() => setCurrency(c)}
+                    className={`w-16 rounded-md border text-[13px] font-semibold ${currency === c ? "border-ink bg-ink text-sheet" : "border-line-strong/70 bg-field text-ink-soft"}`}
+                  >
+                    {c === "RON" ? "lei" : "€"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {currency === "EUR" && value > 0 && <p className="mt-1 text-right text-[12px] text-ink-faint num">≈ {lei(value * eurRate)}</p>}
+          </div>
 
-        {err && <p className="text-[13px] text-rosu" role="alert">{err}</p>}
+          <div>
+            <span className="label">{kind === "saving" ? "Unde merg banii" : "Categoria"}</span>
+            {kind === "saving" ? (
+              <div className="flex flex-wrap gap-1.5">
+                {[{ v: "", name: "Economii generale" }, ...(goals ?? []).map((g) => ({ v: `g:${g.id}`, name: g.name })), ...investments.map((i) => ({ v: `i:${i.id}`, name: i.name }))].map((d) => (
+                  <button key={d.v} type="button" className={chip(dest === d.v)} aria-pressed={dest === d.v} onClick={() => setDest(d.v)}>
+                    {d.name}
+                  </button>
+                ))}
+              </div>
+            ) : !cats ? (
+              <p className="text-[13px] text-ink-faint">Se încarcă…</p>
+            ) : kindCats.length === 0 ? (
+              <p className="text-[13px] text-ink-soft">Nu ai categorii pentru acest tip. Le poți adăuga din Setări.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {kindCats.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={chip(categoryId === c.id)}
+                    aria-pressed={categoryId === c.id}
+                    onClick={() => {
+                      setCategoryId(c.id);
+                      setErr(null);
+                    }}
+                  >
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: c.color }} aria-hidden />
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-        {/* Butoanele rămân la vedere chiar dacă lista de categorii e lungă. */}
-        <div className="sticky bottom-0 -mx-4 -mb-4 flex gap-2 border-t border-dashed border-line-strong bg-sheet px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:static sm:mx-0 sm:mb-0 sm:px-0 sm:pb-0">
-          {editing && (
-            <button type="button" className="btn-danger border border-rosu/30 px-4" onClick={remove}>
-              Șterge
+          <input
+            className="field"
+            placeholder="Descriere (opțional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            aria-label="Descriere"
+          />
+
+          <label className="flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Se poate copia în luna următoare">
+            <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
+            <span>Se repetă lunar</span>
+          </label>
+
+          {err && <p className="text-[13px] text-rosu" role="alert">{err}</p>}
+
+          {/* Butoanele rămân la vedere chiar dacă lista de categorii e lungă. */}
+          <div className="sticky bottom-0 -mx-4 -mb-4 flex gap-2 border-t border-dashed border-line-strong bg-sheet px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:static sm:mx-0 sm:mb-0 sm:px-0 sm:pb-0">
+            {editing && (
+              <button type="button" className="btn-danger border border-rosu/30 px-4" onClick={remove}>
+                Șterge
+              </button>
+            )}
+            <button type="submit" className="btn-primary flex-1 py-3 text-[15px]" disabled={busy}>
+              {busy ? "Se salvează…" : editing ? "Salvează" : "Adaugă"}
             </button>
-          )}
-          <button type="submit" className="btn-primary flex-1 py-3 text-[15px]" disabled={busy}>
-            {busy ? "Se salvează…" : editing ? "Salvează" : "Adaugă"}
-          </button>
-        </div>
-      </form>
+          </div>
+        </form>
+      )}
     </Modal>
   );
 }
