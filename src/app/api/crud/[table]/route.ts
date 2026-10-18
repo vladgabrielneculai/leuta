@@ -5,17 +5,22 @@ import { TABLES, VALIDATE } from "@/lib/crud";
 
 export const dynamic = "force-dynamic";
 
+// Numele tabelului ajunge în SQL, deci trebuie să fie exact o cheie proprie din TABLES (nu „constructor”, „toString”…).
 function cfg(table: string) {
-  const c = TABLES[table];
-  if (!c) throw new Error("Tabel necunoscut");
-  return c;
+  if (!Object.hasOwn(TABLES, table)) throw new Error("Tabel necunoscut");
+  return TABLES[table];
 }
+
+const MAX_TEXT = 5000;
 
 function clean(body: Record<string, unknown>, columns: string[]) {
   const out: Record<string, unknown> = {};
   for (const col of columns) {
     if (!(col in body)) continue;
     let v = body[col];
+    // Coloanele sunt text, numere sau date: obiectele/listele și textele uriașe nu au ce căuta aici.
+    if (v !== null && typeof v === "object") throw new Error("Valoare invalidă");
+    if (typeof v === "string" && v.length > MAX_TEXT) throw new Error("Textul este prea lung");
     if (v === "" && (col.endsWith("_id") || col === "deadline")) v = null;
     if (typeof v === "boolean") v = v ? 1 : 0;
     // Postgres e strict la tipuri: un id/număr venit ca text gol devine null, nu ''.
@@ -127,7 +132,7 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ tabl
     const { table } = await context.params;
     cfg(table);
     const id = req.nextUrl.searchParams.get("id");
-    if (!id) throw new Error("Lipsește id-ul");
+    if (!id || !/^\d+$/.test(id)) throw new Error("Lipsește id-ul");
     const res = await (await getDb()).prepare(`DELETE FROM ${table} WHERE id = ?`).run(Number(id));
     if (!res.changes) return NextResponse.json({ error: "Înregistrarea nu există." }, { status: 404 });
     return NextResponse.json({ ok: true });
