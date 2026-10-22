@@ -33,9 +33,8 @@ const KIND_INFO: Record<Kind, { color: string; help: string }> = {
 };
 
 /**
- * O secțiune a lunii (venituri, costuri fixe…): rândurile ca pe un bon, iar adăugarea, modificarea și ștergerea
- * se fac în aceeași fereastră (adăugarea rapidă), pe orice ecran. Așa pagina nu mai are câte un formular
- * deschis în fiecare secțiune și butoane „Editează / Șterge” pe fiecare rând.
+ * O secțiune a lunii (venituri, costuri fixe…): rândurile ca pe un bon. Un rând atins se desface și arată
+ * descrierea; adăugarea, modificarea și ștergerea se fac în aceeași fereastră (adăugarea rapidă), pe orice ecran.
  */
 // Ordinea dalelor: banii care intră, apoi cei care ies, apoi economiile. Implicit se deschid cheltuielile (cele mai dese).
 const KIND_ORDER: Kind[] = ["income", "fixed", "variable", "saving"];
@@ -53,6 +52,7 @@ function KindSection({
   rate: number;
 }) {
   const quickAdd = useQuickAdd();
+  const [openId, setOpenId] = useState<number | null>(null);
   const info = KIND_INFO[kind];
   const catMap = new Map(cats.map((c) => [c.id, c]));
   const nameOfDest = (e: Entry) =>
@@ -63,36 +63,49 @@ function KindSection({
     <Panel tour={tour}>
       {/* Explicația secțiunii apare doar cât timp e goală. */}
       {entries.length === 0 && <p className="mb-3 text-[13px] text-ink-soft">{info.help}</p>}
+      {kind === "variable" && entries.length > 0 && <CategoryPie entries={entries} catMap={catMap} rate={rate} total={total} />}
       {entries.length > 0 && (
         <ul className="-mt-1 mb-2 divide-y divide-dashed divide-line">
           {entries.map((e) => {
             const name = kind === "saving" ? nameOfDest(e) : catMap.get(e.category_id ?? 0)?.name ?? "Fără categorie";
+            const open = openId === e.id;
             return (
-              // Un singur rând: categoria, descrierea (estompată, tăiată dacă e lungă) și suma. Tot rândul e un buton:
-              // atingerea (sau clicul) deschide modificarea, cu ștergerea în aceeași fereastră.
-              <li key={e.id} className="group relative -mx-2 flex min-h-[44px] items-center gap-2.5 rounded-md px-2 transition-colors hover:bg-ink/[0.03] sm:min-h-[38px]">
+              // Un singur rând: categoria, descrierea (estompată, pe ecran mare) și suma. Atingerea desface rândul:
+              // apar descrierea întreagă și butonul „Modifică” (care deschide fereastra cu modificarea și ștergerea).
+              <li key={e.id} className={`-mx-2 rounded-md px-2 transition-colors ${open ? "bg-ink/[0.04]" : "hover:bg-ink/[0.03]"}`}>
                 <button
                   type="button"
-                  className="absolute inset-0 z-[1] rounded-md active:bg-ink/[0.06]"
-                  onClick={() => quickAdd({ entry: e })}
-                  aria-label={`Modifică ${name}, ${e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}`}
-                  title={[e.description, e.recurring ? "se repetă lunar" : "", "atinge pentru a modifica sau șterge"].filter(Boolean).join(" · ")}
-                />
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
-                <span className="min-w-0 flex-1 truncate text-[14px]">
-                  {name}
-                  {e.description && <span className="ml-2 hidden text-[12.5px] text-ink-faint sm:inline">{e.description}</span>}
-                </span>
-                {e.recurring ? (
-                  <span className="shrink-0 text-[13px] text-albastru" title="Se repetă lunar" aria-label="lunar">↻</span>
-                ) : null}
-                <span className="num shrink-0 text-right text-[14px] font-medium">
-                  {e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
-                  {e.currency === "EUR" && <span className="block text-[11px] font-normal text-ink-faint">= {lei(e.amount * rate)}</span>}
-                </span>
-                <span className="hidden shrink-0 text-ink-faint opacity-0 transition-opacity group-hover:opacity-100 sm:block" aria-hidden>
-                  <PencilIcon />
-                </span>
+                  className="flex min-h-[44px] w-full items-center gap-2.5 text-left sm:min-h-[38px]"
+                  onClick={() => setOpenId(open ? null : e.id)}
+                  aria-expanded={open}
+                  aria-label={`${name}, ${e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}${open ? "" : ", atinge pentru detalii"}`}
+                >
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
+                  <span className="min-w-0 flex-1 truncate text-[14px]">
+                    {name}
+                    {e.description && !open && <span className="ml-2 hidden text-[12.5px] text-ink-faint sm:inline">{e.description}</span>}
+                  </span>
+                  {e.recurring ? (
+                    <span className="shrink-0 text-[13px] text-albastru" title="Se repetă lunar" aria-label="lunar">↻</span>
+                  ) : null}
+                  <span className="num shrink-0 text-right text-[14px] font-medium">
+                    {e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
+                  </span>
+                  <span className={`shrink-0 text-ink-faint transition-transform ${open ? "rotate-90" : ""}`} aria-hidden>›</span>
+                </button>
+                {open && (
+                  <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2 pb-3 pl-5 text-[13px]">
+                    <div className="min-w-0 flex-1 text-ink-soft">
+                      <p className="whitespace-pre-wrap break-words text-ink">{e.description || <span className="text-ink-faint">Fără descriere</span>}</p>
+                      <p className="mt-0.5 text-[12px] text-ink-faint">
+                        {[e.recurring ? "Se repetă lunar" : "O singură dată", e.currency === "EUR" ? `= ${lei(e.amount * rate)}` : ""].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                    <button type="button" className="btn-ghost shrink-0 gap-1.5 border border-line px-3 py-1.5 text-[13px]" onClick={() => quickAdd({ entry: e })}>
+                      <PencilIcon /> Modifică
+                    </button>
+                  </div>
+                )}
               </li>
             );
           })}
@@ -105,6 +118,72 @@ function KindSection({
         <span className="text-[18px] leading-none" aria-hidden>+</span> Adaugă la {KIND_LABEL[kind].toLowerCase()}
       </button>
     </Panel>
+  );
+}
+
+/**
+ * Cheltuielile variabile pe categorii, ca inel. Atingerea unei felii (sau a unei categorii din legendă) îi arată
+ * suma în mijloc; altfel, în mijloc e totalul.
+ */
+function CategoryPie({ entries, catMap, rate, total }: { entries: Entry[]; catMap: Map<number, Category>; rate: number; total: number }) {
+  const [focus, setFocus] = useState<number | null>(null);
+  const byCat = new Map<number, number>();
+  for (const e of entries) {
+    const id = e.category_id ?? 0;
+    byCat.set(id, (byCat.get(id) ?? 0) + (e.currency === "EUR" ? e.amount * rate : e.amount));
+  }
+  const data = [...byCat.entries()]
+    .map(([id, value]) => ({ id, value, name: catMap.get(id)?.name ?? "Fără categorie", color: catMap.get(id)?.color ?? "var(--c-ink-faint)" }))
+    .sort((a, b) => b.value - a.value);
+  const sel = data.find((d) => d.id === focus);
+  return (
+    <div className="mb-4 flex items-center gap-4 border-b border-dashed border-line pb-4">
+      <div className="relative h-[132px] w-[132px] shrink-0 sm:h-[150px] sm:w-[150px]">
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              innerRadius="64%"
+              outerRadius="100%"
+              paddingAngle={data.length > 1 ? 1.5 : 0}
+              stroke="none"
+              startAngle={90}
+              endAngle={-270}
+              isAnimationActive={false}
+              onClick={(d: { id: number }) => setFocus(focus === d.id ? null : d.id)}
+              className="cursor-pointer outline-none"
+            >
+              {data.map((d) => (
+                <Cell key={d.id} fill={d.color} opacity={focus === null || focus === d.id ? 1 : 0.35} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-5 text-center">
+          <span className="line-clamp-2 text-[10.5px] leading-tight text-ink-faint">{sel ? sel.name : "Total"}</span>
+          <span className="num font-display text-[15px] font-semibold leading-tight">{money(sel ? sel.value : total)}</span>
+          <span className="text-[10.5px] text-ink-faint">{sel ? `${Math.round((sel.value / total) * 100)}%` : "lei"}</span>
+        </div>
+      </div>
+      <ul className="flex min-w-0 flex-1 flex-col gap-1 text-[12.5px] sm:max-w-sm">
+        {data.slice(0, 5).map((d) => (
+          <li key={d.id}>
+            <button
+              type="button"
+              className={`flex w-full items-center gap-2 rounded px-1 py-0.5 text-left ${focus === d.id ? "bg-ink/[0.06]" : ""}`}
+              onClick={() => setFocus(focus === d.id ? null : d.id)}
+            >
+              <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: d.color }} />
+              <span className="min-w-0 flex-1 truncate text-ink-soft">{d.name}</span>
+              <span className="num shrink-0 text-ink-faint">{Math.round((d.value / total) * 100)}%</span>
+            </button>
+          </li>
+        ))}
+        {data.length > 5 && <li className="px-1 text-[12px] text-ink-faint">+ încă {data.length - 5} categorii</li>}
+      </ul>
+    </div>
   );
 }
 
