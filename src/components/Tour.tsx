@@ -42,7 +42,8 @@ const TOURS: Record<string, Step[]> = {
   ],
   luna: [
     { target: "title", title: "Luna curentă", text: "Aici treci tot ce intră și iese din cont în luna aleasă, pe categorii." },
-    { target: "luna-section", title: "Atinge un rând ca să-l modifici", text: "Un clic pe orice rând îl deschide pentru modificare sau ștergere. „+ Adaugă” de sub fiecare secțiune pune o intrare nouă." },
+    { target: "luna-tabs", title: "Câte o secțiune odată", text: "Venituri, costuri fixe, cheltuieli și economii, fiecare cu totalul ei. Atinge o dală ca să vezi ce conține." },
+    { target: "luna-section", title: "Atinge un rând ca să-l modifici", text: "Un clic pe orice rând îl deschide pentru modificare sau ștergere. „+ Adaugă” de dedesubt pune o intrare nouă." },
     { target: "luna-copy", title: "Copiază luna trecută", text: "Intrările marcate „lunar” (salariu, chirie, abonamente) le aduci dintr-o atingere la început de lună." },
     { target: "luna-balance", title: "Bilanțul lunii", text: "Cât a intrat, cât a ieșit și cât a rămas nealocat. Ratele creditelor se adaugă automat." },
   ],
