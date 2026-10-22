@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GoalsRiskFields, PersonalFields, WorkFields, fromDraft, toDraft, type ProfileDraft } from "@/components/ProfileFields";
-import { api, downloadFile, Modal, PageHeader, Panel, Skeleton, Tabs, Toast, useApi, useApp, useTab } from "@/components/ui";
+import { api, CollapsiblePanels, downloadFile, Modal, PageHeader, Panel, Skeleton, Tabs, Toast, useApi, useApp, useTab } from "@/components/ui";
 import { daysUntilPayday, displayName, OCCUPATIONS, type Profile } from "@/lib/profile";
 
 type ProfileResponse = { profile: Profile; age: number | null; emergency: { months: number; reasons: string[] } };
@@ -138,7 +138,9 @@ export default function ProfilePage() {
             </div>
           </Panel>
 
-          <Panel title="Datele tale">
+          {/* Acțiunile rare (export, ștergere, ieșire) se deschid la atingere pe telefon. */}
+          <CollapsiblePanels>
+          <Panel title="Datele tale" summary="Descarcă datele sau șterge contul">
             <p className="text-[13px] text-ink-soft">
               Descarcă tot ce știe Leuța despre tine (cont, profil, date financiare, notificări, istoric de autentificare) sau șterge definitiv contul.
             </p>
@@ -155,12 +157,13 @@ export default function ProfilePage() {
             </div>
           </Panel>
 
-          <Panel title="Cont">
+          <Panel title="Cont" summary="Parolă, 2FA, ieșire">
             <div className="flex flex-col gap-2">
               <Link href="/setari#securitate" className="btn-ghost justify-start border border-line">🔐 Parolă, Face ID / 2FA și dispozitive</Link>
               <button className="btn-danger justify-start border border-rosu/30" onClick={logout}>Ieșire din cont</button>
             </div>
           </Panel>
+          </CollapsiblePanels>
         </aside>
       </div>
 

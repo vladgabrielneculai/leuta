@@ -12,7 +12,7 @@ import {
   type PurchasePlan,
 } from "@/lib/affordability";
 import { addMonths, currentMonth, lei, monthLabel, pct } from "@/lib/util";
-import { Bar, Empty, Field, Modal, Money, PageHeader, Panel, Stat, STAT_STRIP, Tabs, Toast, useApi, useApp } from "@/components/ui";
+import { Bar, CollapsiblePanels, Field, Modal, Money, PageHeader, Panel, Stat, STAT_STRIP, Tabs, Toast, useApi, useApp } from "@/components/ui";
 
 const PRESETS = [
   { name: "Mașină", price: 45000, type: "loan" as FinancingType, down: 10000, term: 48, rate: 8.5 },
@@ -208,7 +208,7 @@ export default function AffordabilityPage() {
         title="Îmi permit această achiziție?"
         intro="Alege ce vrei să cumperi și cum plătești: vezi imediat dacă ți-o permiți și cum îți schimbă bugetul lunar."
         actions={
-          <button className="btn-primary" onClick={handleSavePlan} disabled={savingPlan}>
+          <button className="btn-primary hidden sm:inline-flex" onClick={handleSavePlan} disabled={savingPlan}>
             {savingPlan ? "Se salvează…" : "💾 Salvează în lista de dorințe"}
           </button>
         }
@@ -244,13 +244,14 @@ export default function AffordabilityPage() {
       <div className="mb-6 grid gap-6 lg:grid-cols-12">
         {/* Coloana Stângă: Formular Configurare */}
         <div className="lg:col-span-6 flex flex-col gap-4">
-          <Panel tour="ach-form" title="Configurare achiziție / investiție">
+          <Panel tour="ach-form" title="Ce vrei să cumperi">
             {/* Preset-uri rapide */}
             <div className="mb-4">
               <label className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft mb-2 block">
-                Sugestii rapide de investiții:
+                Sugestii rapide:
               </label>
-              <div className="flex flex-wrap gap-1.5">
+              {/* Pe telefon, sugestiile stau pe un singur rând care se derulează lateral. */}
+              <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:shrink-0">
                 {PRESETS.map((p) => (
                   <button
                     key={p.name}
@@ -264,8 +265,8 @@ export default function AffordabilityPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Denumire achiziție">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Denumire">
                 <input
                   className="field"
                   value={name}
@@ -425,7 +426,7 @@ export default function AffordabilityPage() {
         {/* Coloana Dreaptă: Verdict Financiar & Decizie */}
         <div className="lg:col-span-6 flex flex-col gap-4">
           <Panel tour="ach-verdict"
-            title="Verdict financiar & Analiză de decizie"
+            title="Verdictul"
           >
             {/* Banner verdict mare */}
             <div
@@ -451,8 +452,12 @@ export default function AffordabilityPage() {
             </div>
 
             {/* Motive și argumente calculate */}
-            <div className="mb-4">
-              <h4 className="text-[13px] font-semibold text-ink mb-2">De ce această concluzie:</h4>
+            {/* Motivele se deschid la cerere, ca verdictul să rămână scurt. */}
+            <details className="group mb-4">
+              <summary className="mb-2 flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
+                <span className="transition-transform group-open:rotate-90" aria-hidden>›</span>
+                De ce? ({(financingType === "cash" ? cash.reasons : loan.reasons).length} motive)
+              </summary>
               <ul className="space-y-2 text-[13px] text-ink-soft">
                 {(financingType === "cash" ? cash.reasons : loan.reasons).map((r, i) => (
                   <li key={i} className="flex items-start gap-2">
@@ -461,7 +466,7 @@ export default function AffordabilityPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
 
             {/* Indicatori sintetici de impact */}
             <div className="grid grid-cols-2 gap-3 pt-3 border-t border-line">
@@ -520,8 +525,10 @@ export default function AffordabilityPage() {
       </div>
 
       {/* 3. Impactul detaliat: o singură vedere odată (impactul lunar sau comparația cash / credit). */}
+      <CollapsiblePanels>
       <Panel
         title="Cum te afectează"
+        summary="Bugetul lunar și comparația cash / credit"
         className="mb-6"
         aside={
           <Tabs
@@ -733,6 +740,8 @@ export default function AffordabilityPage() {
         </div>
       </Panel>
 
+      </CollapsiblePanels>
+
       {/* 4. Lista de achiziții planificate / Wishlist */}
       <Panel
         title="Lista de dorințe"
@@ -743,10 +752,9 @@ export default function AffordabilityPage() {
         }
       >
         {!savedPlans || savedPlans.length === 0 ? (
-          <Empty title="Nicio achiziție salvată încă">
-            Configurează o investiție în simulatorul de mai sus și apasă pe „Salvează în lista de dorințe” pentru a-i urmări
-            accesibilitatea pe măsură ce economiile tale cresc.
-          </Empty>
+          <p className="text-[13px] text-ink-soft">
+            Nicio achiziție salvată încă. Apasă „Salvează în lista de dorințe” ca să urmărești când ți-o permiți, pe măsură ce economiile cresc.
+          </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {savedPlans.map((p) => {

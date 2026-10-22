@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { Summary } from "@/lib/analytics";
 import { addMonths, eur, KIND_LABEL, lei, money, monthLabel, type Currency, type Kind } from "@/lib/util";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { api, Bar, chartTooltipStyle, downloadFile, PageHeader, Panel, PencilIcon, Toast, useApi, useApp } from "@/components/ui";
+import { api, Bar, chartTooltipStyle, CollapsiblePanels, downloadFile, PageHeader, Panel, PencilIcon, Toast, useApi, useApp, useTab } from "@/components/ui";
 import { Leader } from "@/components/receipt";
 import { useQuickAdd } from "@/components/QuickAdd";
 
@@ -37,6 +37,10 @@ const KIND_INFO: Record<Kind, { color: string; help: string }> = {
  * se fac în aceeași fereastră (adăugarea rapidă), pe orice ecran. Așa pagina nu mai are câte un formular
  * deschis în fiecare secțiune și butoane „Editează / Șterge” pe fiecare rând.
  */
+// Ordinea dalelor: banii care intră, apoi cei care ies, apoi economiile. Implicit se deschid cheltuielile (cele mai dese).
+const KIND_ORDER: Kind[] = ["income", "fixed", "variable", "saving"];
+const KIND_SHORT: Record<Kind, string> = { income: "Venituri", fixed: "Fixe", variable: "Cheltuieli", saving: "Economii" };
+
 function KindSection({
   kind, entries, cats, goals, invs, rate, tour,
 }: {
@@ -56,60 +60,46 @@ function KindSection({
   const total = entries.reduce((s, e) => s + (e.currency === "EUR" ? e.amount * rate : e.amount), 0);
 
   return (
-    <Panel
-      tour={tour}
-      title={
-        <span className="flex items-center gap-2" title={info.help}>
-          <span className="h-3.5 w-1.5 rounded-sm" style={{ background: info.color }} />
-          {KIND_LABEL[kind]}
-        </span>
-      }
-      aside={<span className="num font-semibold">{lei(total)}</span>}
-    >
-      {/* Explicația secțiunii apare doar cât timp e goală; după aceea rămâne în titlu (la trecerea cu mouse-ul). */}
+    <Panel tour={tour}>
+      {/* Explicația secțiunii apare doar cât timp e goală. */}
       {entries.length === 0 && <p className="mb-3 text-[13px] text-ink-soft">{info.help}</p>}
       {entries.length > 0 && (
-        <ul className="mb-1">
-          {entries.map((e) => (
-            // Rând de bon: categoria ...... suma; descrierea dedesubt, mai mică. Tot rândul e un buton:
-            // atingerea (sau clicul) deschide modificarea, cu ștergerea în aceeași fereastră.
-            <li key={e.id} className="group relative -mx-2 flex items-start gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-ink/[0.03] sm:gap-3 sm:py-1.5">
-              <button
-                type="button"
-                className="absolute inset-0 z-[1] rounded-md active:bg-ink/[0.06]"
-                onClick={() => quickAdd({ entry: e })}
-                aria-label={`Modifică ${kind === "saving" ? nameOfDest(e) : catMap.get(e.category_id ?? 0)?.name ?? "intrarea"}, ${e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}`}
-                title="Modifică sau șterge"
-              />
-              <span className="mt-[7px] h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
-              <div className="min-w-0 flex-1 pt-px">
-                <Leader
-                  label={
-                    <span className="line-clamp-2 leading-snug">
-                      {kind === "saving" ? nameOfDest(e) : catMap.get(e.category_id ?? 0)?.name ?? "Fără categorie"}
-                    </span>
-                  }
-                  value={e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
+        <ul className="-mt-1 mb-2 divide-y divide-dashed divide-line">
+          {entries.map((e) => {
+            const name = kind === "saving" ? nameOfDest(e) : catMap.get(e.category_id ?? 0)?.name ?? "Fără categorie";
+            return (
+              // Un singur rând: categoria, descrierea (estompată, tăiată dacă e lungă) și suma. Tot rândul e un buton:
+              // atingerea (sau clicul) deschide modificarea, cu ștergerea în aceeași fereastră.
+              <li key={e.id} className="group relative -mx-2 flex min-h-[44px] items-center gap-2.5 rounded-md px-2 transition-colors hover:bg-ink/[0.03] sm:min-h-[38px]">
+                <button
+                  type="button"
+                  className="absolute inset-0 z-[1] rounded-md active:bg-ink/[0.06]"
+                  onClick={() => quickAdd({ entry: e })}
+                  aria-label={`Modifică ${name}, ${e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}`}
+                  title={[e.description, e.recurring ? "se repetă lunar" : "", "atinge pentru a modifica sau șterge"].filter(Boolean).join(" · ")}
                 />
-                {(e.description || e.recurring || e.currency === "EUR") && (
-                  <div className="flex items-baseline justify-between gap-3 text-[12.5px] text-ink-soft">
-                    <span className="min-w-0 truncate">
-                      {e.recurring ? <span className="mr-1.5 rounded-sm border border-albastru/40 px-1 font-mono text-[10px] uppercase tracking-wide text-albastru">lunar</span> : null}
-                      {e.description}
-                    </span>
-                    {e.currency === "EUR" && <span className="num shrink-0 text-ink-faint">= {lei(e.amount * rate)}</span>}
-                  </div>
-                )}
-              </div>
-              <span className="mt-1 hidden shrink-0 text-ink-faint opacity-0 transition-opacity group-hover:opacity-100 sm:block" aria-hidden>
-                <PencilIcon />
-              </span>
-            </li>
-          ))}
+                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
+                <span className="min-w-0 flex-1 truncate text-[14px]">
+                  {name}
+                  {e.description && <span className="ml-2 hidden text-[12.5px] text-ink-faint sm:inline">{e.description}</span>}
+                </span>
+                {e.recurring ? (
+                  <span className="shrink-0 text-[13px] text-albastru" title="Se repetă lunar" aria-label="lunar">↻</span>
+                ) : null}
+                <span className="num shrink-0 text-right text-[14px] font-medium">
+                  {e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
+                  {e.currency === "EUR" && <span className="block text-[11px] font-normal text-ink-faint">= {lei(e.amount * rate)}</span>}
+                </span>
+                <span className="hidden shrink-0 text-ink-faint opacity-0 transition-opacity group-hover:opacity-100 sm:block" aria-hidden>
+                  <PencilIcon />
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
       <button
-        className="mt-1 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-md border border-dashed border-line-strong text-[14px] font-medium text-ink-soft transition-colors hover:border-ink-faint hover:text-ink active:bg-paper sm:min-h-[40px]"
+        className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-md border border-dashed border-line-strong text-[14px] font-medium text-ink-soft transition-colors hover:border-ink-faint hover:text-ink active:bg-paper sm:min-h-[40px]"
         onClick={() => quickAdd({ kind })}
       >
         <span className="text-[18px] leading-none" aria-hidden>+</span> Adaugă la {KIND_LABEL[kind].toLowerCase()}
@@ -120,6 +110,7 @@ function KindSection({
 
 export default function MonthPage() {
   const { month, bump, eurRate } = useApp();
+  const [kind, setKind] = useTab<Kind>("luna", "variable", KIND_ORDER);
   const [toast, setToast] = useState<string | null>(null);
   const { data: entries, reload } = useApi<Entry[]>(`/api/crud/entries?month=${month}`);
   const { data: cats } = useApi<Category[]>("/api/crud/categories");
@@ -161,7 +152,6 @@ export default function MonthPage() {
     }
   };
 
-  const kinds: Kind[] = ["income", "fixed", "variable", "saving"];
   const t = s?.totals;
 
   // Calcul tichete de masa si alimente
@@ -226,27 +216,61 @@ export default function MonthPage() {
       )}
 
       <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-3">
           {!entries || !cats || !goals || !invs ? (
             <p className="text-ink-soft">Se încarcă…</p>
           ) : (
-            kinds.map((k) => (
+            <>
+              {/* Câte o secțiune odată: dalele arată totalul fiecăreia, iar lista de dedesubt e scurtă. */}
+              <div role="tablist" aria-label="Secțiunile lunii" className="grid grid-cols-4 gap-1.5 sm:gap-2" data-tour="luna-tabs">
+                {KIND_ORDER.map((k) => {
+                  const on = k === kind;
+                  const sum = entries.filter((e) => e.kind === k).reduce((a, e) => a + (e.currency === "EUR" ? e.amount * rate : e.amount), 0);
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      onClick={() => setKind(k)}
+                      title={KIND_INFO[k].help}
+                      className={`min-w-0 rounded-md border px-2 py-2 text-left transition-colors sm:px-3 ${
+                        on ? "border-ink bg-sheet shadow-[0_1px_3px_rgb(var(--shadow)/0.15)]" : "border-line bg-sheet/50 hover:bg-sheet"
+                      }`}
+                    >
+                      <span className="mb-1 block h-1 w-6 rounded-full" style={{ background: KIND_INFO[k].color, opacity: on ? 1 : 0.5 }} aria-hidden />
+                      <span className={`block truncate text-[12px] sm:text-[13px] ${on ? "font-semibold text-ink" : "text-ink-soft"}`}>
+                        <span className="sm:hidden">{KIND_SHORT[k]}</span>
+                        <span className="hidden sm:inline">{KIND_LABEL[k]}</span>
+                      </span>
+                      <span className="num block truncate text-[12.5px] font-medium text-ink sm:text-[14px]">
+                        {/* Pe telefon fără zecimale, ca suma să încapă în dală. */}
+                        <span className="sm:hidden">{Math.round(sum).toLocaleString("ro-RO")}</span>
+                        <span className="hidden sm:inline">{money(sum)}</span>
+                        <span className="ml-0.5 text-[10px] font-normal text-ink-faint">lei</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
               <KindSection
-                key={k}
-                kind={k}
-                tour={k === "income" ? "luna-section" : undefined}
+                key={kind}
+                kind={kind}
+                tour="luna-section"
                 rate={rate}
-                entries={entries.filter((e) => e.kind === k)}
-                cats={k === "saving" ? cats.filter((c) => c.kind === "saving") : cats.filter((c) => c.kind === k)}
+                entries={entries.filter((e) => e.kind === kind)}
+                cats={cats.filter((c) => c.kind === kind)}
                 goals={goals}
                 invs={investmentsEnabled ? invs : []}
               />
-            ))
+            </>
           )}
         </div>
 
-        <aside className="xl:sticky xl:top-8 xl:self-start flex flex-col gap-5">
-          <Panel title="Bilanțul lunii" tour="luna-balance">
+        {/* Pe telefon, rezumatul de sus ține locul bilanțului; graficul și tichetele se deschid la atingere. */}
+        <CollapsiblePanels>
+        <aside className="xl:sticky xl:top-8 xl:self-start flex flex-col gap-3 lg:gap-5">
+          <Panel title="Bilanțul lunii" tour="luna-balance" summary={t ? `Grafic: unde s-au dus ${money(t.income)} lei` : undefined}>
             {t ? (
               <MonthBalance
                 rate={rate}
@@ -268,7 +292,7 @@ export default function MonthPage() {
           </Panel>
 
           {/* Cât din mâncare acoperă tichetele: o bară în loc de trei rânduri de cifre. */}
-          <Panel title="Tichete de masă și alimente">
+          <Panel title="Tichete de masă și alimente" summary={foodTotal > 0 ? `Acoperă ${Math.min(100, Math.round((mealTicketTotal / foodTotal) * 100))}% din mâncare` : undefined}>
             {foodTotal > 0 || mealTicketTotal > 0 ? (
               <div className="flex flex-col gap-2 text-[13px]">
                 <div className="flex items-baseline justify-between gap-2">
@@ -297,6 +321,7 @@ export default function MonthPage() {
 
           <Toast message={toast} onDone={() => setToast(null)} />
         </aside>
+        </CollapsiblePanels>
       </div>
     </>
   );

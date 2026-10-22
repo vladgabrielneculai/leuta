@@ -91,10 +91,12 @@ function CategoryRow({
 }
 
 
+const kinds: Kind[] = ["income", "fixed", "variable", "saving"];
+
 const SETTINGS_TABS = [
   { key: "general", label: "General" },
   { key: "calcule", label: "Calcule" },
-  { key: "notificari", label: "Notificări" },
+  { key: "notificari", label: "Notificări", short: "Alerte" },
   { key: "securitate", label: "Securitate" },
   { key: "date", label: "Date" },
 ] as const;
@@ -122,6 +124,7 @@ export default function SettingsPage() {
   const [newCat, setNewCat] = useState({ name: "", kind: "variable" as Kind, bucket: "needs" as Bucket });
   const [toast, setToast] = useState<string | null>(null);
   const replayTour = useTourReplay();
+  const [catKind, setCatKind] = useState<Kind>("variable");
   const [tab, setTab] = useTab<SettingsTab>("setari", "general", SETTINGS_TABS.map((t) => t.key));
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -152,6 +155,7 @@ export default function SettingsPage() {
         color: PALETTE[(cats?.length ?? 0) % PALETTE.length],
       });
       setNewCat({ ...newCat, name: "" });
+      setCatKind(newCat.kind); // categoria nouă apare în tab-ul ei
       changed("Categorie adăugată");
     } catch (e: any) {
       setToast(e?.message || "Eroare la adăugarea categoriei");
@@ -198,7 +202,6 @@ export default function SettingsPage() {
     }
   };
 
-  const kinds: Kind[] = ["income", "fixed", "variable", "saving"];
 
   return (
     <>
@@ -210,12 +213,29 @@ export default function SettingsPage() {
         <div className="grid gap-4 lg:gap-6 xl:grid-cols-[1.4fr_1fr] xl:items-start">
         <Panel title="Categorii" summary={cats ? `${cats.length} categorii · nevoi și dorințe` : undefined}>
           <p className="mb-4 text-[13px] text-ink-soft">
-            Pentru cheltuieli, atinge „Nevoie” / „Dorință” ca să schimbi tipul. Asta decide cum se calculează metodele de buget.
+            Atinge „Nevoie” / „Dorință” ca să schimbi tipul unei cheltuieli: asta decide cum se calculează metodele de buget.
           </p>
+          {/* Câte un tip odată (venituri, costuri fixe…), ca lista să nu aibă 20 de rânduri. */}
+          {cats && (
+            <Tabs
+              tabs={kinds.map((k) => ({
+                key: k,
+                label: KIND_LABEL[k],
+                short: { income: "Venituri", fixed: "Fixe", variable: "Variabile", saving: "Economii" }[k],
+                badge: <span className="num text-[11px] text-ink-faint">{cats.filter((c) => c.kind === k).length}</span>,
+              }))}
+              value={catKind}
+              onChange={(k) => {
+                setCatKind(k);
+                setNewCat({ ...newCat, kind: k });
+              }}
+              label="Tipul categoriilor"
+              className="mb-3 !p-0.5 [&_button]:min-h-[32px] [&_button]:px-2.5 [&_button]:text-[12.5px]"
+            />
+          )}
           {cats &&
-            kinds.map((k) => (
+            [catKind].map((k) => (
               <div key={k} className="mb-4">
-                <h3 className="mb-0.5 text-[13px] font-semibold uppercase tracking-[0.04em] text-ink-soft">{KIND_LABEL[k]}</h3>
                 <ul>
                   {cats.filter((c) => c.kind === k).map((c) => (
                     <CategoryRow

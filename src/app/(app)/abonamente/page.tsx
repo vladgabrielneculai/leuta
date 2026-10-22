@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Detected } from "@/lib/scheduled";
 import type { Alert, RecurringCandidate, ScheduleView } from "@/lib/scheduledServer";
 import { KIND_LABEL, lei, monthLabel, type Kind } from "@/lib/util";
-import { api, Empty, Field, Modal, PageHeader, Panel, PencilIcon, Stat, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
+import { api, CollapsiblePanels, Empty, Field, Modal, PageHeader, Panel, PencilIcon, Stat, STAT_STRIP, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
 
 type Overview = { today: string; schedules: ScheduleView[]; detected: Detected[]; alerts: Alert[]; recurring: RecurringCandidate[] };
 type Category = { id: number; name: string; kind: Kind };
@@ -154,7 +154,7 @@ export default function AbonamentePage() {
         actions={<button className="btn-primary" onClick={() => { setError(null); setDraft(emptyDraft(thisMonth)); }}>+ Programare nouă</button>}
       />
 
-      <section className="panel grid gap-4 p-4 sm:grid-cols-3 sm:p-5">
+      <section className={`panel ${STAT_STRIP}`}>
         <Stat label="Abonamente / lună" accent="var(--c-mov)" hint="programate, în lei">
           <span className="font-display text-[22px] font-bold tabular-nums">{lei(monthlySubs)}</span>
         </Stat>
@@ -237,6 +237,9 @@ export default function AbonamentePage() {
         )}
       </Panel>
 
+      {/* Pe telefon, listele secundare se deschid la atingere; programările rămân la vedere. */}
+      <CollapsiblePanels>
+      <div className="flex flex-col gap-6">
       <Panel title="Abonamente detectate" summary={data ? `${data.detected.length} găsite` : undefined} pad={false}>
         {!data?.detected.length ? (
           <p className="p-4 text-[13px] text-ink-soft sm:p-5">
@@ -303,6 +306,8 @@ export default function AbonamentePage() {
           </button>
         </Panel>
       )}
+      </div>
+      </CollapsiblePanels>
 
       <Modal open={!!draft} onClose={() => setDraft(null)} title={draft?.id ? "Modifică programarea" : "Programare nouă"}>
         {draft && (
