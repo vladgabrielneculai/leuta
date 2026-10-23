@@ -177,7 +177,7 @@ export function FundForm({
 
   const submit = async () => {
     const value = parseAmount(amount);
-    const r = rate.trim() && currency !== "RON" ? parseAmount(rate) : null;
+    const r = rate.trim() && currency !== "RON" ? parseAmount(rate, { thousandsDot: false }) : null;
     if (!(value > 0)) return setErr("Scrie o sumă mai mare decât 0.");
     if (!/^[A-Z]{3}$/.test(currency)) return setErr("Alege moneda.");
     if (r !== null && !(r > 0)) return setErr("Cursul nu e valid. Îl poți lăsa gol.");

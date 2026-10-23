@@ -90,10 +90,18 @@ export function termLabel(months: number): string {
   return y ? `${ys} ${ms}` : ms;
 }
 
-/** „1.234,50”, „1234.5” sau „45,5” devin număr; altceva dă NaN. */
-export function parseAmount(raw: string) {
+/**
+ * „1.234,50”, „1,234.50”, „12.000”, „1234.5” sau „45,5” devin număr; altceva dă NaN.
+ * Cu ambii separatori, ultimul e cel zecimal. Doar cu puncte: mai multe puncte sau un punct urmat de exact
+ * trei cifre („12.000”) înseamnă mii, cum se scrie în română (o sumă nu are trei zecimale). Pentru cursuri,
+ * care au des trei-patru zecimale („4.977”), `thousandsDot: false` păstrează punctul ca zecimal.
+ */
+export function parseAmount(raw: string, { thousandsDot = true }: { thousandsDot?: boolean } = {}) {
   let s = raw.replace(/\s/g, "");
-  if (s.includes(",") && s.includes(".")) s = s.replace(/\./g, "");
+  const comma = s.lastIndexOf(",");
+  const dot = s.lastIndexOf(".");
+  if (comma >= 0 && dot >= 0) s = comma > dot ? s.replace(/\./g, "") : s.replace(/,/g, "");
+  else if (dot >= 0 && thousandsDot && (/\..*\./.test(s) || /^\d{1,3}\.\d{3}$/.test(s))) s = s.replace(/\./g, "");
   s = s.replace(",", ".");
   return /^\d*\.?\d+$|^\d+\.$/.test(s) ? Number(s) : NaN;
 }
