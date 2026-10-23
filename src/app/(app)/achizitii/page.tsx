@@ -12,7 +12,7 @@ import {
   type PurchasePlan,
 } from "@/lib/affordability";
 import { addMonths, currentMonth, lei, monthLabel, pct } from "@/lib/util";
-import { Bar, Empty, Field, Modal, Money, PageHeader, Panel, Stat, Toast, useApi, useApp } from "@/components/ui";
+import { Bar, CollapsiblePanels, Field, Modal, Money, PageHeader, Panel, Stat, STAT_STRIP, Tabs, Toast, useApi, useApp } from "@/components/ui";
 
 const PRESETS = [
   { name: "Mașină", price: 45000, type: "loan" as FinancingType, down: 10000, term: 48, rate: 8.5 },
@@ -26,6 +26,7 @@ const PRESETS = [
 export default function AffordabilityPage() {
   const { month, bump, confirm } = useApp();
   const router = useRouter();
+  const [impactView, setImpactView] = useState<"impact" | "compara">("impact");
   const [toast, setToast] = useState<string | null>(null);
 
   // Date financiare din summary
@@ -205,16 +206,16 @@ export default function AffordabilityPage() {
     <>
       <PageHeader
         title="Îmi permit această achiziție?"
-        intro="Simulator financiar de decizie: testează orice investiție sau achiziție dorită (plată integrală vs. credit bancar) și află exact dacă ți-o permiți și cum îți schimbă venitul lunar."
+        intro="Alege ce vrei să cumperi și cum plătești: vezi imediat dacă ți-o permiți și cum îți schimbă bugetul lunar."
         actions={
-          <button className="btn-primary" onClick={handleSavePlan} disabled={savingPlan}>
+          <button className="btn-primary hidden sm:inline-flex" onClick={handleSavePlan} disabled={savingPlan}>
             {savingPlan ? "Se salvează…" : "💾 Salvează în lista de dorințe"}
           </button>
         }
       />
 
       {/* 1. Profil financiar actual de bază */}
-      <div className="panel mb-6 grid grid-cols-2 gap-5 p-5 sm:grid-cols-4">
+      <div className={`panel mb-6 sm:grid-cols-4! ${STAT_STRIP}`}>
         <Stat label="Venit lunar de bază" accent="var(--c-albastru)" hint="media lunii analizate">
           <Money value={income} size="lg" />
         </Stat>
@@ -243,13 +244,14 @@ export default function AffordabilityPage() {
       <div className="mb-6 grid gap-6 lg:grid-cols-12">
         {/* Coloana Stângă: Formular Configurare */}
         <div className="lg:col-span-6 flex flex-col gap-4">
-          <Panel title="Configurare achiziție / investiție">
+          <Panel tour="ach-form" title="Ce vrei să cumperi">
             {/* Preset-uri rapide */}
             <div className="mb-4">
               <label className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft mb-2 block">
-                Sugestii rapide de investiții:
+                Sugestii rapide:
               </label>
-              <div className="flex flex-wrap gap-1.5">
+              {/* Pe telefon, sugestiile stau pe un singur rând care se derulează lateral. */}
+              <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 *:shrink-0">
                 {PRESETS.map((p) => (
                   <button
                     key={p.name}
@@ -263,8 +265,8 @@ export default function AffordabilityPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Denumire achiziție">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Denumire">
                 <input
                   className="field"
                   value={name}
@@ -423,8 +425,8 @@ export default function AffordabilityPage() {
 
         {/* Coloana Dreaptă: Verdict Financiar & Decizie */}
         <div className="lg:col-span-6 flex flex-col gap-4">
-          <Panel
-            title="Verdict financiar & Analiză de decizie"
+          <Panel tour="ach-verdict"
+            title="Verdictul"
           >
             {/* Banner verdict mare */}
             <div
@@ -450,8 +452,12 @@ export default function AffordabilityPage() {
             </div>
 
             {/* Motive și argumente calculate */}
-            <div className="mb-4">
-              <h4 className="text-[13px] font-semibold text-ink mb-2">De ce această concluzie:</h4>
+            {/* Motivele se deschid la cerere, ca verdictul să rămână scurt. */}
+            <details className="group mb-4">
+              <summary className="mb-2 flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
+                <span className="transition-transform group-open:rotate-90" aria-hidden>›</span>
+                De ce? ({(financingType === "cash" ? cash.reasons : loan.reasons).length} motive)
+              </summary>
               <ul className="space-y-2 text-[13px] text-ink-soft">
                 {(financingType === "cash" ? cash.reasons : loan.reasons).map((r, i) => (
                   <li key={i} className="flex items-start gap-2">
@@ -460,7 +466,7 @@ export default function AffordabilityPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
 
             {/* Indicatori sintetici de impact */}
             <div className="grid grid-cols-2 gap-3 pt-3 border-t border-line">
@@ -518,17 +524,28 @@ export default function AffordabilityPage() {
         </div>
       </div>
 
-      {/* 3. Impactul detaliat asupra venitului și bugetului */}
-      <Panel title="Cum impactează această achiziție venitul și bugetul tău" className="mb-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Card: Impactul pe Regula 50/30/20 & Venit */}
-          <div className="rounded-md border border-line bg-paper p-3.5 sm:p-5">
-            <h4 className="font-semibold text-[15px] text-ink mb-2">
-              📊 Impactul asupra venitului tău lunar ({lei(income)})
-            </h4>
-            <p className="text-[13px] text-ink-soft mb-4">
-              Iată cum se transformă distribuția banilor tăi dacă faci această achiziție prin{" "}
-              <strong>{financingType === "cash" ? "Plată integrală" : "Credit"}</strong>:
+      {/* 3. Impactul detaliat: o singură vedere odată (impactul lunar sau comparația cash / credit). */}
+      <CollapsiblePanels>
+      <Panel
+        title="Cum te afectează"
+        summary="Bugetul lunar și comparația cash / credit"
+        className="mb-6"
+        aside={
+          <Tabs
+            tabs={[{ key: "impact", label: "Bugetul lunar", short: "Lunar" }, { key: "compara", label: "Cash vs credit" }] as const}
+            value={impactView}
+            onChange={setImpactView}
+            label="Ce compari"
+            className="p-0.5! [&_button]:min-h-[30px] [&_button]:px-2.5 [&_button]:text-[12px]"
+          />
+        }
+      >
+        <div>
+          {impactView === "impact" && (
+          <div className="mx-auto max-w-2xl">
+            <p className="mb-4 text-[13px] text-ink-soft">
+              Venitul tău lunar ({lei(income)}), dacă plătești prin{" "}
+              <strong>{financingType === "cash" ? "plată integrală" : "credit"}</strong>:
             </p>
 
             <div className="space-y-4">
@@ -619,16 +636,31 @@ export default function AffordabilityPage() {
             </div>
           </div>
 
-          {/* Card: Comparație Directă Plată Cash vs Credit */}
-          <div className="rounded-md border border-line bg-paper p-3.5 sm:p-5 flex flex-col justify-between">
+          )}
+          {impactView === "compara" && (
+          <div className="flex flex-col justify-between">
             <div>
-              <h4 className="font-semibold text-[15px] text-ink mb-2">
-                ⚖️ Comparație directă: Plată Integrală vs Credit Bancar
-              </h4>
-              <p className="text-[13px] text-ink-soft mb-4">
-                Vezi exact diferența de cost și de lichidități între cele două opțiuni pentru suma de{" "}
-                <strong>{lei(totalPrice)}</strong>:
-              </p>
+              {/* Costul total în cele două variante, pe aceeași scară: diferența e dobânda. */}
+              <div className="mb-5 flex flex-col gap-2.5" role="img" aria-label="Costul total: cash față de credit">
+                {[
+                  { label: "💵 Cash", total: totalPrice, extra: 0, color: "var(--c-leu)" },
+                  { label: "💳 Credit", total: loan.totalCost, extra: loan.totalInterest, color: "var(--c-mov)" },
+                ].map((r) => (
+                  <div key={r.label} className="grid grid-cols-[78px_1fr_auto] items-center gap-2 text-[13px]">
+                    <span className="text-ink-soft">{r.label}</span>
+                    <div className="flex h-4 overflow-hidden rounded-full bg-line/60">
+                      <div className="h-full" style={{ width: `${((r.total - r.extra) / Math.max(totalPrice, loan.totalCost, 1)) * 100}%`, background: r.color }} />
+                      {r.extra > 0 && <div className="h-full bg-rosu" style={{ width: `${(r.extra / Math.max(totalPrice, loan.totalCost, 1)) * 100}%` }} title={`Dobândă: ${lei(r.extra)}`} />}
+                    </div>
+                    <span className="num font-semibold">{lei(r.total)}</span>
+                  </div>
+                ))}
+                {loan.totalInterest > 0 && (
+                  <p className="flex items-center gap-1.5 text-[12px] text-ink-soft">
+                    <span className="h-2.5 w-2.5 rounded-xs bg-rosu" /> dobânda plătită băncii: <strong className="num text-rosu">{lei(loan.totalInterest)}</strong>
+                  </p>
+                )}
+              </div>
 
               <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
                 {/* Varianta Cash */}
@@ -704,12 +736,15 @@ export default function AffordabilityPage() {
               )}
             </div>
           </div>
+          )}
         </div>
       </Panel>
 
+      </CollapsiblePanels>
+
       {/* 4. Lista de achiziții planificate / Wishlist */}
       <Panel
-        title="Lista ta de achiziții dorite & investiții planificate"
+        title="Lista de dorințe"
         aside={
           <span className="text-[13px] text-ink-soft">
             {savedPlans?.length || 0} achiziții salvate
@@ -717,10 +752,9 @@ export default function AffordabilityPage() {
         }
       >
         {!savedPlans || savedPlans.length === 0 ? (
-          <Empty title="Nicio achiziție salvată încă">
-            Configurează o investiție în simulatorul de mai sus și apasă pe „Salvează în lista de dorințe” pentru a-i urmări
-            accesibilitatea pe măsură ce economiile tale cresc.
-          </Empty>
+          <p className="text-[13px] text-ink-soft">
+            Nicio achiziție salvată încă. Apasă „Salvează în lista de dorințe” ca să urmărești când ți-o permiți, pe măsură ce economiile cresc.
+          </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {savedPlans.map((p) => {

@@ -1,6 +1,5 @@
 import Header from "@/components/site/Header";
-import Hero from "@/components/site/Hero";
-import Allocation from "@/components/site/Allocation";
+import ScrollWorld from "@/components/site/ScrollWorld";
 import PhoneStory from "@/components/site/PhoneStory";
 import LoanSavings from "@/components/site/LoanSavings";
 import { DesktopSection, VideoSection } from "@/components/site/VideoDesktop";
@@ -13,8 +12,7 @@ export default function Home() {
     <>
       <Header />
       <main>
-        <Hero />
-        <Allocation />
+        <ScrollWorld />
         <PhoneStory />
         <LoanSavings />
         <VideoSection />
