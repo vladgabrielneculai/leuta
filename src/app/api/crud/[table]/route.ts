@@ -91,7 +91,12 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ table: 
     const data = clean(body, c.columns);
     const keys = Object.keys(data);
     if (!body.id || !keys.length) throw new Error("Lipsesc datele de actualizat");
-    VALIDATE[table]?.(data, false);
+    const validate = VALIDATE[table];
+    if (validate) {
+      const current = await (await getDb()).prepare(`SELECT * FROM ${table} WHERE id = ?`).get<Record<string, unknown>>(body.id);
+      if (!current) return NextResponse.json({ error: "Înregistrarea nu există." }, { status: 404 });
+      validate(data, false, current);
+    }
 
     // Verificare specifică la modificare categorii: previne redenumirea într-o categorie deja existentă
     if (table === "categories" && data.name) {
