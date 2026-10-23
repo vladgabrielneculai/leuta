@@ -52,7 +52,13 @@ export const TABLES: Record<string, { columns: string[]; filters: string[]; orde
   },
 };
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** O dată YYYY-MM-DD care există în calendar (2026-02-31 sau 2026-13-05 nu trec). */
+function isIsoDay(v: unknown) {
+  const s = String(v ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const t = Date.parse(`${s}T00:00:00Z`);
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === s;
+}
 
 function currencyCode(v: unknown) {
   const c = String(v ?? "").trim().toUpperCase();
@@ -69,17 +75,21 @@ function positive(v: unknown, what: string) {
 /**
  * Verificări înainte de scriere, pe tabelele care le cer. `data` conține doar coloanele trimise
  * (la modificare pot lipsi unele), deci verificăm doar ce există; la adăugare, câmpurile obligatorii.
+ * La modificare, `current` e rândul din baza de date, pentru verificările care leagă mai multe coloane.
  */
-export const VALIDATE: Record<string, (data: Record<string, unknown>, isNew: boolean) => void> = {
-  trips(d, isNew) {
+export const VALIDATE: Record<string, (data: Record<string, unknown>, isNew: boolean, current?: Record<string, unknown>) => void> = {
+  trips(d, isNew, current) {
     if (isNew || "name" in d) {
       d.name = String(d.name ?? "").trim();
       if (!d.name) throw new Error("Dă un nume vacanței.");
     }
     for (const k of ["start_date", "end_date"]) {
-      if ((isNew || k in d) && !ISO_DAY.test(String(d[k] ?? ""))) throw new Error("Alege perioada vacanței.");
+      if ((isNew || k in d) && !isIsoDay(d[k])) throw new Error("Alege perioada vacanței.");
     }
-    if (d.start_date && d.end_date && String(d.end_date) < String(d.start_date)) {
+    // La modificarea unei singure date, cealaltă vine din rândul existent.
+    const start = d.start_date ?? current?.start_date;
+    const end = d.end_date ?? current?.end_date;
+    if (start && end && String(end) < String(start)) {
       throw new Error("Vacanța nu se poate termina înainte să înceapă.");
     }
     if (isNew || "currency" in d) d.currency = currencyCode(d.currency);
@@ -97,6 +107,6 @@ export const VALIDATE: Record<string, (data: Record<string, unknown>, isNew: boo
   trip_expenses(d, isNew) {
     if (isNew || "amount" in d) d.amount = positive(d.amount, "Suma");
     if (isNew || "currency" in d) d.currency = currencyCode(d.currency);
-    if ((isNew || "date" in d) && !ISO_DAY.test(String(d.date ?? ""))) throw new Error("Alege data cheltuielii.");
+    if ((isNew || "date" in d) && !isIsoDay(d.date)) throw new Error("Alege data cheltuielii.");
   },
 };

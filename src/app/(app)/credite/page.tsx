@@ -110,7 +110,7 @@ export default function LoansPage() {
                     </p>
                   </div>
                   <span
-                    className="shrink-0 rounded px-2 py-0.5 text-[12px] font-medium"
+                    className="shrink-0 rounded-sm px-2 py-0.5 text-[12px] font-medium"
                     style={l.status.balance <= 0 ? { background: "var(--c-leu-tint)", color: "var(--c-leu)" } : l.status.inFixed ? { background: "var(--c-albastru-tint)", color: "var(--c-albastru)" } : { background: "var(--c-mov-tint)", color: "var(--c-mov)" }}
                   >
                     {l.status.balance <= 0 ? "Achitat complet" : l.status.inFixed ? "Dobândă fixă" : "Dobândă variabilă"}

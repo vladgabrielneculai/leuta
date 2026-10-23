@@ -127,7 +127,7 @@ export default function LoanForm({
                   set("already_paid_interest", 0);
                 }
               }}
-              className="accent-mov h-4 w-4 rounded"
+              className="accent-mov h-4 w-4 rounded-sm"
             />
             <span>Am plătit deja bani din acest credit</span>
           </label>

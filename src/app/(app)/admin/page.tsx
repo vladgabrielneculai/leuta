@@ -69,7 +69,7 @@ function NewInviteLink({ link, onClose, reset }: { link: string; onClose: () => 
           : "Trimite linkul persoanei (mesaj, email, WhatsApp). Îl vezi doar acum; merge o singură dată, timp de 7 zile."}
       </p>
       <input readOnly value={link} onFocus={(e) => e.target.select()} className="field mt-2.5 font-mono text-[13px]" aria-label={reset ? "Link de resetare" : "Link de invitație"} />
-      <div className="mt-2.5 flex flex-wrap gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+      <div className="mt-2.5 flex flex-wrap gap-2 *:flex-1 sm:*:flex-none">
         <button className="btn-primary" onClick={copy}>{copied ? "✓ Copiat" : "Copiază linkul"}</button>
         {canShare && (
           <button className="btn-ghost border border-line" onClick={() => navigator.share(reset ? { title: "Resetare Leuța", text: "Îți poți alege o parolă nouă în Leuța aici:", url: link } : { title: "Invitație Leuța", text: "Îți poți crea contul în Leuța aici:", url: link }).catch(() => undefined)}>

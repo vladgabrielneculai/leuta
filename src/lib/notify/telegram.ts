@@ -116,7 +116,7 @@ export async function configureBot(baseUrl: string) {
   });
 }
 
-/** Text sigur pentru parse_mode HTML. */
+/** Text sigur pentru parse_mode HTML și pentru emailuri (inclusiv în atribute, ex. href="…"). */
 export function esc(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }

@@ -62,7 +62,7 @@ export default function AccountSecurity({ onToast }: { onToast: (msg: string) =>
       </p>
 
       {error && (
-        <div className="mb-3 rounded bg-rosu-tint p-2.5 text-[13px] text-rosu font-medium">
+        <div className="mb-3 rounded-sm bg-rosu-tint p-2.5 text-[13px] text-rosu font-medium">
           {error}
         </div>
       )}

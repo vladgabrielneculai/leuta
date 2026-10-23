@@ -1,7 +1,11 @@
 // Vacanțe: tipuri, categorii, monede și calculele comune paginilor (fără cod de server).
 // Sumele rămân în moneda în care au fost plătite; leii sunt doar o informație la final.
 
+import type { RateInfo } from "./fx";
+import { daysBetween } from "./notify/time";
 import { money } from "./util";
+
+export type { RateInfo };
 
 export type Trip = {
   id: number;
@@ -28,8 +32,6 @@ export type TripExpense = {
 
 /** O vacanță din listă: banii avuți și cheltuiți, adunați pe monede. */
 export type TripListItem = Trip & { funds: Record<string, number>; spent: Record<string, number> };
-
-export type RateInfo = { rate: number; date: string | null; estimated: boolean };
 
 export type TripDetail = {
   trip: Trip;
@@ -90,14 +92,15 @@ export function fmtCur(n: number, code: string) {
   return `${money(n)} ${code}`;
 }
 
+/** Ziua de azi pe ceasul telefonului: în vacanță contează ziua locului, nu cea din România. */
 export const todayIso = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 /** Numărul de zile dintre două date ISO, inclusiv capetele (12–19 iul. = 8 zile). */
-export function daysBetween(from: string, to: string) {
-  return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1;
+export function daysInclusive(from: string, to: string) {
+  return daysBetween(from, to) + 1;
 }
 
 export type TripPhase = "viitoare" | "acum" | "incheiata";
@@ -139,16 +142,24 @@ export function sumBy<T>(rows: T[], key: (r: T) => string, value: (r: T) => numb
   return out;
 }
 
+/** De unde vine cursul unei monede: leul însuși, cursul la care ai cumpărat valuta sau cursul BNR. */
+export type RonRate = { rate: number; source: "ron" | "own" | "bnr"; info?: RateInfo };
+
 /**
  * Câți lei valorează o unitate din monedă: întâi cursul la care ai cumpărat valuta (media ponderată a
  * banilor din acea monedă cu curs trecut), apoi cursul BNR. null = nu se poate converti.
  */
-export function ronRate(code: string, funds: TripFund[], rates: TripDetail["rates"]): number | null {
-  if (code === "RON") return 1;
+export function ronRateInfo(code: string, funds: TripFund[], rates: TripDetail["rates"]): RonRate | null {
+  if (code === "RON") return { rate: 1, source: "ron" };
   const bought = funds.filter((f) => f.currency === code && f.rate_ron && f.rate_ron > 0);
   const units = bought.reduce((a, f) => a + f.amount, 0);
-  if (units > 0) return bought.reduce((a, f) => a + f.amount * (f.rate_ron as number), 0) / units;
-  return rates[code]?.rate ?? null;
+  if (units > 0) return { rate: bought.reduce((a, f) => a + f.amount * (f.rate_ron as number), 0) / units, source: "own" };
+  const info = rates[code];
+  return info ? { rate: info.rate, source: "bnr", info } : null;
+}
+
+export function ronRate(code: string, funds: TripFund[], rates: TripDetail["rates"]): number | null {
+  return ronRateInfo(code, funds, rates)?.rate ?? null;
 }
 
 /**

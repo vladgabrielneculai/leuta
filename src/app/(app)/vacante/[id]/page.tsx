@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { lei } from "@/lib/util";
 import {
-  dayLabel, daysBetween, fmtCur, PHASE_STYLE, periodLabel, ronRate, sumBy, todayIso, TRIP_CATEGORIES, tripCategory, tripPhase, walletRows,
+  dayLabel, daysInclusive, fmtCur, PHASE_STYLE, periodLabel, ronRate, ronRateInfo, sumBy, todayIso, TRIP_CATEGORIES, tripCategory, tripPhase, walletRows,
   type TripDetail, type TripExpense, type TripFund,
 } from "@/lib/trips";
 import { FundForm, TripExpenseForm, TripForm } from "@/components/Trips";
@@ -22,16 +22,17 @@ export default function TripPage() {
   const id = Number(params?.id);
   const router = useRouter();
   const { bump, confirm } = useApp();
-  const { data: d, error } = useApi<TripDetail>(Number.isInteger(id) ? `/api/trips/${id}` : null);
+  const validId = Number.isInteger(id) && id > 0;
+  const { data: d, error } = useApi<TripDetail>(validId ? `/api/trips/${id}` : null);
   const [editingTrip, setEditingTrip] = useState(false);
   const [fund, setFund] = useState<TripFund | "nou" | null>(null);
   const [expense, setExpense] = useState<TripExpense | "nou" | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  if (error) {
+  if (error || !validId) {
     return (
       <Empty title="Vacanța nu s-a putut încărca">
-        {error} <Link href="/vacante" className="text-albastru hover:underline">Înapoi la vacanțe</Link>
+        {error ?? "Vacanța nu există."} <Link href="/vacante" className="text-albastru hover:underline">Înapoi la vacanțe</Link>
       </Empty>
     );
   }
@@ -40,9 +41,9 @@ export default function TripPage() {
   const { trip, funds, expenses, rates } = d;
   const phase = tripPhase(trip);
   const today = todayIso();
-  const totalDays = daysBetween(trip.start_date, trip.end_date);
-  const dayNr = phase === "acum" ? daysBetween(trip.start_date, today) : phase === "incheiata" ? totalDays : 0;
-  const daysLeft = phase === "acum" ? daysBetween(today, trip.end_date) : phase === "viitoare" ? totalDays : 0;
+  const totalDays = daysInclusive(trip.start_date, trip.end_date);
+  const dayNr = phase === "acum" ? daysInclusive(trip.start_date, today) : phase === "incheiata" ? totalDays : 0;
+  const daysLeft = phase === "acum" ? daysInclusive(today, trip.end_date) : phase === "viitoare" ? totalDays : 0;
   const wallet = walletRows(trip, funds, expenses);
   const main = wallet.find((w) => w.code === trip.currency)!;
 
@@ -55,20 +56,30 @@ export default function TripPage() {
     if (r === null) unconverted.push([code, v]);
     else totalRon += v * r;
   }
-  const usesOwnRate = funds.some((f) => f.rate_ron && f.currency !== "RON");
-  const bnrDate = Object.values(rates).find((r) => r?.date)?.date;
+  // Ce cursuri au intrat în total: al tău, al BNR (cu data celui mai recent și dacă e estimat) sau ambele.
+  const used = Object.keys(spentBy).map((code) => ronRateInfo(code, funds, rates));
+  const bnr = used.flatMap((r) => (r?.source === "bnr" && r.info ? [r.info] : []));
+  const bnrDate = bnr.map((r) => r.date).filter((x): x is string => !!x).sort().at(-1);
+  const bnrLabel = bnr.length
+    ? `${bnrDate ? `curs BNR ${bnrDate.split("-").reverse().join(".")}` : "curs estimat"}${bnrDate && bnr.some((r) => r.estimated) ? " (estimat)" : ""}`
+    : null;
+  const rateLabel = [used.some((r) => r?.source === "own") ? "cursul tău de cumpărare" : null, bnrLabel].filter(Boolean).join(" + ") || "orientativ";
 
-  // Ponderea categoriilor, în moneda vacanței (conversia e doar pentru procente; sumele rămân în moneda lor).
+  // Ponderea categoriilor pe o bază comună (conversia e doar pentru procente; sumele rămân în moneda lor):
+  // moneda vacanței sau, dacă ea nu are curs, leii. Dacă o cheltuială nu se poate converti, nu arătăm procente.
   const mainRate = ronRate(trip.currency, funds, rates);
+  const sameCurrency = expenses.every((e) => e.currency === trip.currency);
   const inMain = (e: TripExpense) => {
-    if (e.currency === trip.currency) return e.amount;
+    if (sameCurrency || (e.currency === trip.currency && mainRate !== null)) return e.amount;
     const r = ronRate(e.currency, funds, rates);
-    return r !== null && mainRate ? (e.amount * r) / mainRate : 0;
+    return r === null ? null : (e.amount * r) / (mainRate ?? 1);
   };
-  const totalMain = expenses.reduce((a, e) => a + inMain(e), 0);
+  const comparable = expenses.every((e) => inMain(e) !== null);
+  const share = (rows: TripExpense[]) => (comparable ? rows.reduce((a, e) => a + (inMain(e) ?? 0), 0) : 0);
+  const totalMain = share(expenses);
   const categories = TRIP_CATEGORIES.map((c) => {
     const rows = expenses.filter((e) => tripCategory(e.category).key === c.key);
-    return { ...c, share: rows.reduce((a, e) => a + inMain(e), 0), amounts: sumBy(rows, (e) => e.currency, (e) => e.amount) };
+    return { ...c, share: share(rows), amounts: sumBy(rows, (e) => e.currency, (e) => e.amount) };
   }).filter((c) => Object.keys(c.amounts).length > 0);
 
   const byDay = Object.entries(
@@ -124,7 +135,7 @@ export default function TripPage() {
           <>
             {trip.destination && <>{trip.destination} · </>}
             {periodLabel(trip)} ·{" "}
-            <span className="rounded px-1.5 py-0.5 text-[12px] font-medium" style={{ color: PHASE_STYLE[phase].color, background: PHASE_STYLE[phase].bg }}>
+            <span className="rounded-sm px-1.5 py-0.5 text-[12px] font-medium" style={{ color: PHASE_STYLE[phase].color, background: PHASE_STYLE[phase].bg }}>
               {PHASE_STYLE[phase].label}
             </span>
           </>
@@ -139,7 +150,7 @@ export default function TripPage() {
         }
       />
 
-      <div className={`panel mb-6 lg:!grid-cols-4 ${STAT_STRIP}`}>
+      <div className={`panel mb-6 lg:grid-cols-4! ${STAT_STRIP}`}>
         <Stat label="Cheltuit" accent="var(--c-rosu)" hint={wallet.filter((w) => w.code !== trip.currency && w.spent > 0).map((w) => `+ ${fmtCur(w.spent, w.code)}`).join(" ")}>
           <span className="num font-display text-[17px] font-semibold sm:text-[20px]">{fmtCur(main.spent, trip.currency)}</span>
         </Stat>
@@ -160,7 +171,7 @@ export default function TripPage() {
           hint={avgPerDay !== null ? `media ${fmtCur(avgPerDay, trip.currency)} pe zi` : undefined}
         >
           <span className="num font-display text-[17px] font-semibold sm:text-[20px]">
-            {phase === "acum" ? `${dayNr} din ${totalDays}` : phase === "viitoare" ? untilLabel(daysBetween(today, trip.start_date) - 1) : totalDays}
+            {phase === "acum" ? `${dayNr} din ${totalDays}` : phase === "viitoare" ? untilLabel(daysInclusive(today, trip.start_date) - 1) : totalDays}
           </span>
         </Stat>
         <Stat
@@ -169,7 +180,7 @@ export default function TripPage() {
           hint={
             <>
               {unconverted.length > 0 && <>+ {unconverted.map(([c, v]) => fmtCur(v, c)).join(" + ")} neconvertit · </>}
-              {usesOwnRate ? "cursul tău de cumpărare" : bnrDate ? `curs BNR ${bnrDate.split("-").reverse().join(".")}` : "orientativ"}
+              {rateLabel}
             </>
           }
         >
@@ -238,7 +249,7 @@ export default function TripPage() {
                         {totalMain > 0 && <span className="ml-2 text-[12px] text-ink-faint">{Math.round((c.share / totalMain) * 100)}%</span>}
                       </span>
                     </div>
-                    <div className="mt-1"><Bar value={c.share} max={totalMain} color={c.color} /></div>
+                    {totalMain > 0 && <div className="mt-1"><Bar value={c.share} max={totalMain} color={c.color} /></div>}
                   </li>
                 ))}
               </ul>

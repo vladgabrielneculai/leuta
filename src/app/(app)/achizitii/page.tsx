@@ -215,7 +215,7 @@ export default function AffordabilityPage() {
       />
 
       {/* 1. Profil financiar actual de bază */}
-      <div className={`panel mb-6 sm:!grid-cols-4 ${STAT_STRIP}`}>
+      <div className={`panel mb-6 sm:grid-cols-4! ${STAT_STRIP}`}>
         <Stat label="Venit lunar de bază" accent="var(--c-albastru)" hint="media lunii analizate">
           <Money value={income} size="lg" />
         </Stat>
@@ -251,7 +251,7 @@ export default function AffordabilityPage() {
                 Sugestii rapide:
               </label>
               {/* Pe telefon, sugestiile stau pe un singur rând care se derulează lateral. */}
-              <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:shrink-0">
+              <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 *:shrink-0">
                 {PRESETS.map((p) => (
                   <button
                     key={p.name}
@@ -313,7 +313,7 @@ export default function AffordabilityPage() {
                   onClick={() => setFinancingType("cash")}
                   className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-center transition-all ${
                     financingType === "cash"
-                      ? "border-leu bg-leu-tint text-leu font-semibold shadow-sm ring-2 ring-leu/20"
+                      ? "border-leu bg-leu-tint text-leu font-semibold shadow-xs ring-2 ring-leu/20"
                       : "border-line bg-paper text-ink-soft hover:bg-sheet"
                   }`}
                 >
@@ -329,7 +329,7 @@ export default function AffordabilityPage() {
                   onClick={() => setFinancingType("loan")}
                   className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-center transition-all ${
                     financingType === "loan"
-                      ? "border-mov bg-mov-tint text-mov font-semibold shadow-sm ring-2 ring-mov/20"
+                      ? "border-mov bg-mov-tint text-mov font-semibold shadow-xs ring-2 ring-mov/20"
                       : "border-line bg-paper text-ink-soft hover:bg-sheet"
                   }`}
                 >
@@ -366,7 +366,7 @@ export default function AffordabilityPage() {
                         <button
                           key={p}
                           type="button"
-                          className="rounded bg-paper px-2 py-0.5 text-[11px] border border-line text-ink-soft hover:text-ink"
+                          className="rounded-sm bg-paper px-2 py-0.5 text-[11px] border border-line text-ink-soft hover:text-ink"
                           onClick={() => setDownPayment(Math.round(totalPrice * p))}
                         >
                           {p * 100}%
@@ -536,7 +536,7 @@ export default function AffordabilityPage() {
             value={impactView}
             onChange={setImpactView}
             label="Ce compari"
-            className="!p-0.5 [&_button]:min-h-[30px] [&_button]:px-2.5 [&_button]:text-[12px]"
+            className="p-0.5! [&_button]:min-h-[30px] [&_button]:px-2.5 [&_button]:text-[12px]"
           />
         }
       >
@@ -657,7 +657,7 @@ export default function AffordabilityPage() {
                 ))}
                 {loan.totalInterest > 0 && (
                   <p className="flex items-center gap-1.5 text-[12px] text-ink-soft">
-                    <span className="h-2.5 w-2.5 rounded-sm bg-rosu" /> dobânda plătită băncii: <strong className="num text-rosu">{lei(loan.totalInterest)}</strong>
+                    <span className="h-2.5 w-2.5 rounded-xs bg-rosu" /> dobânda plătită băncii: <strong className="num text-rosu">{lei(loan.totalInterest)}</strong>
                   </p>
                 )}
               </div>
@@ -773,7 +773,7 @@ export default function AffordabilityPage() {
               return (
                 <div
                   key={p.id}
-                  className="rounded-md border border-line bg-paper p-4 flex flex-col justify-between hover:border-albastru transition-all shadow-sm hover:shadow"
+                  className="rounded-md border border-line bg-paper p-4 flex flex-col justify-between hover:border-albastru transition-all shadow-xs hover:shadow-sm"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-2">

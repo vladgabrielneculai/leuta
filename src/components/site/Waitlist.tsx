@@ -80,7 +80,7 @@ export default function Waitlist() {
                 }}
               />
               {/* Câmp-capcană pentru roboți: ascuns oamenilor și cititoarelor de ecran. */}
-              <div aria-hidden className="absolute -left-[9999px] h-px w-px overflow-hidden">
+              <div aria-hidden className="absolute left-[-9999px] h-px w-px overflow-hidden">
                 <label>
                   Site web
                   <input name="website" tabIndex={-1} autoComplete="off" />
@@ -102,7 +102,7 @@ export default function Waitlist() {
                 </p>
               )}
               <div className="rule-double my-5" />
-              <button type="submit" className="btn-primary w-full !py-3 !text-[16px]" disabled={state.kind === "busy" || !email}>
+              <button type="submit" className="btn-primary w-full py-3! text-[16px]!" disabled={state.kind === "busy" || !email}>
                 {state.kind === "busy" ? "Se trimite…" : "Cere invitație"}
               </button>
               <p className="mt-3 text-center text-[12px] text-ink-faint">Fără spam. Un singur email, când e gata contul.</p>

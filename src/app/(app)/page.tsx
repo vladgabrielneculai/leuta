@@ -77,7 +77,7 @@ function LeuBand({ s }: { s: S }) {
       <ul className="mt-3 flex flex-col gap-1 sm:hidden">
         {segments.map((seg) => (
           <li key={seg.key} className="flex items-center gap-2 text-[13px]">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: seg.color }} />
+            <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: seg.color }} />
             <span className="min-w-0 flex-1 truncate text-ink-soft">{seg.label}</span>
             <span className="num font-medium">{lei(seg.value)}</span>
             <span className="num w-9 text-right text-ink-faint">{pct(t.income ? (seg.value / t.income) * 100 : 0, 0)}</span>
@@ -87,7 +87,7 @@ function LeuBand({ s }: { s: S }) {
       <div className="mt-3 hidden gap-x-6 gap-y-2 sm:grid sm:grid-cols-3 lg:grid-cols-5">
         {segments.map((seg) => (
           <div key={seg.key} className="flex items-start gap-2 text-[13px]">
-            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: seg.color }} />
+            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: seg.color }} />
             <div>
               <div className="text-ink-soft">{seg.label}</div>
               <div className="num font-medium">
@@ -244,7 +244,7 @@ export default function Dashboard() {
                 value={trendView}
                 onChange={setTrendView}
                 label="Ce arată graficul"
-                className="!p-0.5 [&_button]:min-h-[30px] [&_button]:px-2.5 [&_button]:text-[12px]"
+                className="p-0.5! [&_button]:min-h-[30px] [&_button]:px-2.5 [&_button]:text-[12px]"
               />
             }
           >
@@ -421,7 +421,7 @@ function Suggestions({ items }: { items: Summary["suggestions"] }) {
             <li key={i}>
               <details className="group rounded-md border-l-[3px] bg-paper/40 py-1.5 pl-3 pr-2" style={{ borderColor: st.color }}>
                 <summary className="flex cursor-pointer list-none items-start gap-2 [&::-webkit-details-marker]:hidden">
-                  <span className="mt-0.5 shrink-0 rounded px-1.5 text-[11px] font-medium" style={{ background: st.bg, color: st.color }}>
+                  <span className="mt-0.5 shrink-0 rounded-sm px-1.5 text-[11px] font-medium" style={{ background: st.bg, color: st.color }}>
                     {st.label}
                   </span>
                   <span className="min-w-0 flex-1 text-[14px] font-medium leading-snug">{sg.title}</span>

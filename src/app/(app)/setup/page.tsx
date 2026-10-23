@@ -137,7 +137,7 @@ export default function SetupPage() {
               type="checkbox"
               checked={seedDemo}
               onChange={(e) => setSeedDemo(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-line text-leu accent-leu"
+              className="mt-0.5 h-4 w-4 rounded-sm border-line text-leu accent-leu"
             />
             <div className="text-[13px]">
               <span className="font-semibold text-ink">Încarcă date demonstrative (Recomandat)</span>

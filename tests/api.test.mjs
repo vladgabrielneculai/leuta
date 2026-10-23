@@ -5,6 +5,9 @@
  *
  * Testele care scriu date își creează propriile rânduri (marcate „[test]”) și le șterg la final,
  * deci pot rula și contra bazei de date reale fără să-ți atingă datele.
+ *
+ * proxy.ts limitează cererile per IP (60/min la login și celelalte rute publice de autentificare): două rulări
+ * la rând merg, dar mai multe în același minut pot primi 429 — se așteaptă un minut.
  */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";

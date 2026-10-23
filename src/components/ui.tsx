@@ -148,7 +148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       <ReauthDialog />
       {confirmState && (
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-ink/55 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md animate-backdrop-fade sm:items-center sm:p-4"
+          className="fixed inset-0 z-100 flex items-end justify-center bg-ink/55 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md animate-backdrop-fade sm:items-center sm:p-4"
           onClick={() => handleConfirmClose(false)}
         >
           <div
@@ -161,14 +161,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             <div
               className={`absolute top-0 left-0 right-0 h-1 ${
                 confirmState.options.danger
-                  ? "bg-gradient-to-r from-rosu via-rosu-soft to-rosu"
+                  ? "bg-linear-to-r from-rosu via-rosu-soft to-rosu"
                   : "bg-ink"
               }`}
             />
 
             <div className="flex items-start gap-4">
               <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md shadow-sm border ${
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md shadow-xs border ${
                   confirmState.options.danger
                     ? "bg-rosu/10 border-rosu/25 text-rosu"
                     : "bg-albastru/10 border-albastru/25 text-albastru"
@@ -219,8 +219,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 autoFocus
                 className={
                   confirmState.options.danger
-                    ? "btn-danger min-h-[44px] bg-rosu-tint/60 px-4 py-2 text-[14px] font-semibold shadow-sm sm:min-h-0 sm:bg-transparent sm:text-[13px]"
-                    : "btn-primary min-h-[44px] px-4 py-2 text-[14px] font-semibold shadow-sm sm:min-h-0 sm:text-[13px]"
+                    ? "btn-danger min-h-[44px] bg-rosu-tint/60 px-4 py-2 text-[14px] font-semibold shadow-xs sm:min-h-0 sm:bg-transparent sm:text-[13px]"
+                    : "btn-primary min-h-[44px] px-4 py-2 text-[14px] font-semibold shadow-xs sm:min-h-0 sm:text-[13px]"
                 }
                 onClick={() => handleConfirmClose(true)}
               >
@@ -407,7 +407,7 @@ export function PageHeader({ title, intro, actions }: { title: string; intro?: R
           <h1 className="text-[24px] font-bold leading-tight sm:text-[31px]">{title}</h1>
           {intro && <p className="mt-1.5 text-[14px] text-ink-soft sm:text-[15px]">{intro}</p>}
         </div>
-        {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto [&>*]:min-w-[40%] [&>*]:flex-1 sm:[&>*]:min-w-0 sm:[&>*]:flex-none [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}
+        {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto *:min-w-[40%] *:flex-1 sm:*:min-w-0 sm:*:flex-none [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}
       </div>
       <div className="rule-double mt-4" aria-hidden />
     </header>
@@ -493,7 +493,7 @@ export function Panel({
  * în loc de trei rânduri de câte două; pe ecran mare, grilă. Coloanele grilei se adaugă la folosire (ex. `xl:grid-cols-5`).
  */
 export const STAT_STRIP =
-  "flex snap-x snap-mandatory gap-6 overflow-x-auto p-4 [scrollbar-width:none] sm:grid sm:grid-cols-3 sm:gap-x-6 sm:gap-y-5 sm:overflow-visible sm:p-5 [&>*]:min-w-[46%] [&>*]:shrink-0 [&>*]:snap-start sm:[&>*]:min-w-0";
+  "flex snap-x snap-mandatory gap-6 overflow-x-auto p-4 scrollbar-none sm:grid sm:grid-cols-3 sm:gap-x-6 sm:gap-y-5 sm:overflow-visible sm:p-5 *:min-w-[46%] *:shrink-0 *:snap-start sm:*:min-w-0";
 
 export function Stat({
   label,
@@ -587,7 +587,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   if (!open || typeof document === "undefined") return null;
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-ink/40 backdrop-blur-[2px] animate-backdrop-fade sm:items-start sm:overflow-y-auto sm:p-10"
+      className="fixed inset-0 z-80 flex items-end justify-center bg-ink/40 backdrop-blur-[2px] animate-backdrop-fade sm:items-start sm:overflow-y-auto sm:p-10"
       onClick={onClose}
     >
       <div
@@ -655,7 +655,7 @@ export function Toast({ message, onDone }: { message: string | null; onDone: () 
   return createPortal(
     <div
       role="status"
-      className="sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[90] rounded-md bg-ink px-4 py-3 text-center text-[14px] text-sheet shadow-lg sm:inset-x-auto sm:right-5 sm:rounded-md sm:py-2.5 sm:text-left lg:bottom-5"
+      className="sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-90 rounded-md bg-ink px-4 py-3 text-center text-[14px] text-sheet shadow-lg sm:inset-x-auto sm:right-5 sm:rounded-md sm:py-2.5 sm:text-left lg:bottom-5"
     >
       {message}
     </div>,
@@ -747,7 +747,7 @@ export function Tabs<T extends string>({
     <div
       role="tablist"
       aria-label={label}
-      className={`flex gap-1 overflow-x-auto rounded-md border border-line bg-paper p-1 [scrollbar-width:none] sm:inline-flex ${className}`}
+      className={`flex gap-1 overflow-x-auto rounded-md border border-line bg-paper p-1 scrollbar-none sm:inline-flex ${className}`}
       data-tour={rest["data-tour"]}
     >
       {tabs.map((t) => {

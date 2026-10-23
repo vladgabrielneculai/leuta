@@ -126,7 +126,7 @@ function LoginScreen() {
   }
 
   const tabClass = (t: typeof tab) =>
-    `flex-1 rounded-[6px] py-2 text-[13.5px] font-semibold transition-colors ${tab === t ? "bg-paper text-ink shadow-sm" : "text-ink-soft hover:text-ink"}`;
+    `flex-1 rounded-[6px] py-2 text-[13.5px] font-semibold transition-colors ${tab === t ? "bg-paper text-ink shadow-xs" : "text-ink-soft hover:text-ink"}`;
 
   return (
     <div className="guilloche guilloche-full relative flex min-h-screen items-center justify-center bg-canvas p-4">
@@ -206,7 +206,7 @@ function LoginScreen() {
             </form>
 
             <label className="mt-4 flex cursor-pointer select-none items-center gap-2 text-[13px] text-ink-soft">
-              <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-line accent-leu" />
+              <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded-sm border-line accent-leu" />
               <span>Ține-mă minte pe acest dispozitiv</span>
             </label>
             <p className="mt-3 text-[12px] text-ink-soft">

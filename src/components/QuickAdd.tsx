@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { lei, eur, monthLabel, parseAmount, type Currency, type Kind } from "@/lib/util";
 import { activeTrip, type TripListItem } from "@/lib/trips";
-import { api, Modal, Toast, useApi, useApp } from "./ui";
+import { api, Modal, Skeleton, Toast, useApi, useApp } from "./ui";
 import { TripExpenseForm } from "./Trips";
 
 /**
@@ -74,10 +74,16 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const amountRef = useRef<HTMLInputElement>(null);
 
   // Vacanța în curs (doar la adăugare): implicit cheltuiala merge acolo, cu comutator înapoi la luna curentă.
-  const { data: trips } = useApi<TripListItem[]>(editing ? null : "/api/trips");
+  const { data: trips, error: tripsError } = useApi<TripListItem[]>(editing ? null : "/api/trips");
   const trip = trips ? activeTrip(trips) : null;
   const [forTrip, setForTrip] = useState(args.trip ?? !args.kind);
   const tripMode = !!trip && forTrip;
+  // Deschisă explicit pentru vacanță: până se încarcă vacanțele nu arătăm formularul lunar.
+  const waitingTrip = !!args.trip && !editing && !trips && !tripsError;
+  // Ai început să completezi înainte să se încarce vacanțele: rămâi pe bugetul lunii.
+  const stayMonthly = () => {
+    if (!trips && !args.trip) setForTrip(false);
+  };
 
   const { data: cats } = useApi<Category[]>("/api/crud/categories");
   const { data: goals } = useApi<Goal[]>("/api/crud/goals");
@@ -90,10 +96,11 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
 
   // Suma e primul lucru de completat: tastatura numerică apare imediat (doar la adăugare).
   useEffect(() => {
-    if (!editing && !tripMode) amountRef.current?.focus();
-  }, [editing, tripMode]);
+    if (!editing && !tripMode && !waitingTrip) amountRef.current?.focus();
+  }, [editing, tripMode, waitingTrip]);
 
   const changeKind = (k: Kind) => {
+    stayMonthly();
     setKind(k);
     setCategoryId(null);
     setErr(null);
@@ -160,7 +167,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     }`;
 
   return (
-    <Modal open onClose={onClose} title={editing ? "Modifică intrarea" : tripMode ? `Cheltuială de vacanță` : `Adaugă în ${monthLabel(month)}`}>
+    <Modal open onClose={onClose} title={editing ? "Modifică intrarea" : tripMode || waitingTrip ? `Cheltuială de vacanță` : `Adaugă în ${monthLabel(month)}`}>
       {trip && (
         <div className="mb-4 grid grid-cols-2 gap-1 rounded-md border border-line bg-paper p-1" role="radiogroup" aria-label="Unde se trece">
           {[
@@ -183,7 +190,9 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
           ))}
         </div>
       )}
-      {tripMode ? (
+      {waitingTrip ? (
+        <Skeleton variant="block" />
+      ) : tripMode ? (
         <TripExpenseForm
           trip={trip}
           currencies={Object.keys(trip.funds)}
@@ -224,7 +233,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
             <div className="flex items-stretch gap-2">
               <input
                 ref={amountRef}
-                className="field num min-w-0 flex-1 !py-3 !text-[26px] font-semibold"
+                className="field num min-w-0 flex-1 py-3! text-[26px]! font-semibold"
                 inputMode="decimal"
                 enterKeyHint="done"
                 autoComplete="off"
@@ -233,8 +242,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
                 onChange={(e) => {
                   setAmount(e.target.value.replace(/[^\d.,\s]/g, ""));
                   setErr(null);
-                  // Ai început să scrii înainte să se încarce vacanțele: rămâi pe bugetul lunii.
-                  if (!trips) setForTrip(false);
+                  stayMonthly();
                 }}
                 aria-label="Sumă"
               />
@@ -279,11 +287,12 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
                     className={chip(categoryId === c.id)}
                     aria-pressed={categoryId === c.id}
                     onClick={() => {
+                      stayMonthly();
                       setCategoryId(c.id);
                       setErr(null);
                     }}
                   >
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: c.color }} aria-hidden />
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: c.color }} aria-hidden />
                     {c.name}
                   </button>
                 ))}

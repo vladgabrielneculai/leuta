@@ -254,7 +254,7 @@ function World() {
 
   return (
     <section ref={section} className="relative h-[1000vh]" aria-label="O lună din bugetul tău">
-      <div className="sw-stage sticky top-0 h-[100svh] overflow-hidden">
+      <div className="sw-stage sticky top-0 h-svh overflow-hidden">
         <div className="sw-ground" aria-hidden>
           <div ref={ground} className="sw-ground-grid" />
         </div>
@@ -344,7 +344,7 @@ function Intro() {
       <h1 className="rise mt-5 text-[40px] font-bold leading-[1.03] sm:text-[60px] lg:text-[76px]" style={{ animationDelay: "80ms" }}>
         Bugetul tău, clar ca un bon.
       </h1>
-      <p className="rise mx-auto mt-6 max-w-[36rem] text-[16px] leading-relaxed text-ink-soft sm:text-[17px]" style={{ animationDelay: "160ms" }}>
+      <p className="rise mx-auto mt-6 max-w-xl text-[16px] leading-relaxed text-ink-soft sm:text-[17px]" style={{ animationDelay: "160ms" }}>
         Intră în luna ta. Leuța îți arată unde merge fiecare leu: venituri, cheltuieli, rate și economii. Fără foi de calcul și fără acces la contul
         tău bancar.
       </p>
@@ -413,7 +413,7 @@ function Spending({ lines, spent, spentBar, left, perDay }: Refs) {
             <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: e.color }} aria-hidden />
             <span className="font-medium">{e.name}</span>
             <span className="text-[11.5px] text-ink-faint">{e.cat}</span>
-            <span className="leader-dots min-w-[0.75rem] flex-1" aria-hidden />
+            <span className="leader-dots min-w-3 flex-1" aria-hidden />
             <span className="num font-semibold">− {money(e.value)}</span>
           </li>
         ))}

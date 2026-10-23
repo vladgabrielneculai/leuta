@@ -72,7 +72,7 @@ function KindSection({
             return (
               // Un singur rând: categoria, descrierea (estompată, pe ecran mare) și suma. Atingerea desface rândul:
               // apar descrierea întreagă și butonul „Modifică” (care deschide fereastra cu modificarea și ștergerea).
-              <li key={e.id} className={`-mx-2 rounded-md px-2 transition-colors ${open ? "bg-ink/[0.04]" : "hover:bg-ink/[0.03]"}`}>
+              <li key={e.id} className={`-mx-2 rounded-md px-2 transition-colors ${open ? "bg-ink/4" : "hover:bg-ink/3"}`}>
                 <button
                   type="button"
                   className="flex min-h-[44px] w-full items-center gap-2.5 text-left sm:min-h-[38px]"
@@ -80,7 +80,7 @@ function KindSection({
                   aria-expanded={open}
                   aria-label={`${name}, ${e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}${open ? "" : ", atinge pentru detalii"}`}
                 >
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: kind === "saving" ? info.color : catMap.get(e.category_id ?? 0)?.color ?? "var(--c-ink-faint)" }} />
                   <span className="min-w-0 flex-1 truncate text-[14px]">
                     {name}
                     {e.description && !open && <span className="ml-2 hidden text-[12.5px] text-ink-faint sm:inline">{e.description}</span>}
@@ -96,7 +96,7 @@ function KindSection({
                 {open && (
                   <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2 pb-3 pl-5 text-[13px]">
                     <div className="min-w-0 flex-1 text-ink-soft">
-                      <p className="whitespace-pre-wrap break-words text-ink">{e.description || <span className="text-ink-faint">Fără descriere</span>}</p>
+                      <p className="whitespace-pre-wrap wrap-break-word text-ink">{e.description || <span className="text-ink-faint">Fără descriere</span>}</p>
                       <p className="mt-0.5 text-[12px] text-ink-faint">
                         {[e.recurring ? "Se repetă lunar" : "O singură dată", e.currency === "EUR" ? `= ${lei(e.amount * rate)}` : ""].filter(Boolean).join(" · ")}
                       </p>
@@ -153,7 +153,7 @@ function CategoryPie({ entries, catMap, rate, total }: { entries: Entry[]; catMa
               endAngle={-270}
               isAnimationActive={false}
               onClick={(d: { id: number }) => setFocus(focus === d.id ? null : d.id)}
-              className="cursor-pointer outline-none"
+              className="cursor-pointer outline-hidden"
             >
               {data.map((d) => (
                 <Cell key={d.id} fill={d.color} opacity={focus === null || focus === d.id ? 1 : 0.35} />
@@ -172,10 +172,10 @@ function CategoryPie({ entries, catMap, rate, total }: { entries: Entry[]; catMa
           <li key={d.id}>
             <button
               type="button"
-              className={`flex w-full items-center gap-2 rounded px-1 py-0.5 text-left ${focus === d.id ? "bg-ink/[0.06]" : ""}`}
+              className={`flex w-full items-center gap-2 rounded-sm px-1 py-0.5 text-left ${focus === d.id ? "bg-ink/6" : ""}`}
               onClick={() => setFocus(focus === d.id ? null : d.id)}
             >
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: d.color }} />
+              <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: d.color }} />
               <span className="min-w-0 flex-1 truncate text-ink-soft">{d.name}</span>
               <span className="num shrink-0 text-ink-faint">{Math.round((d.value / total) * 100)}%</span>
             </button>
@@ -435,14 +435,14 @@ function MonthBalance({ income, unallocated, parts, rate, hasLoans }: { income: 
       </div>
       <ul className="flex flex-col gap-1.5 text-[13px]">
         <li title={eur(income / rate)}>
-          <Leader label={<span className="flex items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-leu" />Venituri</span>} value={lei(income)} />
+          <Leader label={<span className="flex items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-xs bg-leu" />Venituri</span>} value={lei(income)} />
         </li>
         {shown.map((p) => (
           <li key={p.label} title={eur(p.value / rate)}>
             <Leader
               label={
                 <span className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: p.color }} />
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: p.color }} />
                   {p.auto && hasLoans ? (
                     <Link href="/credite" className="underline decoration-dotted underline-offset-2 hover:text-albastru" title="Calculate automat din credite">
                       {p.label}

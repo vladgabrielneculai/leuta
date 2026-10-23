@@ -244,7 +244,7 @@ export default function SavingsPage() {
                 <div key={g.id} className="rounded-[8px] border border-line p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="h-4 w-1.5 rounded-sm" style={{ background: g.color }} />
+                      <span className="h-4 w-1.5 rounded-xs" style={{ background: g.color }} />
                       <h3 className="text-[17px] font-semibold">{g.name}</h3>
                     </div>
                     <button className="btn-ghost -mr-2 -mt-1 px-2" onClick={() => openGoalEditor(g)}>Editează</button>
@@ -411,7 +411,7 @@ export default function SavingsPage() {
               {goal.id ? (
                 <button type="button" className="btn-danger" onClick={() => deleteGoal(s.goals.find((g) => g.id === goal.id)!)}>Șterge obiectivul</button>
               ) : <span className="hidden sm:block" />}
-              <div className="flex gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+              <div className="flex gap-2 *:flex-1 sm:*:flex-none">
                 <button type="button" className="btn-ghost" onClick={() => setGoal(null)}>Renunță</button>
                 <button type="submit" className="btn-primary">{goal.id ? "Salvează" : "Creează"}</button>
               </div>
@@ -438,7 +438,7 @@ export default function SavingsPage() {
             </div>
             <div className="form-actions sm:justify-between">
               {inv.id ? <button type="button" className="btn-danger" onClick={() => deleteInv(inv.id!, inv.name)}>Șterge investiția</button> : <span className="hidden sm:block" />}
-              <div className="flex gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+              <div className="flex gap-2 *:flex-1 sm:*:flex-none">
                 <button type="button" className="btn-ghost" onClick={() => setInv(null)}>Renunță</button>
                 <button type="submit" className="btn-primary">{inv.id ? "Salvează" : "Adaugă"}</button>
               </div>

@@ -171,7 +171,7 @@ export default function BudgetPage() {
                 value={chart}
                 onChange={setChart}
                 label="Graficul afișat"
-                className="!p-0.5 [&_button]:min-h-[30px] [&_button]:px-2.5 [&_button]:text-[12px]"
+                className="p-0.5! [&_button]:min-h-[30px] [&_button]:px-2.5 [&_button]:text-[12px]"
               />
             }
           >

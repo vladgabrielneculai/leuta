@@ -235,7 +235,7 @@ function PreviewItem({ row, categories, onChange }: { row: Row; categories: Impo
     <li className={`grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1.5 px-4 py-2.5 sm:grid-cols-[auto_5.5rem_1fr_7rem_14rem] sm:px-5 ${row.include ? "" : "opacity-55"}`}>
       <input
         type="checkbox"
-        className="h-4 w-4 accent-[var(--c-leu)]"
+        className="h-4 w-4 accent-(--c-leu)"
         checked={row.include}
         disabled={disabled}
         onChange={(e) => onChange({ include: e.target.checked })}
