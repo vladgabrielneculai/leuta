@@ -6,7 +6,7 @@ import {
 } from "recharts";
 import type { MethodView, Summary } from "@/lib/analytics";
 import { BUCKET_LABEL, lei, monthLabel, pct, r2, type Bucket } from "@/lib/util";
-import { api, chartTooltipStyle, Empty, Field, PageHeader, Panel, Skeleton, Toast, useApi, useApp } from "@/components/ui";
+import { api, chartTooltipStyle, Empty, Field, PageHeader, Panel, Skeleton, Tabs, Toast, useApi, useApp } from "@/components/ui";
 
 const BUCKETS: Bucket[] = ["needs", "wants", "savings"];
 const BUCKET_COLOR: Record<Bucket, string> = { needs: "var(--c-albastru)", wants: "var(--c-rosu)", savings: "var(--c-galben)" };
@@ -21,7 +21,7 @@ function scoreWord(score: number) {
 
 function MethodCard({ m, income, best }: { m: MethodView; income: number; best: boolean }) {
   return (
-    <div className="panel flex flex-col p-5">
+    <div className="panel flex flex-col p-4 sm:p-5">
       {/* Metoda care ți se potrivește cel mai bine primește o „ștampilă”, ca pe un bon vizat. */}
       {best && <span className="stamp mb-3 self-start">✓ Cea mai potrivită</span>}
       <div className="flex items-start justify-between gap-3">
@@ -35,7 +35,7 @@ function MethodCard({ m, income, best }: { m: MethodView; income: number; best: 
         </div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-4">
+      <div className="mt-5 grid gap-4 md:grid-cols-3 md:gap-6">
         {BUCKETS.map((b) => {
           const actual = m.actual[b];
           const target = m.targets[b];
@@ -67,9 +67,15 @@ function MethodCard({ m, income, best }: { m: MethodView; income: number; best: 
       </div>
 
       {m.notes.length > 0 && (
-        <ul className="mt-5 flex flex-col gap-1.5 border-t border-line pt-4 text-[13px] text-ink-soft">
-          {m.notes.map((n) => <li key={n}>{n}</li>)}
-        </ul>
+        <details className="group mt-5 border-t border-line pt-3 text-[13px] text-ink-soft">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 font-medium text-ink [&::-webkit-details-marker]:hidden">
+            <span className="transition-transform group-open:rotate-90" aria-hidden>›</span>
+            Observații ({m.notes.length})
+          </summary>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {m.notes.map((n) => <li key={n}>{n}</li>)}
+          </ul>
+        </details>
       )}
     </div>
   );
@@ -80,6 +86,8 @@ export default function BudgetPage() {
   const { data: s, reload } = useApi<Summary>(`/api/summary?month=${month}`);
   const [custom, setCustom] = useState({ needs: "50", wants: "25", savings: "25" });
   const [toast, setToast] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [chart, setChart] = useState<"tinte" | "luni">("tinte");
 
   useEffect(() => {
     if (s) setCustom({ needs: s.settings.custom_needs, wants: s.settings.custom_wants, savings: s.settings.custom_savings });
@@ -98,6 +106,7 @@ export default function BudgetPage() {
   };
 
   const best = [...s.methods].sort((a, b) => b.score - a.score)[0];
+  const current = s.methods.find((m) => m.key === picked) ?? best;
   const compareData = BUCKETS.map((b) => {
     const row: Record<string, string | number> = { grup: BUCKET_LABEL[b], "Situația ta": r2(t[b === "savings" ? "savedTotal" : b]) };
     for (const m of s.methods) row[m.name] = r2(m.targets[b]);
@@ -119,8 +128,8 @@ export default function BudgetPage() {
         title="Metode de buget"
         intro={
           <>
-            Aceeași lună, văzută prin patru reguli diferite. Nevoile includ ratele creditelor; economiile includ plățile anticipate.
-            Ce e nevoie și ce e dorință setezi pe fiecare categorie, în Setări.
+            Aceeași lună, văzută prin patru reguli diferite.{" "}
+            <span className="text-ink-faint">Nevoile includ ratele creditelor, economiile includ plățile anticipate; ce e nevoie și ce e dorință setezi în Setări.</span>
           </>
         }
       />
@@ -129,15 +138,44 @@ export default function BudgetPage() {
         <Empty title={`Nu există venituri în ${monthLabel(month)}`}>Metodele se calculează ca procent din venit. Adaugă veniturile în Luna curentă.</Empty>
       ) : (
         <>
-          <p className="mb-5 text-[15px]">
+          <p className="mb-4 text-[15px]">
             Luna aceasta te potrivești cel mai bine cu <strong>{best.name}</strong> (scor {best.score} din 100).
           </p>
-          <div className="mb-6 grid gap-6 md:grid-cols-2">
-            {s.methods.map((m) => <MethodCard key={m.key} m={m} income={t.income} best={m.key === best.key} />)}
+          {/* O singură metodă odată; scorul fiecăreia se vede direct pe buton. */}
+          <Tabs
+            tabs={s.methods.map((m) => ({
+              key: m.key,
+              label: m.name,
+              badge: (
+                <span className="num rounded-full px-1.5 text-[11px] font-semibold" style={{ color: METHOD_COLOR[m.key], background: "var(--c-paper)" }}>
+                  {m.score}
+                </span>
+              ),
+            }))}
+            value={current.key}
+            onChange={setPicked}
+            className="mb-4"
+            label="Metoda de buget"
+            data-tour="buget-methods"
+          />
+          <div className="mb-6">
+            <MethodCard m={current} income={t.income} best={current.key === best.key} />
           </div>
 
-          <div className="mb-6 grid gap-6 xl:grid-cols-2">
-            <Panel title="Ținte în lei, comparate cu situația ta">
+          <Panel
+            className="mb-6"
+            title={chart === "tinte" ? "Ținte în lei, comparate cu situația ta" : "Cum s-a împărțit venitul în ultimele luni"}
+            aside={
+              <Tabs
+                tabs={[{ key: "tinte", label: "Ținte" }, { key: "luni", label: "Ultimele luni" }] as const}
+                value={chart}
+                onChange={setChart}
+                label="Graficul afișat"
+                className="p-0.5! [&_button]:min-h-[30px] [&_button]:px-2.5 [&_button]:text-[12px]"
+              />
+            }
+          >
+            {chart === "tinte" ? (
               <div className="h-[300px]">
                 <ResponsiveContainer>
                   <BarChart data={compareData} margin={{ top: 6, right: 8, left: -4, bottom: 0 }}>
@@ -153,32 +191,30 @@ export default function BudgetPage() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </Panel>
-
-            <Panel title="Cum s-a împărțit venitul în ultimele luni">
-              {trendData.length < 2 ? (
-                <p className="text-ink-soft">Graficul apare după ce ai cel puțin două luni cu venituri.</p>
-              ) : (
-                <div className="h-[300px]">
-                  <ResponsiveContainer>
-                    <AreaChart data={trendData} margin={{ top: 6, right: 8, left: -10, bottom: 0 }}>
-                      <CartesianGrid stroke="var(--c-line)" vertical={false} />
-                      <XAxis dataKey="luna" tick={{ fontSize: 12 }} />
-                      <YAxis unit="%" tick={{ fontSize: 12 }} />
-                      <Tooltip {...chartTooltipStyle} formatter={(v: number) => `${v}%`} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
-                      <Area dataKey="Nevoi" stackId="1" stroke="var(--c-albastru)" fill="var(--c-albastru)" fillOpacity={0.8} />
-                      <Area dataKey="Dorințe" stackId="1" stroke="var(--c-rosu)" fill="var(--c-rosu)" fillOpacity={0.8} />
-                      <Area dataKey="Economii" stackId="1" stroke="var(--c-galben)" fill="var(--c-galben)" fillOpacity={0.8} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </Panel>
-          </div>
+            ) : trendData.length < 2 ? (
+              <p className="text-ink-soft">Graficul apare după ce ai cel puțin două luni cu venituri.</p>
+            ) : (
+              <div className="h-[300px]">
+                <ResponsiveContainer>
+                  <AreaChart data={trendData} margin={{ top: 6, right: 8, left: -10, bottom: 0 }}>
+                    <CartesianGrid stroke="var(--c-line)" vertical={false} />
+                    <XAxis dataKey="luna" tick={{ fontSize: 12 }} />
+                    <YAxis unit="%" tick={{ fontSize: 12 }} />
+                    <Tooltip {...chartTooltipStyle} formatter={(v: number) => `${v}%`} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
+                    <Area dataKey="Nevoi" stackId="1" stroke="var(--c-albastru)" fill="var(--c-albastru)" fillOpacity={0.8} />
+                    <Area dataKey="Dorințe" stackId="1" stroke="var(--c-rosu)" fill="var(--c-rosu)" fillOpacity={0.8} />
+                    <Area dataKey="Economii" stackId="1" stroke="var(--c-galben)" fill="var(--c-galben)" fillOpacity={0.8} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </Panel>
         </>
       )}
 
+      {/* Procentele proprii se editează doar când e aleasă metoda lor (sau când nu există venituri). */}
+      {(t.income <= 0 || current.key === "custom") && (
       <Panel title="Procentele tale">
         <form
           className="flex flex-wrap items-end gap-3"
@@ -200,6 +236,7 @@ export default function BudgetPage() {
           </span>
         </form>
       </Panel>
+      )}
       <Toast message={toast} onDone={() => setToast(null)} />
     </>
   );

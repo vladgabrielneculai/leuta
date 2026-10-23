@@ -3,6 +3,7 @@ import {
   clearFailedLogins, createSession, findValidReset, generateSalt, hashPassword, isLockedOut, LOCKOUT_MESSAGE, logAuthEvent,
   MIN_PASSWORD_LENGTH, recordFailedLogin, requestMeta, sessionCookieOptions, sha256,
 } from "@/lib/auth";
+import { BETA_NO_ACCOUNTS_MESSAGE, isBetaDeployment } from "@/lib/beta";
 import { getSystemDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
 
@@ -13,6 +14,8 @@ const INVALID = "Linkul de resetare nu mai este valid: a expirat, a fost folosit
 /** Verifică linkul înainte de afișarea formularului (pagina /resetare). */
 export async function GET(req: NextRequest) {
   try {
+    // Beta folosește conturile din producție; aici nu se creează conturi și nu se schimbă parole.
+    if (isBetaDeployment()) return NextResponse.json({ error: BETA_NO_ACCOUNTS_MESSAGE }, { status: 403 });
     const meta = requestMeta(req.headers);
     if (await isLockedOut(meta.ip)) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
     const reset = await findValidReset(req.nextUrl.searchParams.get("cod") ?? "");
@@ -33,6 +36,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
+    if (isBetaDeployment()) return NextResponse.json({ error: BETA_NO_ACCOUNTS_MESSAGE }, { status: 403 });
     const meta = requestMeta(req.headers);
     if (await isLockedOut(meta.ip)) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
     const body = await req.json().catch(() => ({}));

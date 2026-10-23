@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BUCKET_LABEL, KIND_LABEL, type Bucket, type Kind } from "@/lib/util";
-import { api, CollapsiblePanels, downloadFile, Field, PageHeader, Panel, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
+import { api, downloadFile, Field, PageHeader, Panel, Tabs, Toast, TrashIcon, useApi, useApp, useTab } from "@/components/ui";
 import AccountSecurity from "@/components/AccountSecurity";
 import SecurityCenter from "@/components/SecurityCenter";
 import NotificationSettings from "@/components/NotificationSettings";
 import { ThemeChooser } from "@/components/ThemeToggle";
 import DatabaseManager from "@/components/DatabaseManager";
+import { useTourReplay } from "@/components/Tour";
 
 type Category = { id: number; name: string; kind: Kind; bucket: Bucket; color: string };
 const PALETTE = ["#3D7A4E", "#5E9A6C", "#2E5C8A", "#4A7BA8", "#27496D", "#6A4E99", "#8A6BB8", "#B5456A", "#C9657F", "#DB8BA4", "#C99A1E", "#8A989C"];
@@ -90,6 +91,17 @@ function CategoryRow({
 }
 
 
+const kinds: Kind[] = ["income", "fixed", "variable", "saving"];
+
+const SETTINGS_TABS = [
+  { key: "general", label: "General" },
+  { key: "calcule", label: "Calcule" },
+  { key: "notificari", label: "Notificări", short: "Alerte" },
+  { key: "securitate", label: "Securitate" },
+  { key: "date", label: "Date" },
+] as const;
+type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
+
 export default function SettingsPage() {
   const {
     bump,
@@ -111,6 +123,9 @@ export default function SettingsPage() {
   const [params, setParams] = useState<Record<string, string>>({});
   const [newCat, setNewCat] = useState({ name: "", kind: "variable" as Kind, bucket: "needs" as Bucket });
   const [toast, setToast] = useState<string | null>(null);
+  const replayTour = useTourReplay();
+  const [catKind, setCatKind] = useState<Kind>("variable");
+  const [tab, setTab] = useTab<SettingsTab>("setari", "general", SETTINGS_TABS.map((t) => t.key));
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -140,6 +155,7 @@ export default function SettingsPage() {
         color: PALETTE[(cats?.length ?? 0) % PALETTE.length],
       });
       setNewCat({ ...newCat, name: "" });
+      setCatKind(newCat.kind); // categoria nouă apare în tab-ul ei
       changed("Categorie adăugată");
     } catch (e: any) {
       setToast(e?.message || "Eroare la adăugarea categoriei");
@@ -186,23 +202,40 @@ export default function SettingsPage() {
     }
   };
 
-  const kinds: Kind[] = ["income", "fixed", "variable", "saving"];
 
   return (
     <>
-      <PageHeader title="Setări" intro="Categoriile, notificările, securitatea și parametrii calculelor." />
+      <PageHeader title="Setări" intro="Categoriile, aspectul, notificările, securitatea și parametrii calculelor." />
 
-      {/* Pe telefon și tabletă, fiecare secțiune e pliată: se vede lista de titluri, iar o secțiune se deschide la atingere. */}
-      <CollapsiblePanels>
-      <div className="grid gap-4 lg:gap-6 xl:grid-cols-[1.4fr_1fr]">
+      <Tabs tabs={SETTINGS_TABS} value={tab} onChange={setTab} className="mb-5" label="Secțiunile setărilor" data-tour="setari-tabs" />
+
+      {tab === "general" && (
+        <div className="grid gap-4 lg:gap-6 xl:grid-cols-[1.4fr_1fr] xl:items-start">
         <Panel title="Categorii" summary={cats ? `${cats.length} categorii · nevoi și dorințe` : undefined}>
           <p className="mb-4 text-[13px] text-ink-soft">
-            Pentru cheltuieli, atinge „Nevoie” / „Dorință” ca să schimbi tipul. Asta decide cum se calculează metodele de buget.
+            Atinge „Nevoie” / „Dorință” ca să schimbi tipul unei cheltuieli: asta decide cum se calculează metodele de buget.
           </p>
+          {/* Câte un tip odată (venituri, costuri fixe…), ca lista să nu aibă 20 de rânduri. */}
+          {cats && (
+            <Tabs
+              tabs={kinds.map((k) => ({
+                key: k,
+                label: KIND_LABEL[k],
+                short: { income: "Venituri", fixed: "Fixe", variable: "Variabile", saving: "Economii" }[k],
+                badge: <span className="num text-[11px] text-ink-faint">{cats.filter((c) => c.kind === k).length}</span>,
+              }))}
+              value={catKind}
+              onChange={(k) => {
+                setCatKind(k);
+                setNewCat({ ...newCat, kind: k });
+              }}
+              label="Tipul categoriilor"
+              className="mb-3 p-0.5! [&_button]:min-h-[32px] [&_button]:px-2.5 [&_button]:text-[12.5px]"
+            />
+          )}
           {cats &&
-            kinds.map((k) => (
+            [catKind].map((k) => (
               <div key={k} className="mb-4">
-                <h3 className="mb-0.5 text-[13px] font-semibold uppercase tracking-[0.04em] text-ink-soft">{KIND_LABEL[k]}</h3>
                 <ul>
                   {cats.filter((c) => c.kind === k).map((c) => (
                     <CategoryRow
@@ -237,31 +270,31 @@ export default function SettingsPage() {
           </form>
         </Panel>
 
-        <div className="flex flex-col gap-4 lg:gap-6">
+          <div className="flex flex-col gap-4 lg:gap-6">
           <Panel title="Aspect" summary="Temă de zi, de noapte sau automată">
             <p className="mb-3 text-[13px] text-ink-soft">
               Tema de zi sau de noapte. „Auto” o schimbă singură după setarea telefonului sau a calculatorului. Alegerea se
-              păstrează pe fiecare dispozitiv; o poți schimba rapid și din butonul ☀️/🌙 din bara aplicației.
+              păstrează pe fiecare dispozitiv; o poți schimba rapid și din butonul ☀️/🌙 din meniu (pe telefon, din „Mai mult”).
             </p>
             <ThemeChooser />
           </Panel>
 
-          <NotificationSettings onToast={(msg) => setToast(msg)} />
+          <Panel title="Tutorial" tour="setari-tour">
+            <p className="mb-3 text-[13px] text-ink-soft">
+              Turul aplicației îți arată, pe fiecare pagină, unde găsești lucrurile importante. Îl poți relua oricând.
+            </p>
+            <button type="button" className="btn-primary" onClick={() => replayTour()}>
+              ▶ Redă tutorialul
+            </button>
+          </Panel>
 
-          <SecurityCenter onToast={(msg) => setToast(msg)} />
+          </div>
+        </div>
+      )}
 
-          <AccountSecurity onToast={(msg) => setToast(msg)} />
-
-          {status?.user?.isAdmin && (
-            <DatabaseManager
-              onToast={(msg) => setToast(msg)}
-              onRefresh={() => {
-                reload();
-                bump();
-              }}
-            />
-          )}
-
+      {tab === "calcule" && (
+        <div className="grid gap-4 lg:gap-6 xl:grid-cols-2 xl:items-start">
+          <div className="flex flex-col gap-4 lg:gap-6">
           <Panel title="Modul Investiții" summary={params.enable_investments === "1" ? "Pornit" : "Oprit"}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -318,6 +351,7 @@ export default function SettingsPage() {
             </form>
           </Panel>
 
+          </div>
           <Panel title="Curs valutar și inflație" summary={`1 € = ${eurRate.toFixed(4)} lei · inflație ${inflationRate.toFixed(1)}%`}>
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-[13px] text-ink-soft">Curs BNR</span>
@@ -366,6 +400,23 @@ export default function SettingsPage() {
             </div>
           </Panel>
 
+        </div>
+      )}
+
+      {tab === "notificari" && <div className="max-w-3xl">{/* Telegram și e-mail */}
+          <NotificationSettings onToast={(msg) => setToast(msg)} />
+      </div>}
+
+      {tab === "securitate" && (
+        <div className="grid gap-4 lg:gap-6 xl:grid-cols-2 xl:items-start">
+          <SecurityCenter onToast={(msg) => setToast(msg)} />
+
+          <AccountSecurity onToast={(msg) => setToast(msg)} />
+        </div>
+      )}
+
+      {tab === "date" && (
+        <div className="grid gap-4 lg:gap-6 xl:grid-cols-2 xl:items-start">
           <Panel title="Copie de siguranță" summary="Export și restaurare (fișier JSON)">
             <p className="mb-3 text-[13px] text-ink-soft">
               Datele stau în baza de date Supabase. Exportă periodic un fișier JSON și păstrează-l pe NAS sau în cloud.
@@ -391,9 +442,18 @@ export default function SettingsPage() {
               />
             </div>
           </Panel>
+          {status?.user?.isAdmin && (
+            <DatabaseManager
+              onToast={(msg) => setToast(msg)}
+              onRefresh={() => {
+                reload();
+                bump();
+              }}
+            />
+          )}
+
         </div>
-      </div>
-      </CollapsiblePanels>
+      )}
       <Toast message={toast} onDone={() => setToast(null)} />
     </>
   );

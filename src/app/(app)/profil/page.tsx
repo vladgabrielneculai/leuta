@@ -3,10 +3,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GoalsRiskFields, PersonalFields, WorkFields, fromDraft, toDraft, type ProfileDraft } from "@/components/ProfileFields";
-import { api, downloadFile, Modal, PageHeader, Panel, Skeleton, Toast, useApi, useApp } from "@/components/ui";
+import { api, CollapsiblePanels, downloadFile, Modal, PageHeader, Panel, Skeleton, Tabs, Toast, useApi, useApp, useTab } from "@/components/ui";
 import { daysUntilPayday, displayName, OCCUPATIONS, type Profile } from "@/lib/profile";
 
 type ProfileResponse = { profile: Profile; age: number | null; emergency: { months: number; reasons: string[] } };
+
+const PROFILE_TABS = [
+  { key: "personal", label: "Date personale", short: "Personal" },
+  { key: "munca", label: "Ocupație și venit", short: "Venit" },
+  { key: "obiective", label: "Obiective și risc", short: "Obiective" },
+] as const;
+type ProfileTab = (typeof PROFILE_TABS)[number]["key"];
 
 export default function ProfilePage() {
   const { bump } = useApp();
@@ -18,6 +25,7 @@ export default function ProfilePage() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [tab, setTab] = useTab<ProfileTab>("profil", "personal", PROFILE_TABS.map((t) => t.key));
 
   useEffect(() => {
     if (data && !draft) {
@@ -66,7 +74,7 @@ export default function ProfilePage() {
     <>
       <PageHeader
         title="Profilul meu"
-        intro="Cu cât știm mai multe despre situația ta, cu atât recomandările (fondul de urgență, bugetul, sfaturile lunii) sunt mai potrivite. Profilul e vizibil doar ție."
+        intro="Cu cât știm mai multe despre tine, cu atât recomandările sunt mai potrivite. Profilul e vizibil doar ție."
       />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
@@ -77,15 +85,15 @@ export default function ProfilePage() {
             save();
           }}
         >
-          <Panel title="Date personale">
-            <PersonalFields d={draft} set={set} />
-          </Panel>
-          <Panel title="Ocupație și venit">
-            <WorkFields d={draft} set={set} />
-          </Panel>
-          <Panel title="Obiective și profil de risc">
-            <GoalsRiskFields d={draft} set={set} />
-          </Panel>
+          {/* Un singur formular, împărțit în trei tab-uri: modificările se păstrează când treci de la unul la altul. */}
+          <div>
+            <Tabs tabs={PROFILE_TABS} value={tab} onChange={setTab} className="mb-4" label="Secțiunile profilului" data-tour="profil-tabs" />
+            <Panel title={PROFILE_TABS.find((t) => t.key === tab)?.label}>
+              {tab === "personal" && <PersonalFields d={draft} set={set} />}
+              {tab === "munca" && <WorkFields d={draft} set={set} />}
+              {tab === "obiective" && <GoalsRiskFields d={draft} set={set} />}
+            </Panel>
+          </div>
           <div className="hidden justify-end sm:flex">
             <button className="btn-primary" type="submit" disabled={!dirty || busy}>{busy ? "Se salvează…" : "Salvează profilul"}</button>
           </div>
@@ -130,7 +138,9 @@ export default function ProfilePage() {
             </div>
           </Panel>
 
-          <Panel title="Datele tale">
+          {/* Acțiunile rare (export, ștergere, ieșire) se deschid la atingere pe telefon. */}
+          <CollapsiblePanels>
+          <Panel title="Datele tale" summary="Descarcă datele sau șterge contul">
             <p className="text-[13px] text-ink-soft">
               Descarcă tot ce știe Leuța despre tine (cont, profil, date financiare, notificări, istoric de autentificare) sau șterge definitiv contul.
             </p>
@@ -147,12 +157,13 @@ export default function ProfilePage() {
             </div>
           </Panel>
 
-          <Panel title="Cont">
+          <Panel title="Cont" summary="Parolă, 2FA, ieșire">
             <div className="flex flex-col gap-2">
-              <Link href="/setari" className="btn-ghost justify-start border border-line">🔐 Parolă, Face ID / 2FA și dispozitive</Link>
+              <Link href="/setari#securitate" className="btn-ghost justify-start border border-line">🔐 Parolă, Face ID / 2FA și dispozitive</Link>
               <button className="btn-danger justify-start border border-rosu/30" onClick={logout}>Ieșire din cont</button>
             </div>
           </Panel>
+          </CollapsiblePanels>
         </aside>
       </div>
 
