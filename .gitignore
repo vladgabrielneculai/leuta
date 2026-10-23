@@ -5,10 +5,6 @@ node_modules
 !.env.example
 *.tsbuildinfo
 
-# Desktop launcher build outputs (built locally with build-exe.ps1)
-*.exe
-*.dll
-native-libs/
 data/
 scratch/
 
