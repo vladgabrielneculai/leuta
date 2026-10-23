@@ -63,6 +63,11 @@ export async function POST(req: NextRequest) {
     }
     const body = (await req.json()) as { version: number; data: Record<string, Record<string, unknown>[]> };
     if (![1, 2].includes(body.version) || !body.data) throw new Error("Fișierul nu este un backup valid al aplicației");
+    // Ștergerea unei vacanțe șterge în cascadă banii și cheltuielile ei: un backup cu vacanțe, dar fără
+    // aceste tabele (tăiat sau editat de mână), le-ar pierde definitiv.
+    if (body.data.trips && (!body.data.trip_funds || !body.data.trip_expenses)) {
+      throw new Error("Backup incomplet: are vacanțe, dar lipsesc banii sau cheltuielile lor (trip_funds, trip_expenses).");
+    }
     const db = await getDb();
 
     await db.transaction(async (tx) => {
