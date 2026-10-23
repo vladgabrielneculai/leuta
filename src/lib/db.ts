@@ -97,10 +97,14 @@ function pool(): Pool {
     activeUrl = url;
     const conn = parseUrl(url);
     const local = conn.host === "localhost" || conn.host === "127.0.0.1";
+    // Certificatul CA al Supabase (Dashboard → Database → SSL Configuration → Download certificate), dacă e setat:
+    // conexiunea verifică atunci și identitatea serverului, nu doar criptează traficul. În Vercel, valoarea
+    // se poate lipi pe mai multe rânduri sau pe unul singur, cu „\n” în loc de rânduri noi.
+    const ca = process.env.DATABASE_CA_CERT?.trim().replace(/\\n/g, "\n");
     const p = new Pool({
       ...conn,
       // SSL obligatoriu spre Supabase; dezactivat doar pentru un Postgres local de test.
-      ssl: local ? false : { rejectUnauthorized: false },
+      ssl: local ? false : ca ? { ca, rejectUnauthorized: true } : { rejectUnauthorized: false },
       max: 3,
       // Conexiunile inactive se închid repede (recomandarea Vercel pentru Fluid compute).
       idleTimeoutMillis: 5_000,

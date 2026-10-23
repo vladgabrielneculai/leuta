@@ -34,7 +34,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     <button
       type="button"
       onClick={(e) => savePref(dark ? "light" : "dark", originOf(e))}
-      className={`relative flex h-9 w-9 items-center justify-center rounded-full border border-line bg-sheet text-ink-soft shadow-sm transition-all duration-200 hover:text-ink hover:shadow active:scale-90 ${className}`}
+      className={`relative flex h-9 w-9 items-center justify-center rounded-full border border-line bg-sheet text-ink-soft shadow-xs transition-all duration-200 hover:text-ink hover:shadow-sm active:scale-90 ${className}`}
       aria-label={dark ? "Treci pe tema de zi" : "Treci pe tema de noapte"}
       title={dark ? "Tema de zi" : "Tema de noapte"}
     >
@@ -68,7 +68,7 @@ export function ThemeChooser() {
           aria-checked={pref === o.v}
           onClick={(e) => savePref(o.v, originOf(e))}
           className={`min-w-0 rounded-lg border px-2.5 py-2.5 text-left transition-all sm:px-3 duration-150 active:scale-[0.98] ${
-            pref === o.v ? "border-albastru bg-albastru-tint text-ink shadow-sm" : "border-line bg-field text-ink-soft hover:border-line-strong hover:text-ink"
+            pref === o.v ? "border-albastru bg-albastru-tint text-ink shadow-xs" : "border-line bg-field text-ink-soft hover:border-line-strong hover:text-ink"
           }`}
         >
           <div className="text-[14px] font-semibold">{o.label}</div>

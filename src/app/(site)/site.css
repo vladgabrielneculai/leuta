@@ -1,74 +1,286 @@
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
-@import "@fontsource/ibm-plex-mono/600.css";
-@import "@fontsource/ibm-plex-mono/700.css";
+@import '@fontsource/ibm-plex-mono/400.css' layer(base);
+@import '@fontsource/ibm-plex-mono/500.css' layer(base);
+@import '@fontsource/ibm-plex-mono/600.css' layer(base);
+@import '@fontsource/ibm-plex-mono/700.css' layer(base);
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* Ca în Tailwind v3: `hover:` se aplică pe orice dispozitiv (v4 îl limitează la cele cu mouse). */
+@custom-variant hover (&:hover);
+
+@theme {
+  --color-paper: rgb(var(--paper));
+  --color-canvas: rgb(var(--paper));
+  --color-sheet: rgb(var(--sheet));
+  --color-field: rgb(var(--field));
+  --color-on-accent: rgb(var(--on-accent));
+
+  --color-ink: rgb(var(--ink));
+  --color-ink-soft: rgb(var(--ink-soft));
+  --color-ink-faint: rgb(var(--ink-faint));
+
+  --color-line: rgb(var(--line));
+  --color-line-strong: rgb(var(--line-strong));
+
+  --color-leu: rgb(var(--leu));
+  --color-leu-tint: rgb(var(--leu-tint));
+  --color-leu-soft: rgb(var(--leu-soft));
+
+  --color-mov: rgb(var(--mov));
+  --color-mov-tint: rgb(var(--mov-tint));
+
+  --color-rosu: rgb(var(--rosu));
+  --color-rosu-tint: rgb(var(--rosu-tint));
+
+  --color-galben: rgb(var(--galben));
+  --color-galben-tint: rgb(var(--galben-tint));
+
+  --color-albastru: rgb(var(--albastru));
+  --color-albastru-tint: rgb(var(--albastru-tint));
+  --color-albastru-deep: rgb(var(--albastru-deep));
+
+  --color-verde: rgb(var(--leu));
+  --color-violet: rgb(var(--mov));
+  --color-rosu-soft: rgb(var(--rosu));
+
+  --font-display: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-sans: 'IBM Plex Mono', ui-monospace, monospace;
+}
 
 /*
- * Aceleași tokenuri ca în aplicație: bonuri de hârtie termică (--sheet) pe o masă (--paper),
- * cerneală aproape neagră și culorile bancnotelor pentru sume și grafice.
- */
-:root {
-  color-scheme: light;
-  --paper: 234 229 219;
-  --sheet: 253 251 246;
-  --field: 255 255 252;
-  --ink: 31 29 26;
-  --ink-soft: 92 86 77;
-  --ink-faint: 140 133 122;
-  --line: 224 217 204;
-  --line-strong: 196 187 171;
-  --leu: 61 122 78;
-  --leu-tint: 223 236 222;
-  --mov: 106 78 153;
-  --mov-tint: 233 225 240;
-  --rosu: 181 69 106;
-  --rosu-tint: 246 223 228;
-  --galben: 168 124 16;
-  --galben-tint: 247 236 201;
-  --albastru: 46 92 138;
-  --albastru-tint: 223 230 238;
-  --shadow: 74 60 38;
-  --tooth: 7px;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --paper: 16 15 13;
-    --sheet: 30 28 25;
-    --field: 23 22 19;
-    --ink: 237 231 219;
-    --ink-soft: 176 168 154;
-    --ink-faint: 128 121 109;
-    --line: 54 50 44;
-    --line-strong: 77 72 63;
-    --leu: 98 186 128;
-    --leu-tint: 26 46 31;
-    --mov: 163 141 222;
-    --mov-tint: 40 33 56;
-    --rosu: 232 124 160;
-    --rosu-tint: 58 28 38;
-    --galben: 228 183 76;
-    --galben-tint: 56 44 15;
-    --albastru: 110 164 220;
-    --albastru-tint: 27 37 50;
-    --shadow: 0 0 0;
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  /* Ca în Tailwind v3: butoanele au cursorul „mână” (v4 l-a scos din stilurile de bază). */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 }
 
-/* Culorile ca valori CSS complete, pentru stiluri inline și SVG (fill="var(--c-leu)"). */
-:root {
-  --c-paper: rgb(var(--paper));
-  --c-sheet: rgb(var(--sheet));
-  --c-ink: rgb(var(--ink));
-  --c-leu: rgb(var(--leu));
-  --c-mov: rgb(var(--mov));
-  --c-rosu: rgb(var(--rosu));
-  --c-galben: rgb(var(--galben));
-  --c-albastru: rgb(var(--albastru));
+@utility panel {
+  /* Bon de hârtie cu margini zimțate sus și jos (ca în aplicație). */
+  @apply relative bg-sheet;
+  margin-block: var(--tooth);
+  filter: drop-shadow(0 1px 1.5px rgb(var(--shadow) / 0.14))
+    drop-shadow(0 10px 24px rgb(var(--shadow) / 0.08));
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: var(--tooth);
+    pointer-events: none;
+    background-repeat: repeat-x;
+    background-size: calc(var(--tooth) * 2) var(--tooth);
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: var(--tooth);
+    pointer-events: none;
+    background-repeat: repeat-x;
+    background-size: calc(var(--tooth) * 2) var(--tooth);
+  }
+  &::before {
+    bottom: 100%;
+    background-image: conic-gradient(
+      from 135deg at 50% 0,
+      rgb(var(--sheet)) 90deg,
+      transparent 0
+    );
+    background-position: 0 100%;
+  }
+  &::after {
+    top: 100%;
+    background-image: conic-gradient(
+      from -45deg at 50% 100%,
+      rgb(var(--sheet)) 90deg,
+      transparent 0
+    );
+  }
+}
+
+@utility kicker {
+  @apply text-[12px] font-medium uppercase tracking-[0.18em] text-ink-faint sm:text-[13px];
+}
+
+@utility receipt-title {
+  @apply text-[13px] font-semibold uppercase tracking-[0.08em];
+}
+
+@utility rule-dashed {
+  height: 1px;
+  background-image: linear-gradient(
+    to right,
+    rgb(var(--line-strong)) 55%,
+    transparent 0
+  );
+  background-size: 7px 1px;
+  background-repeat: repeat-x;
+}
+
+@utility rule-double {
+  height: 4px;
+  border-top: 1px solid rgb(var(--ink) / 0.55);
+  border-bottom: 1px solid rgb(var(--ink) / 0.55);
+}
+
+@utility leader-dots {
+  height: 4px;
+  transform: translateY(-1px);
+  background-image: radial-gradient(
+    circle,
+    rgb(var(--ink-faint) / 0.8) 0.9px,
+    transparent 1.3px
+  );
+  background-size: 6px 4px;
+  background-repeat: repeat-x;
+  background-position: left bottom;
+}
+
+@utility btn {
+  @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md px-5 py-2.5 text-[15px] font-semibold transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+}
+
+@utility btn-primary {
+  @apply btn bg-ink text-sheet shadow-xs hover:bg-ink/85 hover:shadow-md;
+}
+
+@utility btn-ghost {
+  @apply btn border border-line-strong/80 text-ink hover:bg-sheet;
+}
+
+@utility field {
+  @apply block w-full min-w-0 rounded-md border border-line-strong/80 bg-field px-4 py-3 text-[16px] text-ink placeholder:text-ink-faint transition-all duration-150 focus:border-albastru focus:outline-hidden focus:ring-1 focus:ring-albastru;
+}
+
+@utility stamp {
+  @apply inline-block -rotate-3 rounded-[3px] border-2 border-leu px-2 py-0.5 text-[12px] font-bold uppercase tracking-widest text-leu;
+}
+
+@utility prose-legal {
+  /* Textele legale */
+  @apply text-[15px] leading-[1.7] text-ink-soft;
+  & h2 {
+    @apply mt-10 mb-3 text-[19px] font-bold text-ink;
+  }
+  & h3 {
+    @apply mt-6 mb-2 text-[16px] font-semibold text-ink;
+  }
+  & p {
+    @apply mb-4;
+  }
+  & ul {
+    @apply mb-4;
+  }
+  & table {
+    @apply mb-4;
+  }
+  & ul {
+    @apply list-disc space-y-1.5 pl-5;
+  }
+  & a {
+    @apply text-albastru underline underline-offset-2;
+  }
+  & strong {
+    @apply text-ink;
+  }
+  & table {
+    @apply w-full border-collapse text-[13.5px];
+  }
+  & th {
+    @apply border border-line px-3 py-2 text-left align-top;
+  }
+  & td {
+    @apply border border-line px-3 py-2 text-left align-top;
+  }
+  & th {
+    @apply bg-paper font-semibold text-ink;
+  }
+}
+
+@layer utilities {
+  /*
+ * Aceleași tokenuri ca în aplicație: bonuri de hârtie termică (--sheet) pe o masă (--paper),
+ * cerneală aproape neagră și culorile bancnotelor pentru sume și grafice.
+ */
+  :root {
+    color-scheme: light;
+    --paper: 234 229 219;
+    --sheet: 253 251 246;
+    --field: 255 255 252;
+    --ink: 31 29 26;
+    --ink-soft: 92 86 77;
+    --ink-faint: 140 133 122;
+    --line: 224 217 204;
+    --line-strong: 196 187 171;
+    --leu: 61 122 78;
+    --leu-tint: 223 236 222;
+    --mov: 106 78 153;
+    --mov-tint: 233 225 240;
+    --rosu: 181 69 106;
+    --rosu-tint: 246 223 228;
+    --galben: 168 124 16;
+    --galben-tint: 247 236 201;
+    --albastru: 46 92 138;
+    --albastru-tint: 223 230 238;
+    --shadow: 74 60 38;
+    --tooth: 7px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --paper: 16 15 13;
+      --sheet: 30 28 25;
+      --field: 23 22 19;
+      --ink: 237 231 219;
+      --ink-soft: 176 168 154;
+      --ink-faint: 128 121 109;
+      --line: 54 50 44;
+      --line-strong: 77 72 63;
+      --leu: 98 186 128;
+      --leu-tint: 26 46 31;
+      --mov: 163 141 222;
+      --mov-tint: 40 33 56;
+      --rosu: 232 124 160;
+      --rosu-tint: 58 28 38;
+      --galben: 228 183 76;
+      --galben-tint: 56 44 15;
+      --albastru: 110 164 220;
+      --albastru-tint: 27 37 50;
+      --shadow: 0 0 0;
+    }
+  }
+
+  /* Culorile ca valori CSS complete, pentru stiluri inline și SVG (fill="var(--c-leu)"). */
+  :root {
+    --c-paper: rgb(var(--paper));
+    --c-sheet: rgb(var(--sheet));
+    --c-ink: rgb(var(--ink));
+    --c-leu: rgb(var(--leu));
+    --c-mov: rgb(var(--mov));
+    --c-rosu: rgb(var(--rosu));
+    --c-galben: rgb(var(--galben));
+    --c-albastru: rgb(var(--albastru));
+  }
 }
 
 @layer base {
@@ -95,77 +307,6 @@
   .num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; white-space: nowrap; }
   :focus-visible { outline: 2px solid rgb(var(--albastru)); outline-offset: 3px; border-radius: 4px; }
   a, button { -webkit-tap-highlight-color: transparent; }
-}
-
-@layer components {
-  /* Bon de hârtie cu margini zimțate sus și jos (ca în aplicație). */
-  .panel {
-    @apply relative bg-sheet;
-    margin-block: var(--tooth);
-    filter: drop-shadow(0 1px 1.5px rgb(var(--shadow) / 0.14)) drop-shadow(0 10px 24px rgb(var(--shadow) / 0.08));
-  }
-  .panel::before, .panel::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: var(--tooth);
-    pointer-events: none;
-    background-repeat: repeat-x;
-    background-size: calc(var(--tooth) * 2) var(--tooth);
-  }
-  .panel::before {
-    bottom: 100%;
-    background-image: conic-gradient(from 135deg at 50% 0, rgb(var(--sheet)) 90deg, transparent 0);
-    background-position: 0 100%;
-  }
-  .panel::after {
-    top: 100%;
-    background-image: conic-gradient(from -45deg at 50% 100%, rgb(var(--sheet)) 90deg, transparent 0);
-  }
-  .kicker { @apply text-[12px] font-medium uppercase tracking-[0.18em] text-ink-faint sm:text-[13px]; }
-  .receipt-title { @apply text-[13px] font-semibold uppercase tracking-[0.08em]; }
-  .rule-dashed {
-    height: 1px;
-    background-image: linear-gradient(to right, rgb(var(--line-strong)) 55%, transparent 0);
-    background-size: 7px 1px;
-    background-repeat: repeat-x;
-  }
-  .rule-double {
-    height: 4px;
-    border-top: 1px solid rgb(var(--ink) / 0.55);
-    border-bottom: 1px solid rgb(var(--ink) / 0.55);
-  }
-  .leader-dots {
-    height: 4px;
-    transform: translateY(-1px);
-    background-image: radial-gradient(circle, rgb(var(--ink-faint) / 0.8) 0.9px, transparent 1.3px);
-    background-size: 6px 4px;
-    background-repeat: repeat-x;
-    background-position: left bottom;
-  }
-  .btn {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md px-5 py-2.5 text-[15px] font-semibold transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
-  }
-  .btn-primary { @apply btn bg-ink text-sheet shadow-sm hover:bg-ink/85 hover:shadow-md; }
-  .btn-ghost { @apply btn border border-line-strong/80 text-ink hover:bg-sheet; }
-  .field {
-    @apply block w-full min-w-0 rounded-md border border-line-strong/80 bg-field px-4 py-3 text-[16px] text-ink placeholder:text-ink-faint transition-all duration-150 focus:border-albastru focus:outline-none focus:ring-1 focus:ring-albastru;
-  }
-  .stamp {
-    @apply inline-block -rotate-3 rounded-[3px] border-2 border-leu px-2 py-0.5 text-[12px] font-bold uppercase tracking-[0.1em] text-leu;
-  }
-  /* Textele legale */
-  .prose-legal { @apply text-[15px] leading-[1.7] text-ink-soft; }
-  .prose-legal h2 { @apply mt-10 mb-3 text-[19px] font-bold text-ink; }
-  .prose-legal h3 { @apply mt-6 mb-2 text-[16px] font-semibold text-ink; }
-  .prose-legal p, .prose-legal ul, .prose-legal table { @apply mb-4; }
-  .prose-legal ul { @apply list-disc space-y-1.5 pl-5; }
-  .prose-legal a { @apply text-albastru underline underline-offset-2; }
-  .prose-legal strong { @apply text-ink; }
-  .prose-legal table { @apply w-full border-collapse text-[13.5px]; }
-  .prose-legal th, .prose-legal td { @apply border border-line px-3 py-2 text-left align-top; }
-  .prose-legal th { @apply bg-paper font-semibold text-ink; }
 }
 
 /* ------------------------------------------------------------------ telefon */

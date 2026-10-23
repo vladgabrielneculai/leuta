@@ -148,7 +148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       <ReauthDialog />
       {confirmState && (
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-ink/55 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md animate-backdrop-fade sm:items-center sm:p-4"
+          className="fixed inset-0 z-100 flex items-end justify-center bg-ink/55 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md animate-backdrop-fade sm:items-center sm:p-4"
           onClick={() => handleConfirmClose(false)}
         >
           <div
@@ -161,14 +161,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             <div
               className={`absolute top-0 left-0 right-0 h-1 ${
                 confirmState.options.danger
-                  ? "bg-gradient-to-r from-rosu via-rosu-soft to-rosu"
+                  ? "bg-linear-to-r from-rosu via-rosu-soft to-rosu"
                   : "bg-ink"
               }`}
             />
 
             <div className="flex items-start gap-4">
               <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md shadow-sm border ${
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-md shadow-xs border ${
                   confirmState.options.danger
                     ? "bg-rosu/10 border-rosu/25 text-rosu"
                     : "bg-albastru/10 border-albastru/25 text-albastru"
@@ -219,8 +219,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 autoFocus
                 className={
                   confirmState.options.danger
-                    ? "btn-danger min-h-[44px] bg-rosu-tint/60 px-4 py-2 text-[14px] font-semibold shadow-sm sm:min-h-0 sm:bg-transparent sm:text-[13px]"
-                    : "btn-primary min-h-[44px] px-4 py-2 text-[14px] font-semibold shadow-sm sm:min-h-0 sm:text-[13px]"
+                    ? "btn-danger min-h-[44px] bg-rosu-tint/60 px-4 py-2 text-[14px] font-semibold shadow-xs sm:min-h-0 sm:bg-transparent sm:text-[13px]"
+                    : "btn-primary min-h-[44px] px-4 py-2 text-[14px] font-semibold shadow-xs sm:min-h-0 sm:text-[13px]"
                 }
                 onClick={() => handleConfirmClose(true)}
               >
@@ -407,7 +407,7 @@ export function PageHeader({ title, intro, actions }: { title: string; intro?: R
           <h1 className="text-[24px] font-bold leading-tight sm:text-[31px]">{title}</h1>
           {intro && <p className="mt-1.5 text-[14px] text-ink-soft sm:text-[15px]">{intro}</p>}
         </div>
-        {actions && <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap [&>*]:w-full sm:[&>*]:w-auto [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}
+        {actions && <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap *:w-full sm:*:w-auto [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}
       </div>
       <div className="rule-double mt-4" aria-hidden />
     </header>
@@ -577,7 +577,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   if (!open || typeof document === "undefined") return null;
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-ink/40 backdrop-blur-[2px] animate-backdrop-fade sm:items-start sm:overflow-y-auto sm:p-10"
+      className="fixed inset-0 z-80 flex items-end justify-center bg-ink/40 backdrop-blur-[2px] animate-backdrop-fade sm:items-start sm:overflow-y-auto sm:p-10"
       onClick={onClose}
     >
       <div
@@ -645,7 +645,7 @@ export function Toast({ message, onDone }: { message: string | null; onDone: () 
   return createPortal(
     <div
       role="status"
-      className="sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[90] rounded-md bg-ink px-4 py-3 text-center text-[14px] text-sheet shadow-lg sm:inset-x-auto sm:right-5 sm:rounded-md sm:py-2.5 sm:text-left lg:bottom-5"
+      className="sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-90 rounded-md bg-ink px-4 py-3 text-center text-[14px] text-sheet shadow-lg sm:inset-x-auto sm:right-5 sm:rounded-md sm:py-2.5 sm:text-left lg:bottom-5"
     >
       {message}
     </div>,

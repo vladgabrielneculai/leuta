@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE, userForToken } from "@/lib/auth";
+import { clientIp, SESSION_COOKIE, userForToken } from "@/lib/auth";
+import { rateLimit } from "@/lib/rateLimit";
 
 /**
  * Poarta de autentificare pe server.
@@ -26,6 +27,32 @@ const PUBLIC_PATHS = [
 ];
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/**
+ * Limite de cereri per IP pe minut (vezi lib/rateLimit.ts). Rutele publice de autentificare au o limită
+ * strictă (ghicirea parolelor/codurilor, provocări WebAuthn create fără cont); restul API-ului, una largă,
+ * peste ce face aplicația în uz normal. Telegram și Vercel Cron vin de pe IP-urile lor și au secretul lor.
+ */
+const STRICT_PATHS = new Set([
+  "/api/auth/login", "/api/auth/setup", "/api/auth/register", "/api/auth/reset", "/api/auth/reauth/verify",
+  "/api/auth/passkey/login/options", "/api/auth/passkey/login/verify", "/api/waitlist",
+]);
+const UNLIMITED_PATHS = new Set(["/api/telegram/webhook", "/api/cron/daily"]);
+const STRICT_PER_MIN = 60;
+const API_PER_MIN = 300;
+
+function tooManyRequests(req: NextRequest, pathname: string) {
+  if (!pathname.startsWith("/api/") || UNLIMITED_PATHS.has(pathname)) return null;
+  const ip = clientIp(req.headers);
+  const checks = [rateLimit(`api:${ip}`, API_PER_MIN, 60_000)];
+  if (STRICT_PATHS.has(pathname)) checks.push(rateLimit(`auth:${ip}`, STRICT_PER_MIN, 60_000));
+  const blocked = checks.find((c) => !c.ok);
+  if (!blocked) return null;
+  return NextResponse.json(
+    { error: "Prea multe cereri. Încearcă din nou peste un minut." },
+    { status: 429, headers: { "Retry-After": String(blocked.retryAfterSec) } },
+  );
+}
 
 /**
  * Protecție CSRF suplimentară (pe lângă cookie-ul SameSite=Lax): o cerere care modifică date trebuie să
@@ -90,6 +117,8 @@ export async function proxy(req: NextRequest) {
   if (pathname.startsWith("/api/") && isCrossSite(req)) {
     return NextResponse.json({ error: "Cerere respinsă." }, { status: 403 });
   }
+  const limited = tooManyRequests(req, pathname);
+  if (limited) return limited;
 
   if (SITE_HOSTS.includes(hostOf(req))) return siteRoute(req, headers);
 

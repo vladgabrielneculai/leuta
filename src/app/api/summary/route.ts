@@ -1,12 +1,13 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { buildSummary } from "@/lib/analytics";
 import { refreshRates } from "@/lib/fx";
-import { currentMonth, lastMonths } from "@/lib/util";
+import { currentMonth, isMonth, lastMonths } from "@/lib/util";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const month = req.nextUrl.searchParams.get("month") ?? currentMonth();
+  if (!isMonth(month)) return NextResponse.json({ error: "Luna trebuie să fie în formatul AAAA-LL." }, { status: 400 });
   const summary = await buildSummary(month);
 
   // Cursul BNR se actualizează DUPĂ ce răspunsul a plecat (Vercel păstrează funcția vie pentru

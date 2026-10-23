@@ -22,7 +22,7 @@ function TripCard({ t }: { t: TripListItem }) {
             {periodLabel(t)}
           </p>
         </div>
-        <span className="shrink-0 rounded px-2 py-0.5 text-[12px] font-medium" style={{ color: PHASE_STYLE[phase].color, background: PHASE_STYLE[phase].bg }}>
+        <span className="shrink-0 rounded-sm px-2 py-0.5 text-[12px] font-medium" style={{ color: PHASE_STYLE[phase].color, background: PHASE_STYLE[phase].bg }}>
           {PHASE_STYLE[phase].label}
         </span>
       </div>

@@ -174,7 +174,7 @@ export default function BankScheduleImport({
               </p>
             )}
 
-            <div className="mt-3 max-h-[180px] overflow-auto rounded border border-line bg-sheet">
+            <div className="mt-3 max-h-[180px] overflow-auto rounded-sm border border-line bg-sheet">
               <table className="num w-full text-left text-[12px]">
                 <thead className="sticky top-0 border-b border-line bg-paper">
                   <tr>

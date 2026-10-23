@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   createSession, generateSalt, hashPassword, logAuthEvent, MIN_PASSWORD_LENGTH, requestMeta, sessionCookieOptions,
+  validateUsername,
 } from "@/lib/auth";
 import { getDbFor, getSystemDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
@@ -15,9 +16,8 @@ export async function POST(req: NextRequest) {
     const password = String(body.password ?? "").slice(0, 200);
     const seedDemo = !!body.seedDemo;
 
-    if (!username || username.length < 3) {
-      return NextResponse.json({ error: "Numele de utilizator trebuie să aibă cel puțin 3 caractere." }, { status: 400 });
-    }
+    const usernameError = validateUsername(username);
+    if (usernameError) return NextResponse.json({ error: usernameError }, { status: 400 });
     // Aplicația e publică pe internet, deci cerem o parolă lungă.
     if (password.length < MIN_PASSWORD_LENGTH) {
       return NextResponse.json({ error: `Parola trebuie să aibă cel puțin ${MIN_PASSWORD_LENGTH} caractere.` }, { status: 400 });

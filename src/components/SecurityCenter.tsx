@@ -190,7 +190,7 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
 
   return (
     <Panel title="Securitate & dispozitive">
-      {error && <div className="mb-3 rounded bg-rosu-tint p-2.5 text-[13px] font-medium text-rosu">{error}</div>}
+      {error && <div className="mb-3 rounded-sm bg-rosu-tint p-2.5 text-[13px] font-medium text-rosu">{error}</div>}
 
       {totp && !totp.enabled && (
         <p className="mb-4 rounded-md bg-paper p-3 text-[13px] text-ink-soft">
@@ -295,7 +295,7 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
           Istoric autentificări
           {failed24h > 0 && <span className="ml-2 rounded-full bg-rosu-tint px-2 py-0.5 text-[11px] text-rosu">{failed24h} eșuate în ultimele 24h</span>}
         </h4>
-        <div className="max-h-[260px] overflow-auto rounded border border-line">
+        <div className="max-h-[260px] overflow-auto rounded-sm border border-line">
           <table className="w-full text-left text-[12px]">
             <tbody className="divide-y divide-line">
               {events.map((e) => (

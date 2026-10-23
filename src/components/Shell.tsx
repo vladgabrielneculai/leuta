@@ -318,7 +318,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         aria-current={on ? "page" : undefined}
         className={`flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] font-medium transition-colors ${on ? "text-ink" : "text-ink-faint"}`}
       >
-        <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${on ? "bg-ink/[0.08]" : ""}`}>
+        <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${on ? "bg-ink/8" : ""}`}>
           <Icon d={t.icon} strokeWidth={on ? 2.2 : 1.7} />
         </span>
         {t.label}
@@ -354,7 +354,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           {user && (
             <div className="flex items-center justify-between border-t border-line/80 pt-3 text-[13px]">
               <Link href="/profil" className="flex min-w-0 items-center gap-2 truncate hover:text-leu" title="Profilul meu">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-leu/15 font-semibold text-leu text-[11px] uppercase shadow-sm">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-leu/15 font-semibold text-leu text-[11px] uppercase shadow-xs">
                   {initials(user)}
                 </span>
                 <span className="truncate font-medium text-ink">{user.firstName || user.username}</span>
@@ -372,7 +372,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="lg:hidden sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
+      <div className="lg:hidden sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur-sm px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between gap-2">
           <Link href="/" className="flex min-w-0 items-center gap-2">
             <Logo className="h-8 w-8 shrink-0" />
@@ -383,7 +383,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             {user && (
               <Link
                 href="/profil"
-                className="flex h-9 max-w-[9.5rem] items-center gap-1.5 rounded-full border border-line bg-sheet pl-1 pr-3 text-[13px] font-medium text-ink-soft active:scale-95"
+                className="flex h-9 max-w-38 items-center gap-1.5 rounded-full border border-line bg-sheet pl-1 pr-3 text-[13px] font-medium text-ink-soft active:scale-95"
                 title="Profilul meu"
               >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-leu/15 text-[11px] font-semibold uppercase text-leu">
@@ -441,7 +441,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       )}
 
       <nav
-        className="lg:hidden fixed inset-x-0 bottom-0 z-[60] border-t border-line bg-paper/95 backdrop-blur pb-[env(safe-area-inset-bottom)]"
+        className="lg:hidden fixed inset-x-0 bottom-0 z-60 border-t border-line bg-paper/95 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]"
         aria-label="Navigare rapidă"
       >
         <div className="grid grid-cols-5">
@@ -453,7 +453,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             aria-expanded={open}
             className={`flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] font-medium transition-colors ${moreOn ? "text-ink" : "text-ink-faint"}`}
           >
-            <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${moreOn ? "bg-ink/[0.08]" : ""}`}>
+            <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${moreOn ? "bg-ink/8" : ""}`}>
               <svg viewBox="0 0 24 24" className="h-[21px] w-[21px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
                 {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />}
               </svg>
