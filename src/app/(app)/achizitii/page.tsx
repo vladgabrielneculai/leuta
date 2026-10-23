@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Summary } from "@/lib/analytics";
@@ -11,8 +10,8 @@ import {
   type FinancingType,
   type PurchasePlan,
 } from "@/lib/affordability";
-import { addMonths, currentMonth, lei, monthLabel, pct } from "@/lib/util";
-import { Bar, Empty, Field, Modal, Money, PageHeader, Panel, Stat, Toast, useApi, useApp } from "@/components/ui";
+import { addMonths, currentMonth, lei, pct } from "@/lib/util";
+import { api, Empty, Field, Money, PageHeader, Panel, Stat, Toast, useApi, useApp } from "@/components/ui";
 
 const PRESETS = [
   { name: "Mașină", price: 45000, type: "loan" as FinancingType, down: 10000, term: 48, rate: 8.5 },
@@ -87,22 +86,18 @@ export default function AffordabilityPage() {
     }
     setSavingPlan(true);
     try {
-      await fetch("/api/crud/planned_purchases", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          category,
-          total_price: totalPrice,
-          financing_type: financingType,
-          down_payment: financingType === "loan" ? downPayment : 0,
-          loan_term_months: financingType === "loan" ? loanTermMonths : 0,
-          loan_interest_rate: financingType === "loan" ? loanInterestRate : 0,
-          target_date: targetDate,
-          priority,
-          notes,
-          created_at: new Date().toISOString(),
-        }),
+      await api("/api/crud/planned_purchases", "POST", {
+        name: name.trim(),
+        category,
+        total_price: totalPrice,
+        financing_type: financingType,
+        down_payment: financingType === "loan" ? downPayment : 0,
+        loan_term_months: financingType === "loan" ? loanTermMonths : 0,
+        loan_interest_rate: financingType === "loan" ? loanInterestRate : 0,
+        target_date: targetDate,
+        priority,
+        notes,
+        created_at: new Date().toISOString(),
       });
       refreshPlans?.();
       bump();
@@ -126,7 +121,7 @@ export default function AffordabilityPage() {
     )
       return;
 
-    await fetch(`/api/crud/planned_purchases?id=${id}`, { method: "DELETE" });
+    await api(`/api/crud/planned_purchases?id=${id}`, "DELETE").catch(() => undefined);
     refreshPlans?.();
     bump();
     setToast("Planul a fost șters.");
@@ -172,31 +167,25 @@ export default function AffordabilityPage() {
       return;
 
     const borrowed = p.total_price - (p.down_payment || 0);
-    const res = await fetch("/api/crud/loans", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: p.name,
-        bank: "Bancă nespecificată",
-        principal: borrowed,
-        start_date: new Date().toISOString().slice(0, 10),
-        term_months: p.loan_term_months || 36,
-        schedule_type: "annuity",
-        fixed_rate: p.loan_interest_rate || 7.9,
-        fixed_months: 36,
-        margin: 2.5,
-        ircc: 5.99,
-        fee_fixed_pct: 0,
-        fee_variable_pct: 0,
-        insurance_monthly: 0,
-        strategy: "term",
-        active: 1,
-        already_paid_principal: 0,
-        already_paid_interest: 0,
-      }),
+    const newLoan = await api<{ id: number }>("/api/crud/loans", "POST", {
+      name: p.name,
+      bank: "Bancă nespecificată",
+      principal: borrowed,
+      start_date: new Date().toISOString().slice(0, 10),
+      term_months: p.loan_term_months || 36,
+      schedule_type: "annuity",
+      fixed_rate: p.loan_interest_rate || 7.9,
+      fixed_months: 36,
+      margin: 2.5,
+      ircc: 5.99,
+      fee_fixed_pct: 0,
+      fee_variable_pct: 0,
+      insurance_monthly: 0,
+      strategy: "term",
+      active: 1,
+      already_paid_principal: 0,
+      already_paid_interest: 0,
     });
-
-    const newLoan = await res.json();
     bump();
     router.push(`/credite/${newLoan.id}`);
   };

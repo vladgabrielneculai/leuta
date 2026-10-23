@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession, logAuthEvent, requestMeta, requireRecentAuth } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const session = await getCurrentSession();
-  if (!session) return NextResponse.json({ error: "Neautentificat." }, { status: 401 });
+  if (!session) return jsonError("Neautentificat.", 401);
   const rows = await (await getDb())
     .prepare(
       `SELECT id, name, device_type, backed_up, created_at, last_used_at
@@ -27,7 +27,7 @@ export async function DELETE(req: NextRequest) {
     const res = await (await getDb())
       .prepare("DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?")
       .run(id, session.id);
-    if (!res.changes) return NextResponse.json({ error: "Dispozitivul nu există." }, { status: 404 });
+    if (!res.changes) return jsonError("Dispozitivul nu există.", 404);
     await logAuthEvent(session.id, true, "passkey-sters", requestMeta(req.headers));
     return NextResponse.json({ ok: true });
   } catch (err) {

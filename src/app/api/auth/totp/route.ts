@@ -4,7 +4,7 @@ import {
   getCurrentSession, logAuthEvent, requestMeta, requireRecentAuth, revokeSessions, sha256,
 } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { generateTotpSecret, matchTotp, otpauthUri } from "@/lib/totp";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ const pendingId = (sessionId: string) => sha256(`totp-setup:${sessionId}`);
 
 export async function GET() {
   const session = await getCurrentSession();
-  if (!session) return NextResponse.json({ error: "Neautentificat." }, { status: 401 });
+  if (!session) return jsonError("Neautentificat.", 401);
   const row = await (await getDb())
     .prepare("SELECT totp_enabled_at FROM users WHERE id = ? AND totp_secret IS NOT NULL")
     .get<{ totp_enabled_at: string }>(session.id);
@@ -54,11 +54,9 @@ export async function POST(req: NextRequest) {
       const pending = await db
         .prepare("SELECT challenge FROM auth_challenges WHERE id = ? AND user_id = ? AND purpose = 'totp-setup' AND expires_at > now()")
         .get<{ challenge: string }>(pendingId(session.sessionId), session.id);
-      if (!pending) return NextResponse.json({ error: "Configurarea a expirat. Pornește-o din nou." }, { status: 400 });
+      if (!pending) return jsonError("Configurarea a expirat. Pornește-o din nou.");
       const step = matchTotp(pending.challenge, String(body.code ?? ""));
-      if (step === null) {
-        return NextResponse.json({ error: "Codul nu se potrivește. Verifică ora telefonului și scrie codul afișat acum." }, { status: 400 });
-      }
+      if (step === null) return jsonError("Codul nu se potrivește. Verifică ora telefonului și scrie codul afișat acum.");
 
       await db
         .prepare("UPDATE users SET totp_secret = ?, totp_enabled_at = now(), totp_last_step = ? WHERE id = ?")
@@ -71,7 +69,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    return NextResponse.json({ error: "Acțiune necunoscută." }, { status: 400 });
+    return jsonError("Acțiune necunoscută.");
   } catch (err) {
     return errorResponse(err, "Autentificarea în doi pași nu a putut fi activată.");
   }
