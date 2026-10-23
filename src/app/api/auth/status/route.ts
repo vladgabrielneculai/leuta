@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentSession, isProtected, isSetupComplete, secondFactors } from "@/lib/auth";
+import { hasBetaAccess, isBetaDeployment } from "@/lib/beta";
 import { getDbFor } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,8 @@ export async function GET() {
   let session: Awaited<ReturnType<typeof getCurrentSession>>;
   try {
     [setupComplete, session] = await Promise.all([isSetupComplete(), getCurrentSession()]);
+    // Pe beta, un cont fără acces apare ca neautentificat (proxy-ul îi închide sesiunea la prima cerere).
+    if (session && !hasBetaAccess(session.username)) session = null;
   } catch {
     return NextResponse.json({ error: "Baza de date nu răspunde. Încearcă din nou." }, { status: 503 });
   }
@@ -35,5 +38,6 @@ export async function GET() {
       : null,
     secured,
     onboardingPending: brief?.onboardingPending ?? false,
+    beta: isBetaDeployment(),
   });
 }

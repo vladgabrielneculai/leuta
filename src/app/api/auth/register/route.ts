@@ -3,6 +3,7 @@ import {
   createSession, findValidInvitation, generateSalt, hashPassword, isLockedOut, LOCKOUT_MESSAGE, logAuthEvent,
   MIN_PASSWORD_LENGTH, recordFailedLogin, requestMeta, sessionCookieOptions, sha256, validateUsername,
 } from "@/lib/auth";
+import { BETA_NO_ACCOUNTS_MESSAGE, isBetaDeployment } from "@/lib/beta";
 import { getDbFor, getSystemDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
 
@@ -13,6 +14,8 @@ const INVALID_INVITE = "Invitația nu este validă: a expirat, a fost deja folos
 /** Verifică o invitație înainte de afișarea formularului (pagina /inregistrare). */
 export async function GET(req: NextRequest) {
   try {
+    // Beta folosește conturile din producție; aici nu se creează conturi și nu se schimbă parole.
+    if (isBetaDeployment()) return NextResponse.json({ error: BETA_NO_ACCOUNTS_MESSAGE }, { status: 403 });
     const meta = requestMeta(req.headers);
     if (await isLockedOut(meta.ip)) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
     const code = req.nextUrl.searchParams.get("cod") ?? "";
@@ -30,6 +33,7 @@ export async function GET(req: NextRequest) {
 /** Creează un cont nou dintr-o invitație (o singură folosire) și deschide sesiunea. */
 export async function POST(req: NextRequest) {
   try {
+    if (isBetaDeployment()) return NextResponse.json({ error: BETA_NO_ACCOUNTS_MESSAGE }, { status: 403 });
     const meta = requestMeta(req.headers);
     if (await isLockedOut(meta.ip)) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
 
