@@ -16,24 +16,22 @@ export const dynamic = "force-dynamic";
 
 // Ordinea respectă cheile străine (părinții înaintea copiilor).
 const ORDER = [
-  "categories", "goals", "investments", "loans", "scheduled_entries", "entries",
-  "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases", "import_rules",
+  "categories", "goals", "investments", "loans", "entries",
+  "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases",
   "trips", "trip_funds", "trip_expenses",
 ] as const;
 
 // coloană → tabelul părinte al cărui id îl referă
 const FKS: Record<string, Record<string, string>> = {
   entries: { category_id: "categories", goal_id: "goals", investment_id: "investments" },
-  scheduled_entries: { category_id: "categories" },
   investment_values: { investment_id: "investments" },
   loan_prepayments: { loan_id: "loans" },
   loan_schedules: { loan_id: "loans" },
-  import_rules: { category_id: "categories" },
   trip_funds: { trip_id: "trips" },
   trip_expenses: { trip_id: "trips" },
 };
 
-const HAS_ID = new Set(["categories", "goals", "investments", "loans", "scheduled_entries", "entries", "loan_prepayments", "loan_schedules", "planned_purchases", "trips"]);
+const HAS_ID = new Set(["categories", "goals", "investments", "loans", "entries", "loan_prepayments", "loan_schedules", "planned_purchases", "trips"]);
 
 // Exportul (toate datele financiare) și restaurarea (le înlocuiește) cer identitatea confirmată recent.
 export async function GET() {
@@ -44,9 +42,7 @@ export async function GET() {
   dump.user_settings = await db.prepare("SELECT key, value FROM user_settings").all();
   for (const t of ORDER) {
     const rows = await db.prepare(`SELECT * FROM ${t}`).all<Record<string, unknown>>();
-    // Proprietarul nu face parte din backup. Nici legătura intrare → programare: versiunea din producție nu o
-    // cunoaște, iar la restaurare programarea își știe oricum ultima lună creată (`last_month`).
-    dump[t] = rows.map(({ user_id: _owner, scheduled_id: _schedule, ...rest }) => rest);
+    dump[t] = rows.map(({ user_id: _owner, ...rest }) => rest); // proprietarul nu face parte din backup
   }
   const stamp = new Date().toISOString().slice(0, 10);
   return new NextResponse(JSON.stringify({ version: 2, exported: new Date().toISOString(), data: dump }, null, 2), {
@@ -103,12 +99,7 @@ export async function POST(req: NextRequest) {
             const mapped = idMap[parent]?.get(rec[col]);
             rec[col] = mapped ?? null; // părinte lipsă din backup → legătură goală, nu rând orfan
           }
-          if (
-            (t === "investment_values" && rec.investment_id === null) ||
-            (FKS[t]?.loan_id && rec.loan_id === null) ||
-            (FKS[t]?.trip_id && rec.trip_id === null) ||
-            (t === "import_rules" && rec.category_id === null)
-          ) continue;
+          if ((t === "investment_values" && rec.investment_id === null) || (FKS[t]?.loan_id && rec.loan_id === null) || (FKS[t]?.trip_id && rec.trip_id === null)) continue;
           const keys = Object.keys(rec);
           if (keys.some((k) => !/^[a-z_]+$/.test(k))) throw new Error(`Coloană invalidă în ${t}`);
           const res = await tx

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "@/lib/http";
 import { getDb } from "@/lib/db";
 import { TABLES, VALIDATE } from "@/lib/crud";
-import { materializeQuietly } from "@/lib/scheduledServer";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +38,6 @@ export async function GET(req: NextRequest, context: { params: Promise<{ table: 
   try {
     const { table } = await context.params;
     const c = cfg(table);
-    if (table === "entries") await materializeQuietly(); // programările scadente (beta)
     const where: string[] = [];
     const vals: unknown[] = [];
     for (const f of c.filters) {
