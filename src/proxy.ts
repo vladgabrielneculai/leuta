@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clientIp, SESSION_COOKIE, userForToken } from "@/lib/auth";
+import { clientIp, destroySession, SESSION_COOKIE, userForToken } from "@/lib/auth";
+import { BETA_DENIED_MESSAGE, hasBetaAccess } from "@/lib/beta";
 import { rateLimit } from "@/lib/rateLimit";
 
 /**
@@ -132,7 +133,17 @@ export async function proxy(req: NextRequest) {
 
   if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next({ request: { headers } });
 
-  const user = await userForToken(req.cookies.get(SESSION_COOKIE)?.value);
+  const token = req.cookies.get(SESSION_COOKIE)?.value;
+  const user = await userForToken(token);
+  // Pe beta, o sesiune a unui cont fără acces (ex. deschisă înainte de restricție) se închide.
+  if (user && !hasBetaAccess(user.username)) {
+    await destroySession(token!);
+    const res = pathname.startsWith("/api/")
+      ? NextResponse.json({ error: BETA_DENIED_MESSAGE, betaDenied: true }, { status: 403 })
+      : NextResponse.redirect(Object.assign(req.nextUrl.clone(), { pathname: "/login", search: "?beta=0" }));
+    res.cookies.delete(SESSION_COOKIE);
+    return res;
+  }
   if (user) {
     headers.set("x-user-id", String(user.id));
     return NextResponse.next({ request: { headers } });

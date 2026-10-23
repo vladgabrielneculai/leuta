@@ -400,14 +400,14 @@ export function Money({
 export function PageHeader({ title, intro, actions }: { title: string; intro?: ReactNode; actions?: ReactNode }) {
   const { month } = useApp();
   return (
-    <header className="mb-6 sm:mb-8">
+    <header className="mb-6 sm:mb-8" data-tour="title">
       <ReceiptMeta month={month} label={monthLabel(month, true)} />
       <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
         <div className="max-w-2xl">
           <h1 className="text-[24px] font-bold leading-tight sm:text-[31px]">{title}</h1>
           {intro && <p className="mt-1.5 text-[14px] text-ink-soft sm:text-[15px]">{intro}</p>}
         </div>
-        {actions && <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap *:w-full sm:*:w-auto [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}
+        {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto *:min-w-[40%] *:flex-1 sm:*:min-w-0 sm:*:flex-none [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}
       </div>
       <div className="rule-double mt-4" aria-hidden />
     </header>
@@ -440,7 +440,10 @@ export function Panel({
   children,
   className = "",
   pad = true,
+  tour,
 }: {
+  /** Numele elementului pentru tutorial (`data-tour`). */
+  tour?: string;
   title?: ReactNode;
   aside?: ReactNode;
   /** Un rând scurt afișat sub titlu cât timp panoul e pliat (ex. „23 de categorii”). */
@@ -453,7 +456,7 @@ export function Panel({
   const [open, setOpen] = useState(false);
   const shown = !collapsible || open;
   return (
-    <section className={`panel ${className}`}>
+    <section className={`panel ${className}`} data-tour={tour}>
       {(title || aside) && (
         // Pe telefon, butoanele „fantomă” din antet primesc contur, ca să se vadă că sunt butoane când trec sub titlu.
         <div className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 pb-3 pt-3.5 sm:px-5 [&_.btn-ghost]:border [&_.btn-ghost]:border-line [&_.btn-ghost]:bg-field/60 sm:[&_.btn-ghost]:border-0 sm:[&_.btn-ghost]:bg-transparent">
@@ -484,6 +487,13 @@ export function Panel({
     </section>
   );
 }
+
+/**
+ * Rândul de cifre cheie (în <div className="panel …">): pe telefon stă pe un singur rând care se derulează lateral,
+ * în loc de trei rânduri de câte două; pe ecran mare, grilă. Coloanele grilei se adaugă la folosire (ex. `xl:grid-cols-5`).
+ */
+export const STAT_STRIP =
+  "flex snap-x snap-mandatory gap-6 overflow-x-auto p-4 scrollbar-none sm:grid sm:grid-cols-3 sm:gap-x-6 sm:gap-y-5 sm:overflow-visible sm:p-5 *:min-w-[46%] *:shrink-0 *:snap-start sm:*:min-w-0";
 
 export function Stat({
   label,
@@ -682,3 +692,123 @@ export const chartTooltipStyle = {
   contentStyle: { background: "var(--c-sheet)", border: "1px dashed var(--c-ink-faint)", borderRadius: 2, fontSize: 12.5, fontFamily: '"IBM Plex Mono", ui-monospace, monospace' },
   labelStyle: { color: "var(--c-ink)", fontWeight: 600 },
 };
+
+// ---------- Tab-uri și inele de progres ----------
+
+/**
+ * Tab-ul ales pe o pagină, ținut minte pe durata sesiunii (ex. revii pe Panou și ești tot pe „Evoluție”).
+ * `key` trebuie să fie unic pe pagină. Un `#tab` în adresă are prioritate.
+ */
+export function useTab<T extends string>(key: string, initial: T, allowed: readonly T[]) {
+  const [tab, setTabState] = useState<T>(initial);
+  useEffect(() => {
+    // Un link poate deschide direct un tab (ex. /setari#securitate); altfel, ultimul tab ales în sesiune.
+    const fromHash = window.location.hash.slice(1) as T;
+    if (allowed.includes(fromHash)) return setTabState(fromHash);
+    try {
+      const saved = sessionStorage.getItem(`tab:${key}`) as T | null;
+      if (saved && allowed.includes(saved)) setTabState(saved);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const setTab = useCallback(
+    (t: T) => {
+      setTabState(t);
+      try {
+        sessionStorage.setItem(`tab:${key}`, t);
+      } catch {}
+    },
+    [key],
+  );
+  return [tab, setTab] as const;
+}
+
+/**
+ * Comutator de secțiuni (tab-uri) pentru paginile cu mult conținut: se vede o singură secțiune odată.
+ * Pe telefon ocupă toată lățimea; pe ecran mare, doar cât e nevoie.
+ */
+export function Tabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+  className = "",
+  label = "Secțiuni",
+  ...rest
+}: {
+  /** `short` e eticheta folosită pe telefon, când cea completă nu încape. */
+  tabs: readonly { key: T; label: string; short?: string; badge?: ReactNode }[];
+  value: T;
+  onChange: (t: T) => void;
+  className?: string;
+  label?: string;
+  "data-tour"?: string;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label={label}
+      className={`flex gap-1 overflow-x-auto rounded-md border border-line bg-paper p-1 scrollbar-none sm:inline-flex ${className}`}
+      data-tour={rest["data-tour"]}
+    >
+      {tabs.map((t) => {
+        const on = t.key === value;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => onChange(t.key)}
+            className={`flex min-h-[38px] flex-1 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[4px] px-3 text-[13px] font-medium transition-colors sm:flex-none sm:px-4 ${
+              on ? "bg-sheet text-ink shadow-[0_1px_2px_rgb(var(--shadow)/0.15)]" : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            {t.short ? (
+              <>
+                <span className="sm:hidden">{t.short}</span>
+                <span className="hidden sm:inline">{t.label}</span>
+              </>
+            ) : (
+              t.label
+            )}
+            {t.badge}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Inel de progres (0–100%), cu procentul în mijloc. */
+export function Ring({ value, color = "var(--c-leu)", size = 76, stroke = 8, children }: { value: number; color?: string; size?: number; stroke?: number; children?: ReactNode }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const target = Math.max(0, Math.min(100, value));
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(target));
+    return () => cancelAnimationFrame(id);
+  }, [target]);
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--c-line)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - shown / 100)}
+          className="transition-[stroke-dashoffset] duration-700 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-center">
+        {children ?? <span className="num font-display text-[15px] font-semibold">{Math.round(target)}%</span>}
+      </div>
+    </div>
+  );
+}

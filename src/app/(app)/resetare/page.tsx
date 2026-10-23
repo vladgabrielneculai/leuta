@@ -56,7 +56,7 @@ function ResetForm() {
       });
       const j = await r.json().catch(() => ({}));
       if (r.ok) {
-        window.location.href = "/setari";
+        window.location.href = "/setari#securitate";
         return;
       }
       setError(j.error ?? "Parola nu a putut fi schimbată.");
