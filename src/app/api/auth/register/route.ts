@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  createSession, findValidInvitation, generateSalt, hashPassword, isLockedOut, LOCKOUT_MESSAGE, logAuthEvent,
-  MIN_PASSWORD_LENGTH, recordFailedLogin, requestMeta, sessionCookieOptions, sha256, validateUsername,
+  findValidInvitation, generateSalt, hashPassword, isLockedOut, LOCKOUT_MESSAGE, logAuthEvent, passwordError,
+  recordFailedLogin, requestMeta, sessionResponse, sha256, validateUsername,
 } from "@/lib/auth";
 import { getDbFor, getSystemDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ const INVALID_INVITE = "Invitația nu este validă: a expirat, a fost deja folos
 export async function GET(req: NextRequest) {
   try {
     const meta = requestMeta(req.headers);
-    if (await isLockedOut(meta.ip)) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
+    if (await isLockedOut(meta.ip)) return jsonError(LOCKOUT_MESSAGE, 429);
     const code = req.nextUrl.searchParams.get("cod") ?? "";
     const invite = await findValidInvitation(code);
     if (!invite) {
@@ -31,18 +31,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const meta = requestMeta(req.headers);
-    if (await isLockedOut(meta.ip)) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
+    if (await isLockedOut(meta.ip)) return jsonError(LOCKOUT_MESSAGE, 429);
 
     const body = await req.json();
     const code = String(body.code ?? "");
     const username = String(body.username ?? "").trim().slice(0, 100);
     const password = String(body.password ?? "").slice(0, 200);
 
-    const usernameError = validateUsername(username);
-    if (usernameError) return NextResponse.json({ error: usernameError }, { status: 400 });
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      return NextResponse.json({ error: `Parola trebuie să aibă cel puțin ${MIN_PASSWORD_LENGTH} caractere.` }, { status: 400 });
-    }
+    const invalid = validateUsername(username) ?? passwordError(password);
+    if (invalid) return jsonError(invalid);
 
     const salt = generateSalt();
     const passwordHash = await hashPassword(password, salt);
@@ -90,10 +87,7 @@ export async function POST(req: NextRequest) {
       .catch((e) => console.error("Curățarea listei de așteptare a eșuat:", e));
 
     await logAuthEvent(result.userId, true, "invite", meta);
-    const { token, expiresAt } = await createSession(result.userId, true, "invite", meta);
-    const res = NextResponse.json({ ok: true, user: { id: result.userId, username } });
-    res.cookies.set({ ...sessionCookieOptions(expiresAt), value: token });
-    return res;
+    return sessionResponse(result.userId, true, "invite", meta, { ok: true, user: { id: result.userId, username } });
   } catch (err) {
     return errorResponse(err, "Contul nu a putut fi creat.");
   }

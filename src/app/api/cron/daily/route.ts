@@ -1,18 +1,12 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { appUrl, jsonError } from "@/lib/http";
 import { getSystemDb } from "@/lib/db";
 import { runForUser } from "@/lib/notify/notifications";
 import { localNow } from "@/lib/notify/time";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-/** Adresa aplicației pentru linkurile din emailuri: APP_URL sau domeniul cererii. */
-function appUrl(req: NextRequest) {
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  return `https://${host}`;
-}
 
 function authorized(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -28,7 +22,7 @@ function authorized(req: NextRequest) {
  * atât vara (UTC+3), cât și iarna (UTC+2). Rularea care nu cade la ora 21 locală nu face nimic.
  */
 export async function GET(req: NextRequest) {
-  if (!authorized(req)) return NextResponse.json({ error: "Neautorizat." }, { status: 401 });
+  if (!authorized(req)) return jsonError("Neautorizat.", 401);
   const now = localNow();
   const force = req.nextUrl.searchParams.get("force") === "1";
   if (now.hour !== 21 && !force) return NextResponse.json({ skipped: true, localHour: now.hour });

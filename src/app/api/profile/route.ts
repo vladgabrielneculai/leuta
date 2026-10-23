@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { currentUserId, getDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { ageFrom, recommendedEmergencyMonths, sanitizeProfile } from "@/lib/profile";
 import { loadProfile } from "@/lib/profileServer";
 
@@ -32,17 +32,15 @@ export async function GET() {
  */
 export async function PUT(req: NextRequest) {
   try {
-    if (!(await currentUserId())) return NextResponse.json({ error: "Neautentificat." }, { status: 401 });
+    if (!(await currentUserId())) return jsonError("Neautentificat.", 401);
     const body = (await req.json()) as Record<string, unknown>;
 
     // Validări cu mesaj clar (restul câmpurilor invalide devin pur și simplu goale).
     const email = String(body.email ?? "").trim();
-    if ("email" in body && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: "Adresa de email nu pare validă." }, { status: 400 });
-    }
+    if ("email" in body && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return jsonError("Adresa de email nu pare validă.");
     if ("birth_date" in body && body.birth_date) {
       const age = ageFrom(String(body.birth_date));
-      if (age === null || age < 14) return NextResponse.json({ error: "Data nașterii nu pare corectă." }, { status: 400 });
+      if (age === null || age < 14) return jsonError("Data nașterii nu pare corectă.");
     }
 
     const current = await loadProfile();

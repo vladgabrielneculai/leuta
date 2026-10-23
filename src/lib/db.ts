@@ -39,8 +39,6 @@ export type DbInterface = {
   transaction<T>(fn: (tx: DbInterface) => Promise<T>): Promise<T>;
 };
 
-type Queryable = Pool | PoolClient;
-
 declare global {
   // eslint-disable-next-line no-var
   var __pgPool: Pool | undefined;
@@ -281,17 +279,6 @@ async function ensureUserDefaults(userId: number) {
     ["Neprevăzute", "variable", "needs", "#DB8BA4"],
     ["Economii", "saving", "savings", "#C99A1E"],
   ];
-  const defaults: Record<string, string> = {
-    emergency_months: "6",
-    expected_invest_return: "7",
-    invest_tax_pct: "10",
-    inflation_pct: "5",
-    custom_needs: "50",
-    custom_wants: "25",
-    custom_savings: "25",
-    enable_investments: "0",
-  };
-
   const db = wrap(null, userId);
   const values = defaultsCats.map(() => "(?, ?, ?, ?)").join(",");
   const keys = Object.keys(DEFAULT_SETTINGS);

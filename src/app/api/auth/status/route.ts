@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { jsonError } from "@/lib/http";
 import { getCurrentSession, isProtected, isSetupComplete, secondFactors } from "@/lib/auth";
 import { getDbFor } from "@/lib/db";
 
@@ -19,7 +20,7 @@ export async function GET() {
   try {
     [setupComplete, session] = await Promise.all([isSetupComplete(), getCurrentSession()]);
   } catch {
-    return NextResponse.json({ error: "Baza de date nu răspunde. Încearcă din nou." }, { status: 503 });
+    return jsonError("Baza de date nu răspunde. Încearcă din nou.", 503);
   }
   const [secured, brief] = session
     ? await Promise.all([
