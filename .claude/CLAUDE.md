@@ -28,3 +28,12 @@ Dacă funcționalitatea nu atinge structura bazei de date, spune asta pe scurt (
 - Toate commit-urile se fac cu autorul **Vlad Gabriel Neculai `<81146225+vladgabrielneculai@users.noreply.github.com>`** (setat automat din `.claude/settings.json`; dacă lipsește, rulează `git config user.name` / `git config user.email` cu aceste valori înainte de commit).
 - **Nu adăuga linia `Co-Authored-By:`** în mesajele de commit. Repository-ul e privat și Vercel (planul Hobby) blochează deploy-urile pentru commit-urile cu alt autor sau co-autor decât proprietarul contului.
 - Lucrează doar pe `main`, `staging` și branch-ul curent; branch-urile vechi se șterg după merge.
+
+## Branch-uri și pull request-uri
+
+În repository rămân doar două branch-uri: `main` și `staging`. Pentru orice modificare a aplicației:
+
+1. Lucrează pe branch-ul sesiunii (`claude/...`), creat din `main` (sau din `staging` dacă modificarea e doar pentru beta).
+2. Deschide un pull request în `main` (sau în `staging` pentru beta).
+3. După ce testele trec, fă merge la pull request.
+4. Șterge imediat branch-ul sesiunii, ca să rămână doar `main` și `staging`.
