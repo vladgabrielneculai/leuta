@@ -34,7 +34,7 @@ export default function Hero() {
           <h1 className="rise mt-5 text-[42px] font-bold leading-[1.03] sm:text-[56px] lg:text-[66px]" style={{ animationDelay: "80ms" }}>
             Bugetul tău, clar ca un bon.
           </h1>
-          <p className="rise mt-6 max-w-[34rem] text-[16px] leading-relaxed text-ink-soft sm:text-[17px]" style={{ animationDelay: "160ms" }}>
+          <p className="rise mt-6 max-w-136 text-[16px] leading-relaxed text-ink-soft sm:text-[17px]" style={{ animationDelay: "160ms" }}>
             Leuța îți arată în fiecare lună unde au mers banii: venituri, cheltuieli, rate și economii, pe telefon și pe calculator. Fără foi de calcul și
             fără acces la contul tău bancar.
           </p>
@@ -57,10 +57,10 @@ export default function Hero() {
         {/* Casa de marcat: fanta și bonul care iese din ea. */}
         <div className="relative mx-auto w-full max-w-[380px] md:mt-2">
           <div className="printer-slot relative z-10 mx-[-14px]" aria-hidden />
-          <div className="relative -mt-[9px] overflow-hidden px-1 pb-8">
+          <div className="relative mt-[-9px] overflow-hidden px-1 pb-8">
             <div ref={receipt} style={{ transformOrigin: "50% 0" }}>
               <div className="printing">
-                <div className="panel !mt-0 px-6 pb-6 pt-7 text-[13.5px]">
+                <div className="panel mt-0! px-6 pb-6 pt-7 text-[13.5px]">
                   <div className="text-center">
                     <p className="text-[17px] font-bold tracking-tight">LEUȚA</p>
                     <p className="mt-0.5 text-[11.5px] uppercase tracking-[0.14em] text-ink-faint">Bonul lunii · octombrie 2026</p>
@@ -103,9 +103,9 @@ export default function Hero() {
 function Row({ label, value, color, sign, strong }: { label: string; value: number; color: string; sign?: string; strong?: boolean }) {
   return (
     <div className="flex items-baseline gap-2">
-      <span className="h-2 w-2 shrink-0 translate-y-[-1px] rounded-[2px]" style={{ background: color }} aria-hidden />
+      <span className="h-2 w-2 shrink-0 -translate-y-px rounded-[2px]" style={{ background: color }} aria-hidden />
       <span className={strong ? "font-semibold" : "text-ink-soft"}>{label}</span>
-      <span className="leader-dots min-w-[1rem] flex-1" aria-hidden />
+      <span className="leader-dots min-w-4 flex-1" aria-hidden />
       <span className={`num ${strong ? "font-bold" : ""}`}>
         {sign ? `${sign} ` : ""}
         {money(value)}

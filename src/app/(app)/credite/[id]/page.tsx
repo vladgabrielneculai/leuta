@@ -370,17 +370,17 @@ export default function LoanDetail() {
             </div>
             <ul className="num mt-3 grid gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-3">
               <li className="flex items-center gap-2" title={`Din totalul împrumutat de ${lei(loan.principal)}`}>
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-leu" />
+                <span className="h-2.5 w-2.5 shrink-0 rounded-xs bg-leu" />
                 <span className="text-ink-soft">Principal</span>
                 <span className="ml-auto font-medium sm:ml-0">{lei(st.principalPaid)}</span>
               </li>
               <li className="flex items-center gap-2" title="Costul creditului suportat până acum">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-rosu" />
+                <span className="h-2.5 w-2.5 shrink-0 rounded-xs bg-rosu" />
                 <span className="text-ink-soft">Dobândă</span>
                 <span className="ml-auto font-medium sm:ml-0">{lei(st.interestPaid)}</span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-mov" />
+                <span className="h-2.5 w-2.5 shrink-0 rounded-xs bg-mov" />
                 <span className="text-ink-soft">Rămas</span>
                 <span className="ml-auto font-medium sm:ml-0">{lei(st.balance)} · {st.remainingMonths} luni</span>
               </li>
@@ -397,9 +397,9 @@ export default function LoanDetail() {
           <div className="absolute inset-y-0 border-r-2 border-dashed border-rosu" style={{ left: `${(actual.months / loan.term_months) * 100}%` }} title="Finalul estimat" />
         </div>
         <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[13px] text-ink-soft">
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-albastru-tint ring-1 ring-albastru/30" />Dobândă fixă {pct(loan.fixed_rate, 2)} până în {monthLabel(fixedEnd)}</span>
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-mov-tint ring-1 ring-mov/30" />Variabilă {pct(loan.margin, 2)} + IRCC {pct(loan.ircc, 2)} = {pct(loan.margin + loan.ircc, 2)}</span>
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-leu/40" />Timp scurs</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-albastru-tint ring-1 ring-albastru/30" />Dobândă fixă {pct(loan.fixed_rate, 2)} până în {monthLabel(fixedEnd)}</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-mov-tint ring-1 ring-mov/30" />Variabilă {pct(loan.margin, 2)} + IRCC {pct(loan.ircc, 2)} = {pct(loan.margin + loan.ircc, 2)}</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-xs bg-leu/40" />Timp scurs</span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-0 border-r-2 border-dashed border-rosu" />Final estimat: {monthLabel(actual.payoffMonth)} (inițial {monthLabel(original.payoffMonth)})</span>
         </div>
       </Panel>
@@ -493,7 +493,7 @@ export default function LoanDetail() {
               return (
                 <div key={c.key} className={`rounded-[8px] border p-4 ${isBest ? "border-mov bg-mov-tint/40" : "border-line"}`}>
                   <div className="flex items-center gap-2">
-                    <span className="h-3 w-1.5 rounded-sm" style={{ background: c.color }} />
+                    <span className="h-3 w-1.5 rounded-xs" style={{ background: c.color }} />
                     <h3 className="text-[16px] font-semibold">{c.title}</h3>
                   </div>
                   <p className="mt-0.5 text-[12px] text-ink-soft">{c.sub}</p>
@@ -526,7 +526,7 @@ export default function LoanDetail() {
             value={simChart}
             onChange={setSimChart}
             label="Graficul simulării"
-            className="mb-3 !p-0.5 [&_button]:min-h-[32px] [&_button]:text-[12.5px]"
+            className="mb-3 p-0.5! [&_button]:min-h-[32px] [&_button]:text-[12.5px]"
           />
           {simChart === "sold" ? (
             <div className="h-[280px]">
@@ -727,22 +727,22 @@ export default function LoanDetail() {
                     <div className="flex items-center gap-1.5">
                       <span>{r.label}</span>
                       {tableMode === "months" && r.key < now && (
-                        <span className="rounded bg-leu-tint px-1.5 py-0.5 text-[10.5px] font-semibold text-leu border border-leu/30">
+                        <span className="rounded-sm bg-leu-tint px-1.5 py-0.5 text-[10.5px] font-semibold text-leu border border-leu/30">
                           ✓ Achitată
                         </span>
                       )}
                       {tableMode === "months" && r.key === now && (
-                        <span className="rounded bg-mov-tint px-1.5 py-0.5 text-[10.5px] font-semibold text-mov border border-mov/30">
+                        <span className="rounded-sm bg-mov-tint px-1.5 py-0.5 text-[10.5px] font-semibold text-mov border border-mov/30">
                           În curs
                         </span>
                       )}
                       {tableMode === "years" && r.key < now.slice(0, 4) && (
-                        <span className="rounded bg-leu-tint px-1.5 py-0.5 text-[10.5px] font-semibold text-leu border border-leu/30">
+                        <span className="rounded-sm bg-leu-tint px-1.5 py-0.5 text-[10.5px] font-semibold text-leu border border-leu/30">
                           ✓ Încheiat
                         </span>
                       )}
                       {tableMode === "years" && r.key === now.slice(0, 4) && (
-                        <span className="rounded bg-mov-tint px-1.5 py-0.5 text-[10.5px] font-semibold text-mov border border-mov/30">
+                        <span className="rounded-sm bg-mov-tint px-1.5 py-0.5 text-[10.5px] font-semibold text-mov border border-mov/30">
                           An curent
                         </span>
                       )}

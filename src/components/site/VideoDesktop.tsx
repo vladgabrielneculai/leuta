@@ -36,7 +36,7 @@ export function VideoSection() {
           </ul>
         </div>
         <div className="flex justify-center">
-          <div className="relative aspect-[9/16] w-[min(78vw,360px)] overflow-hidden rounded-2xl bg-paper shadow-[0_30px_80px_rgb(0_0_0/0.45)] ring-1 ring-paper/10">
+          <div className="relative aspect-9/16 w-[min(78vw,360px)] overflow-hidden rounded-2xl bg-paper shadow-[0_30px_80px_rgb(0_0_0/0.45)] ring-1 ring-paper/10">
             <video
               ref={video}
               className="absolute inset-0 h-full w-full object-cover"

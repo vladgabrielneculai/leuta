@@ -16,6 +16,7 @@ const ALLOWED_TABLES = [
   "investment_values",
   "user_settings",
   "fx_rates",
+  "fx_rates_currency",
   "planned_purchases",
   "trips",
   "trip_funds",

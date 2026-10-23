@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "@/lib/http";
 import { getDb } from "@/lib/db";
-import { currencyRates } from "@/lib/fx";
+import { currencyRates, ensureCurrencyHistory } from "@/lib/fx";
 import type { Trip, TripDetail, TripExpense, TripFund } from "@/lib/trips";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +18,11 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       db.prepare("SELECT * FROM trip_funds WHERE trip_id = ? ORDER BY id").all<TripFund>(id),
       db.prepare("SELECT * FROM trip_expenses WHERE trip_id = ? ORDER BY date DESC, id DESC").all<TripExpense>(id),
     ]);
+    // Istoricul anului lipsă (vacanță veche): îl așteptăm cel mult 1,5 s, ca pagina să nu stea după BNR;
+    // altfel descărcarea continuă după răspuns, iar până atunci folosim cel mai apropiat curs salvat.
+    const history = ensureCurrencyHistory(trip.end_date).catch(() => undefined);
+    const ready = await Promise.race([history.then(() => true), new Promise<false>((r) => setTimeout(() => r(false), 1500))]);
+    if (!ready) after(history);
     // Un singur curs pe vacanță, de la finalul ei (sau de azi, dacă e în curs): leii sunt doar orientativi.
     const rates = await currencyRates(
       [trip.currency, ...funds.map((f) => f.currency), ...expenses.map((e) => e.currency)],

@@ -277,7 +277,7 @@ export default function Shell({ children }: { children: ReactNode }) {
     <nav className="flex flex-col gap-4" aria-label="Navigare principală" data-tour="nav">
       {groups.map((g) => (
         <div key={g.title ?? "zilnic"} className="flex flex-col gap-0.5">
-          {g.title && <div className="px-3 pb-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-ink-faint">{g.title}</div>}
+          {g.title && <div className="px-3 pb-1 font-mono text-[10.5px] font-medium uppercase tracking-widest text-ink-faint">{g.title}</div>}
           {g.items.map((n) => {
             const isCurrent = active(n.href);
             return (
@@ -316,7 +316,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         aria-current={on ? "page" : undefined}
         className={`flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] font-medium transition-colors ${on ? "text-ink" : "text-ink-faint"}`}
       >
-        <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${on ? "bg-ink/[0.08]" : ""}`}>
+        <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${on ? "bg-ink/8" : ""}`}>
           <Icon d={t.icon} strokeWidth={on ? 2.2 : 1.7} />
         </span>
         {t.label}
@@ -357,7 +357,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           {user && (
             <div className="flex items-center justify-between border-t border-line/80 pt-3 text-[13px]">
               <Link href="/profil" className="flex min-w-0 items-center gap-2 truncate hover:text-leu" title="Profilul meu">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-leu/15 font-semibold text-leu text-[11px] uppercase shadow-sm">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-leu/15 font-semibold text-leu text-[11px] uppercase shadow-xs">
                   {initials(user)}
                 </span>
                 <span className="truncate font-medium text-ink">{user.firstName || user.username}</span>
@@ -377,7 +377,7 @@ export default function Shell({ children }: { children: ReactNode }) {
 
       {/* Pe telefon, bara de sus are un singur rând: sigla, luna analizată și profilul.
           Tema se schimbă din „Mai mult”. */}
-      <div className="lg:hidden sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur px-3 pb-1.5 pt-[max(0.375rem,env(safe-area-inset-top))]">
+      <div className="lg:hidden sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur-sm px-3 pb-1.5 pt-[max(0.375rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between gap-1">
           <Link href="/" className="relative flex shrink-0 items-center" aria-label="Leuța — Panou">
             <Logo className="h-8 w-8" />
@@ -412,7 +412,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               <nav className="flex flex-col gap-3" aria-label="Toate secțiunile">
                 {groups.map((g) => (
                   <div key={g.title ?? "zilnic"}>
-                    {g.title && <div className="mb-1.5 px-1 font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-ink-faint">{g.title}</div>}
+                    {g.title && <div className="mb-1.5 px-1 font-mono text-[10.5px] font-medium uppercase tracking-widest text-ink-faint">{g.title}</div>}
                     <div className="grid grid-cols-3 gap-2">
                       {g.items.map((n) => {
                         const isCurrent = active(n.href);
@@ -454,7 +454,7 @@ export default function Shell({ children }: { children: ReactNode }) {
       )}
 
       <nav
-        className="lg:hidden fixed inset-x-0 bottom-0 z-[60] border-t border-line bg-paper/95 backdrop-blur pb-[env(safe-area-inset-bottom)]"
+        className="lg:hidden fixed inset-x-0 bottom-0 z-60 border-t border-line bg-paper/95 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]"
         aria-label="Navigare rapidă"
         data-tour="tabs"
       >
@@ -468,7 +468,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             data-tour="more"
             className={`flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] font-medium transition-colors ${moreOn ? "text-ink" : "text-ink-faint"}`}
           >
-            <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${moreOn ? "bg-ink/[0.08]" : ""}`}>
+            <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${moreOn ? "bg-ink/8" : ""}`}>
               <svg viewBox="0 0 24 24" className="h-[21px] w-[21px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
                 {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />}
               </svg>

@@ -60,13 +60,13 @@ function CategoryRow({
     // Un singur rând, și pe telefon: culoare | nume | nevoie/dorință | acțiune. Cât timp rândul are modificări
     // nesalvate, butonul de ștergere devine „Salvează” (✓).
     <li className="flex items-center gap-1.5 py-1.5 sm:gap-2">
-      <input type="color" value={d.color} onChange={(e) => setD({ ...d, color: e.target.value })} className="h-9 w-7 shrink-0 cursor-pointer rounded border border-line bg-field p-0.5 sm:w-8" aria-label="Culoare" />
-      <input className="field min-w-0 flex-1 !py-1.5" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} aria-label="Nume categorie" />
+      <input type="color" value={d.color} onChange={(e) => setD({ ...d, color: e.target.value })} className="h-9 w-7 shrink-0 cursor-pointer rounded-sm border border-line bg-field p-0.5 sm:w-8" aria-label="Culoare" />
+      <input className="field min-w-0 flex-1 py-1.5!" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} aria-label="Nume categorie" />
       {hasBucket && (
         // Comutator compact (în loc de listă): o atingere schimbă între nevoie și dorință.
         <button
           type="button"
-          className={`h-9 w-[4.75rem] shrink-0 rounded-md border px-1 font-mono text-[12px] font-semibold uppercase tracking-[0.02em] transition-colors sm:w-24 ${
+          className={`h-9 w-19 shrink-0 rounded-md border px-1 font-mono text-[12px] font-semibold uppercase tracking-[0.02em] transition-colors sm:w-24 ${
             d.bucket === "wants" ? "border-rosu/40 bg-rosu-tint text-rosu" : "border-albastru/40 bg-albastru-tint text-albastru"
           }`}
           onClick={() => setD({ ...d, bucket: d.bucket === "wants" ? "needs" : "wants" })}
@@ -230,7 +230,7 @@ export default function SettingsPage() {
                 setNewCat({ ...newCat, kind: k });
               }}
               label="Tipul categoriilor"
-              className="mb-3 !p-0.5 [&_button]:min-h-[32px] [&_button]:px-2.5 [&_button]:text-[12.5px]"
+              className="mb-3 p-0.5! [&_button]:min-h-[32px] [&_button]:px-2.5 [&_button]:text-[12.5px]"
             />
           )}
           {cats &&

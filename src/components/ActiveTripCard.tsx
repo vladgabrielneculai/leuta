@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { activeTrip, daysBetween, fmtCur, todayIso, tripLeft, type TripListItem } from "@/lib/trips";
+import { activeTrip, daysInclusive, fmtCur, todayIso, tripLeft, type TripListItem } from "@/lib/trips";
 import { Bar, useApi } from "./ui";
 import { useQuickAdd } from "./QuickAdd";
 
@@ -13,9 +13,9 @@ export default function ActiveTripCard() {
   if (!trip) return null;
 
   const { available, spent, left } = tripLeft(trip);
-  const daysLeft = daysBetween(todayIso(), trip.end_date);
-  const day = daysBetween(trip.start_date, todayIso());
-  const total = daysBetween(trip.start_date, trip.end_date);
+  const daysLeft = daysInclusive(todayIso(), trip.end_date);
+  const day = daysInclusive(trip.start_date, todayIso());
+  const total = daysInclusive(trip.start_date, trip.end_date);
 
   return (
     <section className="panel mb-6 p-4 sm:p-5" style={{ borderColor: "var(--c-albastru)" }}>

@@ -281,7 +281,7 @@ function TourOverlay({ steps, onDone, onStopAll }: { steps: Step[]; onDone: () =
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[120]" aria-live="polite">
+    <div className="fixed inset-0 z-120" aria-live="polite">
       {/* Fundalul întunecat blochează clicurile în pagină; „gaura” din jurul elementului e doar vizuală. */}
       <div className="absolute inset-0" onClick={(e) => e.stopPropagation()} />
       {rect ? (
@@ -306,7 +306,7 @@ function TourOverlay({ steps, onDone, onStopAll }: { steps: Step[]; onDone: () =
         role="dialog"
         aria-modal="true"
         aria-labelledby="tour-title"
-        className="absolute rounded-[8px] border border-line bg-sheet p-4 shadow-2xl outline-none transition-[top,left] duration-300 ease-out motion-reduce:transition-none"
+        className="absolute rounded-[8px] border border-line bg-sheet p-4 shadow-2xl outline-hidden transition-[top,left] duration-300 ease-out motion-reduce:transition-none"
         style={{ ...pos, width: w }}
       >
         <div className="mb-2 flex items-center justify-between gap-3">
