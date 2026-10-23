@@ -311,7 +311,7 @@ export default function AffordabilityPage() {
                   onClick={() => setFinancingType("cash")}
                   className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-center transition-all ${
                     financingType === "cash"
-                      ? "border-leu bg-leu-tint text-leu font-semibold shadow-sm ring-2 ring-leu/20"
+                      ? "border-leu bg-leu-tint text-leu font-semibold shadow-xs ring-2 ring-leu/20"
                       : "border-line bg-paper text-ink-soft hover:bg-sheet"
                   }`}
                 >
@@ -327,7 +327,7 @@ export default function AffordabilityPage() {
                   onClick={() => setFinancingType("loan")}
                   className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-center transition-all ${
                     financingType === "loan"
-                      ? "border-mov bg-mov-tint text-mov font-semibold shadow-sm ring-2 ring-mov/20"
+                      ? "border-mov bg-mov-tint text-mov font-semibold shadow-xs ring-2 ring-mov/20"
                       : "border-line bg-paper text-ink-soft hover:bg-sheet"
                   }`}
                 >
@@ -364,7 +364,7 @@ export default function AffordabilityPage() {
                         <button
                           key={p}
                           type="button"
-                          className="rounded bg-paper px-2 py-0.5 text-[11px] border border-line text-ink-soft hover:text-ink"
+                          className="rounded-sm bg-paper px-2 py-0.5 text-[11px] border border-line text-ink-soft hover:text-ink"
                           onClick={() => setDownPayment(Math.round(totalPrice * p))}
                         >
                           {p * 100}%
@@ -739,7 +739,7 @@ export default function AffordabilityPage() {
               return (
                 <div
                   key={p.id}
-                  className="rounded-md border border-line bg-paper p-4 flex flex-col justify-between hover:border-albastru transition-all shadow-sm hover:shadow"
+                  className="rounded-md border border-line bg-paper p-4 flex flex-col justify-between hover:border-albastru transition-all shadow-xs hover:shadow-sm"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-2">

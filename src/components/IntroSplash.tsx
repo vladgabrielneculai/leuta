@@ -57,7 +57,7 @@ export default function IntroSplash() {
 
   return (
     <div
-      className={`intro-splash fixed inset-0 z-[200] flex cursor-pointer select-none flex-col items-center justify-center bg-paper ${phase === "exit" ? "intro-exit" : ""}`}
+      className={`intro-splash fixed inset-0 z-200 flex cursor-pointer select-none flex-col items-center justify-center bg-paper ${phase === "exit" ? "intro-exit" : ""}`}
       onClick={skip}
       role="presentation"
       aria-hidden
@@ -66,7 +66,7 @@ export default function IntroSplash() {
 
       <div className="relative flex flex-col items-center">
         {/* Moneda: cade rotindu-se, o trece o lumină, apoi intră în fantă */}
-        <div className="intro-coin-insert relative z-[1]">
+        <div className="intro-coin-insert relative z-1">
           <div className="intro-coin relative h-24 w-24 sm:h-28 sm:w-28">
             <Logo className="h-full w-full" />
             <span className="absolute inset-0 overflow-hidden rounded-full">
@@ -76,11 +76,11 @@ export default function IntroSplash() {
         </div>
 
         {/* Fanta casei de marcat */}
-        <span className="intro-slot relative z-[2] block h-3 w-64 rounded-full bg-[#14120f] ring-1 ring-line-strong/60 sm:w-72" />
+        <span className="intro-slot relative z-2 block h-3 w-64 rounded-full bg-[#14120f] ring-1 ring-line-strong/60 sm:w-72" />
 
         {/* Bonul tipărit din fantă */}
         <div className="-mt-1.5 w-56 overflow-hidden px-3 pb-3 sm:w-64">
-          <div className="intro-paper panel !mt-0 px-4 pb-4 pt-5 text-center font-mono">
+          <div className="intro-paper panel mt-0! px-4 pb-4 pt-5 text-center font-mono">
             <div className="text-[34px] font-bold leading-none tracking-[-0.04em] text-ink sm:text-[38px]">Leuța</div>
             <div className="mt-2 whitespace-nowrap text-[10px] uppercase tracking-[0.06em] text-ink-soft">Bugetul tău, ban cu ban</div>
             <div className="rule-dashed my-3" />

@@ -207,7 +207,7 @@ export function FundForm({
       </p>
       <Field label="Suma">
         <input
-          className="field num !py-3 !text-[22px] font-semibold"
+          className="field num py-3! text-[22px]! font-semibold"
           inputMode="decimal"
           placeholder="0,00"
           autoFocus={!fund}
@@ -305,7 +305,7 @@ export function TripExpenseForm({
         <div className="flex items-stretch gap-2">
           <input
             ref={amountRef}
-            className="field num min-w-0 flex-1 !py-3 !text-[26px] font-semibold"
+            className="field num min-w-0 flex-1 py-3! text-[26px]! font-semibold"
             inputMode="decimal"
             enterKeyHint="done"
             autoComplete="off"

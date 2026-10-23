@@ -64,10 +64,10 @@ function LoanCard() {
       </svg>
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12.5px] text-ink-soft">
         <span className="flex items-center gap-2">
-          <span className="h-[3px] w-5 rounded" style={{ background: "var(--c-mov)" }} /> rate normale
+          <span className="h-[3px] w-5 rounded-sm" style={{ background: "var(--c-mov)" }} /> rate normale
         </span>
         <span className="flex items-center gap-2">
-          <span className="h-[3px] w-5 rounded" style={{ background: "var(--c-leu)" }} /> + {LOAN.extra} lei/lună
+          <span className="h-[3px] w-5 rounded-sm" style={{ background: "var(--c-leu)" }} /> + {LOAN.extra} lei/lună
         </span>
       </div>
 
@@ -130,7 +130,7 @@ function SavingsCard() {
       <Reveal className="panel px-5 pb-6 pt-6 sm:px-8 sm:pt-8">
         <div className="flex items-baseline justify-between">
           <p className="font-semibold">
-            <span className="mr-2 inline-block h-3 w-1 rounded bg-galben align-middle" />
+            <span className="mr-2 inline-block h-3 w-1 rounded-sm bg-galben align-middle" />
             Vacanță de vară
           </p>
           <span className="text-[12.5px] text-ink-faint">termen: martie 2027</span>

@@ -5,6 +5,10 @@ import { parsePdf, parseSpreadsheet, type ParsedScheduleRow, type ScheduleMeta }
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  // Refuzăm fișierele prea mari înainte de a le citi (peste 10 MB, proxy-ul ar trimite oricum doar începutul lor).
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_UPLOAD_BYTES + 64 * 1024) {
+    return NextResponse.json({ error: "Fișierul este prea mare (maxim 10 MB)." }, { status: 413 });
+  }
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -48,7 +52,8 @@ export async function POST(req: NextRequest) {
       meta,
     });
   } catch (err) {
-    return errorResponse(err, "Eroare la citirea fișierului.");
+    // Fișier corupt sau în alt format decât pare: e o problemă a fișierului, nu a serverului.
+    return errorResponse(err, "Eroare la citirea fișierului.", 400);
   }
 }
 

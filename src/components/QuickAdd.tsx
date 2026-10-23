@@ -233,7 +233,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
             <div className="flex items-stretch gap-2">
               <input
                 ref={amountRef}
-                className="field num min-w-0 flex-1 !py-3 !text-[26px] font-semibold"
+                className="field num min-w-0 flex-1 py-3! text-[26px]! font-semibold"
                 inputMode="decimal"
                 enterKeyHint="done"
                 autoComplete="off"
@@ -292,7 +292,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
                       setErr(null);
                     }}
                   >
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: c.color }} aria-hidden />
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: c.color }} aria-hidden />
                     {c.name}
                   </button>
                 ))}

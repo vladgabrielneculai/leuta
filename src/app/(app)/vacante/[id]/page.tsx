@@ -135,7 +135,7 @@ export default function TripPage() {
           <>
             {trip.destination && <>{trip.destination} · </>}
             {periodLabel(trip)} ·{" "}
-            <span className="rounded px-1.5 py-0.5 text-[12px] font-medium" style={{ color: PHASE_STYLE[phase].color, background: PHASE_STYLE[phase].bg }}>
+            <span className="rounded-sm px-1.5 py-0.5 text-[12px] font-medium" style={{ color: PHASE_STYLE[phase].color, background: PHASE_STYLE[phase].bg }}>
               {PHASE_STYLE[phase].label}
             </span>
           </>

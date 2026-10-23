@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   generateSalt, hashPassword, logAuthEvent, MIN_PASSWORD_LENGTH, requestMeta, requireRecentAuth, revokeSessions,
-  verifyPassword,
+  validateUsername, verifyPassword,
 } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Parola curentă este incorectă." }, { status: 400 });
     }
 
-    if (newUsername !== undefined && newUsername.length < 3) {
-      return NextResponse.json({ error: "Numele de utilizator trebuie să aibă cel puțin 3 caractere." }, { status: 400 });
-    }
+    // Aceleași reguli ca la crearea contului (lungime și caractere permise).
+    const usernameError = newUsername !== undefined ? validateUsername(newUsername) : null;
+    if (usernameError) return NextResponse.json({ error: usernameError }, { status: 400 });
     if (newPassword !== undefined && newPassword.length < MIN_PASSWORD_LENGTH) {
       return NextResponse.json({ error: `Parola nouă trebuie să aibă cel puțin ${MIN_PASSWORD_LENGTH} caractere.` }, { status: 400 });
     }

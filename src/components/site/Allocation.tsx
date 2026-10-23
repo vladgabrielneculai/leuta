@@ -29,7 +29,7 @@ export default function Allocation() {
 
   return (
     <section ref={ref} className="relative h-[260vh]" aria-label="Unde merg banii">
-      <div className="sticky top-0 flex h-[100svh] flex-col justify-center overflow-hidden pt-16">
+      <div className="sticky top-0 flex h-svh flex-col justify-center overflow-hidden pt-16">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <p className="kicker">Panou · Octombrie 2026</p>
           <h2 className="mt-3 max-w-3xl text-[28px] font-bold leading-[1.08] sm:mt-4 sm:text-[48px]">Fiecare leu primește un loc.</h2>

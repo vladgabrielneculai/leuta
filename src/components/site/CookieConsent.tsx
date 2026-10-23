@@ -78,7 +78,7 @@ export default function CookieConsent() {
         </>
       )}
       {open && (
-        <div role="dialog" aria-labelledby="cookie-title" className="fixed inset-x-3 bottom-3 z-[70] mx-auto max-w-xl sm:bottom-5">
+        <div role="dialog" aria-labelledby="cookie-title" className="fixed inset-x-3 bottom-3 z-70 mx-auto max-w-xl sm:bottom-5">
           <div className="panel px-5 pb-5 pt-5 shadow-2xl">
             <p id="cookie-title" className="receipt-title">Cookie-uri</p>
             <p className="mt-2 text-[13.5px] text-ink-soft">
@@ -89,10 +89,10 @@ export default function CookieConsent() {
               .
             </p>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" className="btn-ghost !min-h-[42px]" onClick={() => decide("rejected")}>
+              <button type="button" className="btn-ghost min-h-[42px]!" onClick={() => decide("rejected")}>
                 Refuz
               </button>
-              <button type="button" className="btn-primary !min-h-[42px]" onClick={() => decide("accepted")}>
+              <button type="button" className="btn-primary min-h-[42px]!" onClick={() => decide("accepted")}>
                 Accept
               </button>
             </div>
