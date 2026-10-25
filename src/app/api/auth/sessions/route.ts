@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession, logAuthEvent, requestMeta, revokeSessions } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
 /** Sesiunile deschise (dispozitive). `key` = primele caractere din hash-ul sesiunii, nu token-ul. */
 export async function GET() {
   const session = await getCurrentSession();
-  if (!session) return NextResponse.json({ error: "Neautentificat." }, { status: 401 });
+  if (!session) return jsonError("Neautentificat.", 401);
   const rows = await (await getDb())
     .prepare(
       `SELECT substr(id, 1, 16) AS key, created_at, last_seen_at, expires_at, ip, user_agent, location, method,
@@ -23,7 +23,7 @@ export async function GET() {
 export async function DELETE(req: NextRequest) {
   try {
     const session = await getCurrentSession();
-    if (!session) return NextResponse.json({ error: "Neautentificat." }, { status: 401 });
+    if (!session) return jsonError("Neautentificat.", 401);
     const meta = requestMeta(req.headers);
     if (req.nextUrl.searchParams.get("all") === "1") {
       await revokeSessions(session.id, session.sessionId);
@@ -31,11 +31,11 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
     const key = (req.nextUrl.searchParams.get("key") ?? "").toLowerCase();
-    if (!/^[0-9a-f]{16}$/.test(key)) return NextResponse.json({ error: "Sesiune invalidă." }, { status: 400 });
+    if (!/^[0-9a-f]{16}$/.test(key)) return jsonError("Sesiune invalidă.");
     const res = await (await getDb())
       .prepare("DELETE FROM sessions WHERE user_id = ? AND substr(id, 1, 16) = ? AND id <> ?")
       .run(session.id, key, session.sessionId);
-    if (!res.changes) return NextResponse.json({ error: "Sesiunea nu există." }, { status: 404 });
+    if (!res.changes) return jsonError("Sesiunea nu există.", 404);
     await logAuthEvent(session.id, true, "sesiune-inchisa", meta);
     return NextResponse.json({ ok: true });
   } catch (err) {

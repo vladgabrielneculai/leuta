@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { errorResponse } from "@/lib/http";
-import { getDb, type DbInterface } from "@/lib/db";
-import { TABLES } from "@/lib/crud";
+import { errorResponse, jsonError } from "@/lib/http";
+import { getDb } from "@/lib/db";
+import { insertRow, TABLES, updateRow } from "@/lib/crud";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ export type ScheduleEntry = {
 
 export async function GET(req: NextRequest) {
   const loanId = req.nextUrl.searchParams.get("loanId");
-  if (!loanId) return NextResponse.json({ error: "Lipsește loanId" }, { status: 400 });
+  if (!loanId) return jsonError("Lipsește loanId");
 
   const db = await getDb();
   const rows = await db
@@ -45,23 +45,6 @@ function loanFields(data: Record<string, unknown> | undefined) {
   return out;
 }
 
-async function insertLoan(tx: DbInterface, data: Record<string, unknown>) {
-  const keys = Object.keys(data);
-  const info = await tx
-    .prepare(`INSERT INTO loans (${keys.join(",")}) VALUES (${keys.map(() => "?").join(",")})`)
-    .run(...keys.map((k) => data[k]));
-  return info.lastInsertRowid;
-}
-
-async function updateLoan(tx: DbInterface, id: number, data: Record<string, unknown>) {
-  const keys = Object.keys(data);
-  if (!keys.length) return true;
-  const res = await tx
-    .prepare(`UPDATE loans SET ${keys.map((k) => `${k} = ?`).join(", ")} WHERE id = ?`)
-    .run(...keys.map((k) => data[k]), id);
-  return res.changes > 0;
-}
-
 /**
  * Salvează graficul băncii pentru un credit și îl face sursa calculelor (use_schedule = 1).
  * Opțional, în aceeași tranzacție: `loanPatch` actualizează creditul (date citite din PDF / situația la zi),
@@ -79,9 +62,7 @@ export async function POST(req: NextRequest) {
     };
     let loanId = Number(body.loanId) || 0;
 
-    if ((!loanId && !createLoan) || !Array.isArray(entries) || entries.length === 0) {
-      return NextResponse.json({ error: "Date invalide" }, { status: 400 });
-    }
+    if ((!loanId && !createLoan) || !Array.isArray(entries) || entries.length === 0) return jsonError("Date invalide");
 
     const db = await getDb();
     const missing = await db.transaction(async (tx) => {
@@ -91,8 +72,8 @@ export async function POST(req: NextRequest) {
         if (!data.name || !(Number(data.principal) > 0) || !data.start_date) {
           throw new Error("Lipsesc datele creditului (nume, sumă, data acordării).");
         }
-        loanId = await insertLoan(tx, data);
-      } else if (!(await updateLoan(tx, loanId, loanFields({ ...loanPatch, ...flags })))) {
+        loanId = (await insertRow(tx, "loans", data)).lastInsertRowid;
+      } else if (!(await updateRow(tx, "loans", loanId, loanFields({ ...loanPatch, ...flags }))).changes) {
         return true; // creditul nu există sau e al altui cont
       }
 
@@ -128,7 +109,7 @@ export async function POST(req: NextRequest) {
       return false;
     });
 
-    if (missing) return NextResponse.json({ error: "Creditul nu există." }, { status: 404 });
+    if (missing) return jsonError("Creditul nu există.", 404);
     return NextResponse.json({ ok: true, loanId, count: entries.length });
   } catch (err) {
     return errorResponse(err, "Eroare la salvare");
@@ -137,7 +118,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const loanId = req.nextUrl.searchParams.get("loanId");
-  if (!loanId) return NextResponse.json({ error: "Lipsește loanId" }, { status: 400 });
+  if (!loanId) return jsonError("Lipsește loanId");
 
   await (await getDb()).transaction(async (tx) => {
     await tx.prepare("DELETE FROM loan_schedules WHERE loan_id = ?").run(Number(loanId));

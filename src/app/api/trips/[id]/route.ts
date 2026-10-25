@@ -1,5 +1,5 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { getDb } from "@/lib/db";
 import { currencyRates, ensureCurrencyHistory } from "@/lib/fx";
 import type { Trip, TripDetail, TripExpense, TripFund } from "@/lib/trips";
@@ -10,10 +10,10 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const id = Number((await context.params).id);
-    if (!Number.isInteger(id)) return NextResponse.json({ error: "Vacanță inexistentă." }, { status: 404 });
+    if (!Number.isInteger(id)) return jsonError("Vacanță inexistentă.", 404);
     const db = await getDb();
     const trip = await db.prepare("SELECT * FROM trips WHERE id = ?").get<Trip>(id);
-    if (!trip) return NextResponse.json({ error: "Vacanța nu există." }, { status: 404 });
+    if (!trip) return jsonError("Vacanța nu există.", 404);
     const [funds, expenses] = await Promise.all([
       db.prepare("SELECT * FROM trip_funds WHERE trip_id = ? ORDER BY id").all<TripFund>(id),
       db.prepare("SELECT * FROM trip_expenses WHERE trip_id = ? ORDER BY date DESC, id DESC").all<TripExpense>(id),

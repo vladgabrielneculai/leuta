@@ -1,4 +1,4 @@
-import { addMonths, monthDiff, type ScheduleType, type Strategy } from "./util";
+import { addMonths, monthDiff, r2 as round, type ScheduleType, type Strategy } from "./util";
 
 export type Loan = {
   id: number;
@@ -626,7 +626,6 @@ export function scheduleFromStatus(loan: Loan, s: LoanStatusInput): ScheduleRow[
     lastRate = rate;
     balance -= principal;
     if (balance < 0.005) balance = 0;
-    const round = (v: number) => Math.round(v * 100) / 100;
     rows.push({
       installment_nr: firstIdx >= 0 ? firstIdx + k + 1 : k + 1,
       month,

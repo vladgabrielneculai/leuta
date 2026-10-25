@@ -101,7 +101,6 @@ export function evaluateAffordability(
   const needs = Math.max(0, profile.needs || 0);
   const currentLoans = Math.max(0, profile.currentLoanPayments || 0);
   const totalSavings = Math.max(0, profile.totalSavings || 0);
-  const emergencySaved = Math.max(0, profile.emergencySaved || 0);
   const monthlySavings = Math.max(0, profile.monthlySavings || profile.unallocated || 0);
 
   // Cheltuieli lunare esențiale (nevoi de trai + rate deja existente)

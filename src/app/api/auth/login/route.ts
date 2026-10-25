@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import {
-  clearFailedLogins, createSession, DISABLED_MESSAGE, dummyPasswordCheck, hashPassword, isAccountLocked, isLockedOut, isProtected,
-  isSetupComplete, LOCKOUT_MESSAGE, logAuthEvent, recordFailedLogin, requestMeta, secondFactors, sessionCookieOptions,
+  clearFailedLogins, DISABLED_MESSAGE, dummyPasswordCheck, hashPassword, isAccountLocked, isLockedOut, isProtected,
+  isSetupComplete, LOCKOUT_MESSAGE, logAuthEvent, recordFailedLogin, requestMeta, secondFactors, sessionResponse,
   useTotpCode, verifyPassword,
 } from "@/lib/auth";
 import { BETA_DENIED_MESSAGE, hasBetaAccess } from "@/lib/beta";
 import { getSystemDb as getDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +20,10 @@ const BAD_CODE = "Codul nu este corect sau a expirat. Încearcă din nou.";
  */
 export async function POST(req: NextRequest) {
   try {
-    if (!(await isSetupComplete())) {
-      return NextResponse.json({ error: "Aplicația nu a fost configurată încă.", setupNeeded: true }, { status: 400 });
-    }
+    if (!(await isSetupComplete())) return jsonError("Aplicația nu a fost configurată încă.", 400, { setupNeeded: true });
 
     const meta = requestMeta(req.headers);
-    if (await isLockedOut(meta.ip)) {
-      return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
-    }
+    if (await isLockedOut(meta.ip)) return jsonError(LOCKOUT_MESSAGE, 429);
 
     const body = await req.json();
     const username = String(body.username ?? "").trim().slice(0, 100);
@@ -35,9 +31,7 @@ export async function POST(req: NextRequest) {
     const totpCode = String(body.totpCode ?? "").trim().slice(0, 20);
     const rememberMe = body.rememberMe !== false;
 
-    if (!username || !password) {
-      return NextResponse.json({ error: "Introdu utilizatorul și parola." }, { status: 400 });
-    }
+    if (!username || !password) return jsonError("Introdu utilizatorul și parola.");
 
     const db = await getDb();
     const user = await db
@@ -48,19 +42,19 @@ export async function POST(req: NextRequest) {
       await dummyPasswordCheck(password);
       await recordFailedLogin(meta.ip);
       await logAuthEvent(null, false, "password", meta, "utilizator necunoscut");
-      return NextResponse.json({ error: BAD_CREDENTIALS }, { status: 401 });
+      return jsonError(BAD_CREDENTIALS, 401);
     }
 
     if (await isAccountLocked(user.id)) {
       await logAuthEvent(user.id, false, "password", meta, "cont blocat temporar");
-      return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
+      return jsonError(LOCKOUT_MESSAGE, 429);
     }
 
     const check = await verifyPassword(password, user.salt, user.password_hash);
     if (!check.ok) {
       await recordFailedLogin(meta.ip, user.id);
       await logAuthEvent(user.id, false, "password", meta, "parolă greșită");
-      return NextResponse.json({ error: BAD_CREDENTIALS }, { status: 401 });
+      return jsonError(BAD_CREDENTIALS, 401);
     }
 
     // Hash vechi (mai slab) → îl refacem acum, cât avem parola.
@@ -72,38 +66,30 @@ export async function POST(req: NextRequest) {
     const factors = await secondFactors(user.id);
     let method: "password" | "totp" = "password";
     if (isProtected(factors)) {
-      if (!totpCode) {
-        return NextResponse.json(
-          { error: "Introdu codul de 6 cifre din aplicația de autentificare.", secondFactor: { totp: true } },
-          { status: 403 },
-        );
-      }
+      if (!totpCode) return jsonError("Introdu codul de 6 cifre din aplicația de autentificare.", 403, { secondFactor: { totp: true } });
       method = "totp";
       if (!(await useTotpCode(user.id, totpCode))) {
         await recordFailedLogin(meta.ip, user.id);
         await logAuthEvent(user.id, false, method, meta, "cod 2FA greșit");
-        return NextResponse.json({ error: BAD_CODE, secondFactor: { totp: true } }, { status: 401 });
+        return jsonError(BAD_CODE, 401, { secondFactor: { totp: true } });
       }
     }
 
     // Abia după autentificarea completă spunem că e dezactivat (altfel s-ar putea afla ce conturi există).
     if (user.disabled_at) {
       await logAuthEvent(user.id, false, method, meta, "cont dezactivat");
-      return NextResponse.json({ error: DISABLED_MESSAGE }, { status: 403 });
+      return jsonError(DISABLED_MESSAGE, 403);
     }
 
     // Tot după autentificarea completă: pe beta intră doar testerii.
     if (!hasBetaAccess(user.username)) {
       await logAuthEvent(user.id, false, method, meta, "fără acces la beta");
-      return NextResponse.json({ error: BETA_DENIED_MESSAGE }, { status: 403 });
+      return jsonError(BETA_DENIED_MESSAGE, 403);
     }
 
     await clearFailedLogins(meta.ip, user.id);
     await logAuthEvent(user.id, true, method, meta);
-    const { token, expiresAt } = await createSession(user.id, rememberMe, method, meta);
-    const res = NextResponse.json({ ok: true, user: { id: user.id, username: user.username } });
-    res.cookies.set({ ...sessionCookieOptions(expiresAt), value: token });
-    return res;
+    return sessionResponse(user.id, rememberMe, method, meta, { ok: true, user: { id: user.id, username: user.username } });
   } catch (err) {
     return errorResponse(err, "Eroare la autentificare.");
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { addMonths, currentMonth, monthLabel } from "@/lib/util";
 import { api, useApp } from "./ui";
@@ -187,7 +187,6 @@ function initials(u: StatusUser) {
 
 export default function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<StatusUser | null>(null);
   const [secured, setSecured] = useState(true);

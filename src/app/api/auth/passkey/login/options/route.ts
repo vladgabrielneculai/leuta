@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateAuthenticationOptions } from "@simplewebauthn/server";
 import { clientIp, isLockedOut, LOCKOUT_MESSAGE } from "@/lib/auth";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { relyingParty, saveChallenge } from "@/lib/webauthn";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 /** Începe login-ul cu Face ID / amprentă: browserul cere biometria pentru contul salvat pe acest site. */
 export async function POST(req: NextRequest) {
   try {
-    if (await isLockedOut(clientIp(req.headers))) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
+    if (await isLockedOut(clientIp(req.headers))) return jsonError(LOCKOUT_MESSAGE, 429);
     const { rpID } = relyingParty(req);
     const options = await generateAuthenticationOptions({ rpID, userVerification: "required", allowCredentials: [] });
     const res = NextResponse.json(options);
