@@ -1,12 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { verifyAuthenticationResponse, type AuthenticationResponseJSON } from "@simplewebauthn/server";
 import {
-  clearFailedLogins, createSession, isLockedOut, LOCKOUT_MESSAGE, logAuthEvent, recordFailedLogin, requestMeta,
-  sessionCookieOptions,
+  clearFailedLogins, isLockedOut, LOCKOUT_MESSAGE, logAuthEvent, recordFailedLogin, requestMeta, sessionResponse,
 } from "@/lib/auth";
 import { BETA_DENIED_MESSAGE, hasBetaAccess } from "@/lib/beta";
 import { getSystemDb as getDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { clearChallengeCookie, credentialById, relyingParty, takeChallenge } from "@/lib/webauthn";
 
 export const dynamic = "force-dynamic";
@@ -15,14 +14,14 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   const meta = requestMeta(req.headers);
   try {
-    if (await isLockedOut(meta.ip)) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
+    if (await isLockedOut(meta.ip)) return jsonError(LOCKOUT_MESSAGE, 429);
     const body = (await req.json()) as { response: AuthenticationResponseJSON; rememberMe?: boolean };
     const challenge = await takeChallenge(req, "login", null);
     const credential = body.response?.id ? await credentialById(String(body.response.id)) : null;
     const fail = async (reason: string) => {
       await recordFailedLogin(meta.ip);
       await logAuthEvent(credential?.userId ?? null, false, "passkey", meta, reason);
-      const res = NextResponse.json({ error: "Face ID / amprenta nu a putut fi verificată. Încearcă din nou." }, { status: 401 });
+      const res = jsonError("Face ID / amprenta nu a putut fi verificată. Încearcă din nou.", 401);
       clearChallengeCookie(res);
       return res;
     };
@@ -50,16 +49,14 @@ export async function POST(req: NextRequest) {
     if (!user) return fail("utilizator inexistent sau dezactivat");
     if (!hasBetaAccess(user.username)) {
       await logAuthEvent(user.id, false, "passkey", meta, "fără acces la beta");
-      const res = NextResponse.json({ error: BETA_DENIED_MESSAGE }, { status: 403 });
+      const res = jsonError(BETA_DENIED_MESSAGE, 403);
       clearChallengeCookie(res);
       return res;
     }
 
     await clearFailedLogins(meta.ip, user.id);
     await logAuthEvent(user.id, true, "passkey", meta);
-    const { token, expiresAt } = await createSession(user.id, body.rememberMe !== false, "passkey", meta);
-    const res = NextResponse.json({ ok: true, user });
-    res.cookies.set({ ...sessionCookieOptions(expiresAt), value: token });
+    const res = await sessionResponse(user.id, body.rememberMe !== false, "passkey", meta, { ok: true, user });
     clearChallengeCookie(res);
     return res;
   } catch (err) {

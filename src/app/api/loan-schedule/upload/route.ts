@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { errorResponse, MAX_UPLOAD_BYTES } from "@/lib/http";
+import { errorResponse, jsonError, MAX_UPLOAD_BYTES } from "@/lib/http";
 import { parsePdf, parseSpreadsheet, type ParsedScheduleRow, type ScheduleMeta } from "@/lib/scheduleParser";
 
 export const dynamic = "force-dynamic";
@@ -7,20 +7,16 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   // Refuzăm fișierele prea mari înainte de a le citi (peste 10 MB, proxy-ul ar trimite oricum doar începutul lor).
   if (Number(req.headers.get("content-length") ?? 0) > MAX_UPLOAD_BYTES + 64 * 1024) {
-    return NextResponse.json({ error: "Fișierul este prea mare (maxim 10 MB)." }, { status: 413 });
+    return jsonError("Fișierul este prea mare (maxim 10 MB).", 413);
   }
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const loanId = Number(formData.get("loanId"));
 
-    if (!file) {
-      return NextResponse.json({ error: "Nu a fost selectat niciun fișier." }, { status: 400 });
-    }
+    if (!file) return jsonError("Nu a fost selectat niciun fișier.");
 
-    if (file.size > MAX_UPLOAD_BYTES) {
-      return NextResponse.json({ error: "Fișierul este prea mare (maxim 10 MB)." }, { status: 413 });
-    }
+    if (file.size > MAX_UPLOAD_BYTES) return jsonError("Fișierul este prea mare (maxim 10 MB).", 413);
     const filename = file.name.toLowerCase();
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -33,7 +29,7 @@ export async function POST(req: NextRequest) {
     } else if (filename.endsWith(".pdf")) {
       ({ rows, meta } = await parsePdf(buffer));
     } else {
-      return NextResponse.json({ error: "Format nesuportat. Încarcă un fișier PDF, Excel (.xlsx) sau CSV." }, { status: 400 });
+      return jsonError("Format nesuportat. Încarcă un fișier PDF, Excel (.xlsx) sau CSV.");
     }
 
     if (!rows || rows.length === 0) {

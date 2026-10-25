@@ -18,7 +18,8 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+          # Fără bază sau cu o bază care nu mai există (ex. după rescrierea istoricului): verifică tot istoricul.
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             range="$HEAD"
           else
             range="$BASE..$HEAD"

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyRegistrationResponse, type RegistrationResponseJSON } from "@simplewebauthn/server";
 import { logAuthEvent, requestMeta, requireRecentAuth } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { clearChallengeCookie, deviceName, encodePublicKey, relyingParty, takeChallenge } from "@/lib/webauthn";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const { session } = auth;
     const body = (await req.json()) as { response: RegistrationResponseJSON; name?: string };
     const challenge = await takeChallenge(req, "register", session.id);
-    if (!challenge) return NextResponse.json({ error: "Cererea a expirat. Încearcă din nou." }, { status: 400 });
+    if (!challenge) return jsonError("Cererea a expirat. Încearcă din nou.");
 
     const { rpID, origin } = relyingParty(req);
     const result = await verifyRegistrationResponse({
@@ -25,9 +25,7 @@ export async function POST(req: NextRequest) {
       expectedRPID: rpID,
       requireUserVerification: true,
     }).catch(() => null);
-    if (!result?.verified || !result.registrationInfo) {
-      return NextResponse.json({ error: "Face ID / amprenta nu a putut fi verificată." }, { status: 400 });
-    }
+    if (!result?.verified || !result.registrationInfo) return jsonError("Face ID / amprenta nu a putut fi verificată.");
 
     const { credential, credentialDeviceType, credentialBackedUp } = result.registrationInfo;
     const meta = requestMeta(req.headers);

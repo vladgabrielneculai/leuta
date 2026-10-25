@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  clearFailedLogins, createSession, findValidReset, generateSalt, hashPassword, isLockedOut, LOCKOUT_MESSAGE, logAuthEvent,
-  MIN_PASSWORD_LENGTH, recordFailedLogin, requestMeta, sessionCookieOptions, sha256,
+  clearFailedLogins, findValidReset, generateSalt, hashPassword, isLockedOut, LOCKOUT_MESSAGE, logAuthEvent, passwordError,
+  recordFailedLogin, requestMeta, sessionResponse, sha256,
 } from "@/lib/auth";
 import { BETA_NO_ACCOUNTS_MESSAGE, isBetaDeployment } from "@/lib/beta";
 import { getSystemDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     // Beta folosește conturile din producție; aici nu se creează conturi și nu se schimbă parole.
     if (isBetaDeployment()) return NextResponse.json({ error: BETA_NO_ACCOUNTS_MESSAGE }, { status: 403 });
     const meta = requestMeta(req.headers);
-    if (await isLockedOut(meta.ip)) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
+    if (await isLockedOut(meta.ip)) return jsonError(LOCKOUT_MESSAGE, 429);
     const reset = await findValidReset(req.nextUrl.searchParams.get("cod") ?? "");
     if (!reset) {
       await recordFailedLogin(meta.ip); // codurile ghicite consumă din aceeași limită ca parolele greșite
@@ -38,13 +38,12 @@ export async function POST(req: NextRequest) {
   try {
     if (isBetaDeployment()) return NextResponse.json({ error: BETA_NO_ACCOUNTS_MESSAGE }, { status: 403 });
     const meta = requestMeta(req.headers);
-    if (await isLockedOut(meta.ip)) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
+    if (await isLockedOut(meta.ip)) return jsonError(LOCKOUT_MESSAGE, 429);
     const body = await req.json().catch(() => ({}));
     const code = String(body.code ?? "");
     const password = String(body.password ?? "").slice(0, 200);
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      return NextResponse.json({ error: `Parola trebuie să aibă cel puțin ${MIN_PASSWORD_LENGTH} caractere.` }, { status: 400 });
-    }
+    const invalid = passwordError(password);
+    if (invalid) return jsonError(invalid);
 
     const salt = generateSalt();
     const passwordHash = await hashPassword(password, salt);
@@ -73,15 +72,12 @@ export async function POST(req: NextRequest) {
 
     if (!result) {
       await recordFailedLogin(meta.ip);
-      return NextResponse.json({ error: INVALID }, { status: 404 });
+      return jsonError(INVALID, 404);
     }
 
     await clearFailedLogins(meta.ip, result.user_id);
     await logAuthEvent(result.user_id, true, "reset", meta);
-    const { token, expiresAt } = await createSession(result.user_id, true, "reset", meta);
-    const res = NextResponse.json({ ok: true, username: result.username });
-    res.cookies.set({ ...sessionCookieOptions(expiresAt), value: token });
-    return res;
+    return sessionResponse(result.user_id, true, "reset", meta, { ok: true, username: result.username });
   } catch (err) {
     return errorResponse(err, "Parola nu a putut fi schimbată.");
   }

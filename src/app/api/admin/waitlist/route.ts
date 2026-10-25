@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createInvitation, INVITE_DAYS, requireAdmin } from "@/lib/auth";
 import { getSystemDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { emailConfigured, sendEmail } from "@/lib/notify/email";
 import { toEmailHtml, toPlainText, type Message } from "@/lib/notify/render";
 
@@ -49,10 +49,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const id = Number(body.id);
-    if (!Number.isInteger(id)) return NextResponse.json({ error: "Înscriere invalidă." }, { status: 400 });
+    if (!Number.isInteger(id)) return jsonError("Înscriere invalidă.");
     const db = await getSystemDb();
     const row = await db.prepare("SELECT id, email, invitation_id FROM waitlist WHERE id = ?").get<{ id: number; email: string; invitation_id: number | null }>(id);
-    if (!row) return NextResponse.json({ error: "Înscrierea nu mai există." }, { status: 404 });
+    if (!row) return jsonError("Înscrierea nu mai există.", 404);
 
     // O invitație veche, încă activă, se anulează: rămâne valabil doar linkul nou.
     if (row.invitation_id) {
@@ -91,7 +91,7 @@ export async function DELETE(req: NextRequest) {
   if ("response" in auth) return auth.response;
   try {
     const id = Number(req.nextUrl.searchParams.get("id"));
-    if (!Number.isInteger(id)) return NextResponse.json({ error: "Înscriere invalidă." }, { status: 400 });
+    if (!Number.isInteger(id)) return jsonError("Înscriere invalidă.");
     await (await getSystemDb()).prepare("DELETE FROM waitlist WHERE id = ?").run(id);
     return NextResponse.json({ ok: true });
   } catch (err) {
