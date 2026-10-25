@@ -1,0 +1,31 @@
+name: Autori umani
+
+on:
+  pull_request:
+  push:
+    branches: [main, staging]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verifică autorii și co-autorii commit-urilor
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            range="$HEAD"
+          else
+            range="$BASE..$HEAD"
+          fi
+          bad=$(git log --format='%h|%an <%ae>|%cn <%ce>%n%B' "$range" | grep -iE 'anthropic|^co-authored-by:.*claude|^claude-session:|\|claude <' || true)
+          if [ -n "$bad" ]; then
+            echo "Commit-uri cu autor sau co-autor AI:"
+            echo "$bad"
+            exit 1
+          fi

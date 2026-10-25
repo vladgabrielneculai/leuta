@@ -1,0 +1,19 @@
+#!/bin/sh
+# Elimină din mesajul de commit liniile de atribuire adăugate de asistenți AI
+# și refuză commit-urile al căror autor nu este un om.
+
+msg_file="$1"
+
+author=$(git var GIT_AUTHOR_IDENT | sed 's/>.*/>/')
+case "$author" in
+  *noreply@anthropic.com*|Claude\ \<*)
+    echo "commit-msg: autorul commit-ului este '$author'. Folosește autorul uman al repository-ului." >&2
+    exit 1
+    ;;
+esac
+
+tmp="$msg_file.tmp"
+grep -viE '^(co-authored-by:.*(anthropic|claude)|claude-session:)' "$msg_file" > "$tmp"
+# Elimină liniile goale rămase la final.
+sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$tmp" > "$msg_file"
+rm -f "$tmp"
