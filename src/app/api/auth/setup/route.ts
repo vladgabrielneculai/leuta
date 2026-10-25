@@ -1,10 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import {
-  createSession, generateSalt, hashPassword, logAuthEvent, MIN_PASSWORD_LENGTH, requestMeta, sessionCookieOptions,
-  validateUsername,
-} from "@/lib/auth";
+import { NextRequest } from "next/server";
+import { generateSalt, hashPassword, logAuthEvent, passwordError, requestMeta, sessionResponse, validateUsername } from "@/lib/auth";
 import { getDbFor, getSystemDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { seedDemoData } from "@/lib/seed";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +13,9 @@ export async function POST(req: NextRequest) {
     const password = String(body.password ?? "").slice(0, 200);
     const seedDemo = !!body.seedDemo;
 
-    const usernameError = validateUsername(username);
-    if (usernameError) return NextResponse.json({ error: usernameError }, { status: 400 });
-    // Aplicația e publică pe internet, deci cerem o parolă lungă.
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      return NextResponse.json({ error: `Parola trebuie să aibă cel puțin ${MIN_PASSWORD_LENGTH} caractere.` }, { status: 400 });
-    }
+    // Aplicația e publică pe internet, deci cerem și o parolă lungă.
+    const invalid = validateUsername(username) ?? passwordError(password);
+    if (invalid) return jsonError(invalid);
 
     const salt = generateSalt();
     const passwordHash = await hashPassword(password, salt);
@@ -33,9 +27,7 @@ export async function POST(req: NextRequest) {
          SELECT ?, ?, ?, ?, true WHERE NOT EXISTS (SELECT 1 FROM users)`,
       )
       .run(username, passwordHash, salt, new Date().toISOString());
-    if (!info.changes) {
-      return NextResponse.json({ error: "Configurarea inițială a fost deja efectuată." }, { status: 400 });
-    }
+    if (!info.changes) return jsonError("Configurarea inițială a fost deja efectuată.");
     const userId = Number(info.lastInsertRowid);
 
     // Categoriile și setările implicite ale noului cont se creează la prima folosire a bazei lui.
@@ -54,10 +46,7 @@ export async function POST(req: NextRequest) {
 
     const meta = requestMeta(req.headers);
     await logAuthEvent(userId, true, "setup", meta);
-    const { token, expiresAt } = await createSession(userId, true, "setup", meta);
-    const res = NextResponse.json({ ok: true, user: { id: userId, username } });
-    res.cookies.set({ ...sessionCookieOptions(expiresAt), value: token });
-    return res;
+    return sessionResponse(userId, true, "setup", meta, { ok: true, user: { id: userId, username } });
   } catch (err) {
     return errorResponse(err, "Eroare la configurare.");
   }

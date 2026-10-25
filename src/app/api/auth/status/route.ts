@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { jsonError } from "@/lib/http";
 import { getCurrentSession, isProtected, isSetupComplete, secondFactors } from "@/lib/auth";
 import { hasBetaAccess, isBetaDeployment } from "@/lib/beta";
 import { getDbFor } from "@/lib/db";
@@ -22,7 +23,7 @@ export async function GET() {
     // Pe beta, un cont fără acces apare ca neautentificat (proxy-ul îi închide sesiunea la prima cerere).
     if (session && !hasBetaAccess(session.username)) session = null;
   } catch {
-    return NextResponse.json({ error: "Baza de date nu răspunde. Încearcă din nou." }, { status: 503 });
+    return jsonError("Baza de date nu răspunde. Încearcă din nou.", 503);
   }
   const [secured, brief] = session
     ? await Promise.all([

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { buildReceipt } from "@/lib/receipt/model";
 import { receiptFilename, renderReceiptPdf } from "@/lib/receipt/pdf";
 
@@ -10,11 +10,9 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const month = req.nextUrl.searchParams.get("month") ?? "";
-    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
-      return NextResponse.json({ error: "Luna trebuie să fie în formatul AAAA-LL." }, { status: 400 });
-    }
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return jsonError("Luna trebuie să fie în formatul AAAA-LL.");
     const session = await getCurrentSession();
-    if (!session) return NextResponse.json({ error: "Neautentificat." }, { status: 401 });
+    if (!session) return jsonError("Neautentificat.", 401);
     const pdf = await renderReceiptPdf(await buildReceipt(month, session.username));
     return new NextResponse(Buffer.from(pdf), {
       headers: {

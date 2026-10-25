@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, downloadFile, Field, Modal, Panel, useConfirm } from "./ui";
+import { api, downloadFile, Modal, Panel, useConfirm } from "./ui";
 
 type DbInfo = {
   path: string;

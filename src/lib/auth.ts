@@ -3,6 +3,7 @@ import { promisify } from "util";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getSystemDb as getDb } from "./db"; // utilizatori/sesiuni = tabele comune
+import { jsonError } from "./http";
 import { matchTotp } from "./totp";
 
 export const SESSION_COOKIE = "bp_session";
@@ -33,6 +34,10 @@ export function sha256(value: string): string {
 const PBKDF2_ITERATIONS = 210_000;
 const LEGACY_ITERATIONS = 100_000;
 export const MIN_PASSWORD_LENGTH = 12;
+
+/** Mesajul de eroare pentru o parolă prea scurtă, sau null. */
+export const passwordError = (password: string, label = "Parola") =>
+  password.length < MIN_PASSWORD_LENGTH ? `${label} trebuie să aibă cel puțin ${MIN_PASSWORD_LENGTH} caractere.` : null;
 
 export function generateSalt(): string {
   return crypto.randomBytes(16).toString("hex");
@@ -124,6 +129,14 @@ export async function createSession(
   return { token, expiresAt };
 }
 
+/** Deschide o sesiune și întoarce răspunsul JSON `body` cu cookie-ul ei setat. */
+export async function sessionResponse(userId: number, rememberMe: boolean, method: AuthMethod, meta: RequestMeta, body: unknown) {
+  const { token, expiresAt } = await createSession(userId, rememberMe, method, meta);
+  const res = NextResponse.json(body);
+  res.cookies.set({ ...sessionCookieOptions(expiresAt), value: token });
+  return res;
+}
+
 export async function destroySession(token: string): Promise<void> {
   try {
     await (await getDb()).prepare("DELETE FROM sessions WHERE id = ?").run(sha256(token));
@@ -180,12 +193,18 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
   return s ? { id: s.id, username: s.username, created_at: s.created_at, is_admin: s.is_admin } : null;
 }
 
-/** Doar administratorul (invitații, lista conturilor). Datele financiare ale altora nu sunt accesibile nici lui. */
-export async function requireAdmin(): Promise<{ session: CurrentSession } | { response: NextResponse }> {
+type Guard = { session: CurrentSession } | { response: NextResponse };
+
+/** Orice utilizator logat; altfel 401. */
+async function requireSession(): Promise<Guard> {
   const session = await getCurrentSession();
-  if (!session) return { response: NextResponse.json({ error: "Neautentificat." }, { status: 401 }) };
-  if (!session.is_admin) return { response: NextResponse.json({ error: "Doar administratorul are acces aici." }, { status: 403 }) };
-  return { session };
+  return session ? { session } : { response: jsonError("Neautentificat.", 401) };
+}
+
+/** Doar administratorul (invitații, lista conturilor). Datele financiare ale altora nu sunt accesibile nici lui. */
+export async function requireAdmin(): Promise<Guard> {
+  const auth = await requireSession();
+  return "session" in auth && !auth.session.is_admin ? { response: jsonError("Doar administratorul are acces aici.", 403) } : auth;
 }
 
 /** Contul e dezactivat de administrator (nu se mai poate autentifica). */
@@ -221,13 +240,11 @@ export function isRecentAuth(s: CurrentSession) {
  * confirmată (Face ID / amprentă, cod 2FA sau parolă) în ultimele minute. Altfel răspundem 403 + `reauth: true`,
  * iar interfața cere confirmarea și repetă automat cererea.
  */
-export async function requireRecentAuth(): Promise<{ session: CurrentSession } | { response: NextResponse }> {
-  const session = await getCurrentSession();
-  if (!session) return { response: NextResponse.json({ error: "Neautentificat." }, { status: 401 }) };
-  if (!isRecentAuth(session)) {
-    return { response: NextResponse.json({ error: "Confirmă-ți identitatea pentru această acțiune.", reauth: true }, { status: 403 }) };
-  }
-  return { session };
+export async function requireRecentAuth(): Promise<Guard> {
+  const auth = await requireSession();
+  return "session" in auth && !isRecentAuth(auth.session)
+    ? { response: jsonError("Confirmă-ți identitatea pentru această acțiune.", 403, { reauth: true }) }
+    : auth;
 }
 
 export async function markReauthenticated(sessionId: string) {
