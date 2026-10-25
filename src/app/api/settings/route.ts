@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jsonError } from "@/lib/http";
 import { getDb, getSettings, isSystemSetting } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   const body = (await req.json()) as Record<string, string | number | boolean>;
-  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Cerere invalidă." }, { status: 400 });
+  if (!body || typeof body !== "object" || Array.isArray(body)) return jsonError("Cerere invalidă.");
   const db = await getDb();
   // Doar preferințele personale; cheile de sistem (curs/inflație) nu se modifică de aici.
   // Doar valori simple și scurte (preferințele sunt numere, „0”/„1” sau texte mici).

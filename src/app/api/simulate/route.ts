@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jsonError } from "@/lib/http";
 import { getDb } from "@/lib/db";
 import { simulate, statusAt, type Loan, type Prepayment, type ScheduleRow, type SimOptions } from "@/lib/loan";
 import { currentMonth } from "@/lib/util";
@@ -9,7 +10,7 @@ export async function POST(req: NextRequest) {
   const body = (await req.json()) as { loanId: number; scenario?: SimOptions };
   const db = await getDb();
   const loan = await db.prepare("SELECT * FROM loans WHERE id = ?").get<Loan>(body.loanId);
-  if (!loan) return NextResponse.json({ error: "Creditul nu există" }, { status: 404 });
+  if (!loan) return jsonError("Creditul nu există", 404);
   const [prepayments, customSchedule] = await Promise.all([
     db.prepare("SELECT * FROM loan_prepayments WHERE loan_id = ? ORDER BY month").all<Prepayment>(loan.id),
     db.prepare("SELECT * FROM loan_schedules WHERE loan_id = ? ORDER BY installment_nr ASC").all<ScheduleRow>(loan.id),
