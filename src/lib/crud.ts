@@ -1,3 +1,5 @@
+import type { DbInterface } from "./db";
+
 export const TABLES: Record<string, { columns: string[]; filters: string[]; order: string }> = {
   categories: { columns: ["name", "kind", "bucket", "color"], filters: ["kind"], order: "kind, name" },
   entries: {
@@ -110,3 +112,27 @@ export const VALIDATE: Record<string, (data: Record<string, unknown>, isNew: boo
     if ((isNew || "date" in d) && !isIsoDay(d.date)) throw new Error("Alege data cheltuielii.");
   },
 };
+
+/** `INSERT INTO table (…) VALUES (…)` cu cheile lui `data` (coloane deja verificate de apelant). */
+export function insertRow(db: DbInterface, table: string, data: Record<string, unknown>, suffix = "") {
+  const keys = Object.keys(data);
+  return db.prepare(`INSERT INTO ${table} (${keys.join(",")}) VALUES (${keys.map(() => "?").join(",")})${suffix}`).run(...Object.values(data));
+}
+
+/** `UPDATE table SET … WHERE id = ?` cu cheile lui `data` (coloane deja verificate de apelant). */
+export function updateRow(db: DbInterface, table: string, id: unknown, data: Record<string, unknown>) {
+  return db.prepare(`UPDATE ${table} SET ${Object.keys(data).map((k) => `${k} = ?`).join(", ")} WHERE id = ?`).run(...Object.values(data), id);
+}
+
+/** Tabelele cu datele financiare ale unui cont, în ordinea cheilor străine (părinții înaintea copiilor). */
+export const FINANCIAL_TABLES = [
+  "categories", "goals", "investments", "loans", "scheduled_entries", "entries",
+  "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases", "import_rules",
+  "trips", "trip_funds", "trip_expenses",
+] as const;
+
+/** Tabelele vizibile în exploratorul bazei de date (Setări, doar administrator). */
+export const DB_TABLES = [
+  "entries", "loans", "loan_prepayments", "loan_schedules", "categories", "goals",
+  "investments", "investment_values", "planned_purchases", "trips", "trip_funds", "trip_expenses", "user_settings", "fx_rates", "fx_rates_currency", "inflation_rates",
+];

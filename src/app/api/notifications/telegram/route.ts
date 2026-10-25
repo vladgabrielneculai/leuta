@@ -2,16 +2,10 @@ import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession, sha256 } from "@/lib/auth";
 import { getSystemDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { appUrl, errorResponse, jsonError } from "@/lib/http";
 import { botUsername, configureBot, sendTelegram, telegramConfigured } from "@/lib/notify/telegram";
 
 export const dynamic = "force-dynamic";
-
-function appUrl(req: NextRequest) {
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  return `https://${host}`;
-}
 
 /**
  * Pornește conectarea: configurează webhook-ul botului spre această aplicație și întoarce un link
@@ -20,10 +14,8 @@ function appUrl(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getCurrentSession();
-    if (!session) return NextResponse.json({ error: "Neautentificat." }, { status: 401 });
-    if (!telegramConfigured()) {
-      return NextResponse.json({ error: "Botul nu e configurat: adaugă TELEGRAM_BOT_TOKEN în Vercel și redeployează." }, { status: 400 });
-    }
+    if (!session) return jsonError("Neautentificat.", 401);
+    if (!telegramConfigured()) return jsonError("Botul nu e configurat: adaugă TELEGRAM_BOT_TOKEN în Vercel și redeployează.");
     await configureBot(appUrl(req));
     const code = crypto.randomBytes(24).toString("base64url");
     await (await getSystemDb())
@@ -42,7 +34,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE() {
   try {
     const session = await getCurrentSession();
-    if (!session) return NextResponse.json({ error: "Neautentificat." }, { status: 401 });
+    if (!session) return jsonError("Neautentificat.", 401);
     const row = await (await getSystemDb())
       .prepare("DELETE FROM telegram_links WHERE user_id = ? RETURNING chat_id")
       .get<{ chat_id: string }>(session.id);

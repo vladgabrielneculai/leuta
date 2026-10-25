@@ -3,11 +3,9 @@
 import { useEffect, useState } from "react";
 import Logo from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useRouter } from "next/navigation";
 import { api, Field } from "@/components/ui";
 
 export default function SetupPage() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

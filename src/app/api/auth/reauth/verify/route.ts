@@ -5,7 +5,7 @@ import {
   requestMeta, secondFactors, useTotpCode, verifyPassword,
 } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { clearChallengeCookie, credentialById, relyingParty, takeChallenge } from "@/lib/webauthn";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
   const meta = requestMeta(req.headers);
   try {
     const session = await getCurrentSession();
-    if (!session) return NextResponse.json({ error: "Neautentificat." }, { status: 401 });
-    if (await isLockedOut(meta.ip)) return NextResponse.json({ error: LOCKOUT_MESSAGE }, { status: 429 });
+    if (!session) return jsonError("Neautentificat.", 401);
+    if (await isLockedOut(meta.ip)) return jsonError(LOCKOUT_MESSAGE, 429);
     const body = (await req.json()) as Body;
     const db = await getDb();
     const factors = await secondFactors(session.id);

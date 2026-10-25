@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRecentAuth } from "@/lib/auth";
+import { FINANCIAL_TABLES, insertRow } from "@/lib/crud";
 import { getDb } from "@/lib/db";
-import { errorResponse, MAX_UPLOAD_BYTES } from "@/lib/http";
+import { errorResponse, jsonError, MAX_UPLOAD_BYTES } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +16,7 @@ export const dynamic = "force-dynamic";
  */
 
 // Ordinea respectă cheile străine (părinții înaintea copiilor).
-const ORDER = [
-  "categories", "goals", "investments", "loans", "scheduled_entries", "entries",
-  "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases", "import_rules",
-  "trips", "trip_funds", "trip_expenses",
-] as const;
+const ORDER = FINANCIAL_TABLES;
 
 // coloană → tabelul părinte al cărui id îl referă
 const FKS: Record<string, Record<string, string>> = {
@@ -62,9 +59,7 @@ export async function POST(req: NextRequest) {
   try {
     const auth = await requireRecentAuth();
     if ("response" in auth) return auth.response;
-    if (Number(req.headers.get("content-length") ?? 0) > MAX_UPLOAD_BYTES) {
-      return NextResponse.json({ error: "Fișierul de backup este prea mare." }, { status: 413 });
-    }
+    if (Number(req.headers.get("content-length") ?? 0) > MAX_UPLOAD_BYTES) return jsonError("Fișierul de backup este prea mare.", 413);
     const body = (await req.json()) as { version: number; data: Record<string, Record<string, unknown>[]> };
     if (![1, 2].includes(body.version) || !body.data) throw new Error("Fișierul nu este un backup valid al aplicației");
     // Ștergerea unei vacanțe șterge în cascadă banii și cheltuielile ei: un backup cu vacanțe, dar fără
@@ -109,11 +104,8 @@ export async function POST(req: NextRequest) {
             (FKS[t]?.trip_id && rec.trip_id === null) ||
             (t === "import_rules" && rec.category_id === null)
           ) continue;
-          const keys = Object.keys(rec);
-          if (keys.some((k) => !/^[a-z_]+$/.test(k))) throw new Error(`Coloană invalidă în ${t}`);
-          const res = await tx
-            .prepare(`INSERT INTO ${t} (${keys.join(",")}) VALUES (${keys.map(() => "?").join(",")}) ON CONFLICT DO NOTHING`)
-            .run(...keys.map((k) => rec[k]));
+          if (Object.keys(rec).some((k) => !/^[a-z_]+$/.test(k))) throw new Error(`Coloană invalidă în ${t}`);
+          const res = await insertRow(tx, t, rec, " ON CONFLICT DO NOTHING");
           if (HAS_ID.has(t) && oldId !== undefined && res.lastInsertRowid) idMap[t].set(oldId, res.lastInsertRowid);
         }
       }

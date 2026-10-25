@@ -1,5 +1,5 @@
 import { indexForMonth, type Loan, type ScheduleRow } from "./loan";
-import { addMonths } from "./util";
+import { addMonths, r2 } from "./util";
 import type { ScheduleMeta } from "./scheduleParser";
 
 type ImportedRow = ScheduleRow & { date?: string };
@@ -33,7 +33,7 @@ export function loanFieldsFromSchedule(meta: ScheduleMeta | null | undefined, ro
     start_date,
     term_months,
     schedule_type: m.scheduleType ?? base.schedule_type ?? "annuity",
-    already_paid_principal: Math.max(0, Math.round((principal - next.balance_start) * 100) / 100),
+    already_paid_principal: Math.max(0, r2(principal - next.balance_start)),
     insurance_monthly: next.fee,
     use_schedule: 1,
     schedule_source: "pdf",
