@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateAuthenticationOptions } from "@simplewebauthn/server";
 import { getCurrentSession, isProtected, secondFactors } from "@/lib/auth";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { credentialsForUser, relyingParty, saveChallenge } from "@/lib/webauthn";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const session = await getCurrentSession();
-    if (!session) return NextResponse.json({ error: "Neautentificat." }, { status: 401 });
+    if (!session) return jsonError("Neautentificat.", 401);
     const factors = await secondFactors(session.id);
     const methods: string[] = [];
     let options = null;

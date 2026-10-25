@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  generateSalt, hashPassword, logAuthEvent, MIN_PASSWORD_LENGTH, requestMeta, requireRecentAuth, revokeSessions,
+  generateSalt, hashPassword, logAuthEvent, passwordError, requestMeta, requireRecentAuth, revokeSessions,
   validateUsername, verifyPassword,
 } from "@/lib/auth";
 import { getSystemDb as getDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -26,21 +26,18 @@ export async function POST(req: NextRequest) {
       salt: string;
     }>(session.id);
     if (!row || !(await verifyPassword(currentPassword, row.salt, row.password_hash)).ok) {
-      return NextResponse.json({ error: "Parola curentă este incorectă." }, { status: 400 });
+      return jsonError("Parola curentă este incorectă.");
     }
 
     // Aceleași reguli ca la crearea contului (lungime și caractere permise).
-    const usernameError = newUsername !== undefined ? validateUsername(newUsername) : null;
-    if (usernameError) return NextResponse.json({ error: usernameError }, { status: 400 });
-    if (newPassword !== undefined && newPassword.length < MIN_PASSWORD_LENGTH) {
-      return NextResponse.json({ error: `Parola nouă trebuie să aibă cel puțin ${MIN_PASSWORD_LENGTH} caractere.` }, { status: 400 });
-    }
+    const invalid = (newUsername !== undefined && validateUsername(newUsername)) || (newPassword !== undefined && passwordError(newPassword, "Parola nouă"));
+    if (invalid) return jsonError(invalid);
 
     if (newUsername) {
       const taken = await db
         .prepare("SELECT 1 FROM users WHERE lower(username) = lower(?) AND id <> ?")
         .get(newUsername, session.id);
-      if (taken) return NextResponse.json({ error: "Numele de utilizator este deja folosit." }, { status: 400 });
+      if (taken) return jsonError("Numele de utilizator este deja folosit.");
       await db.prepare("UPDATE users SET username = ? WHERE id = ?").run(newUsername, session.id);
     }
 

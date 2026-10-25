@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createInvitation, INVITE_DAYS, requireAdmin } from "@/lib/auth";
 import { getSystemDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -66,11 +66,11 @@ export async function DELETE(req: NextRequest) {
   if ("response" in auth) return auth.response;
   try {
     const id = Number(req.nextUrl.searchParams.get("id"));
-    if (!Number.isInteger(id)) return NextResponse.json({ error: "Invitație invalidă." }, { status: 400 });
+    if (!Number.isInteger(id)) return jsonError("Invitație invalidă.");
     const res = await (await getSystemDb())
       .prepare("UPDATE invitations SET revoked_at = now() WHERE id = ? AND used_at IS NULL AND revoked_at IS NULL")
       .run(id);
-    if (!res.changes) return NextResponse.json({ error: "Invitația a fost deja folosită sau anulată." }, { status: 409 });
+    if (!res.changes) return jsonError("Invitația a fost deja folosită sau anulată.", 409);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return errorResponse(err, "Invitația nu a putut fi anulată.");

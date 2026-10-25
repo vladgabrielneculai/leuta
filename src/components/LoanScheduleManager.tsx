@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Loan, ScheduleRow, SimResult } from "@/lib/loan";
 import { loanFieldsFromSchedule } from "@/lib/loanImport";
-import { addMonths, currentMonth, lei, type Strategy } from "@/lib/util";
+import { addMonths, currentMonth, lei, r2, type Strategy } from "@/lib/util";
 import BankScheduleImport, { type BankImportResult } from "./BankScheduleImport";
 import LoanStatusForm, { type LoanStatusDraft } from "./LoanStatusForm";
 import { api, Field, Modal, Panel, useConfirm } from "./ui";
@@ -161,7 +161,7 @@ export default function LoanScheduleManager({
       ...draft,
       current_balance: balance,
       status_date: new Date().toISOString().slice(0, 10),
-      already_paid_principal: loan.principal > balance ? Math.round((loan.principal - balance) * 100) / 100 : loan.already_paid_principal,
+      already_paid_principal: loan.principal > balance ? r2(loan.principal - balance) : loan.already_paid_principal,
       insurance_monthly: draft.next_fees,
       // Durata creditului: până la maturitate (numărul ratei = indexul lunii de la acordare + 1).
       term_months: lastRow ? Math.max(1, lastRow.installment_nr) : loan.term_months,

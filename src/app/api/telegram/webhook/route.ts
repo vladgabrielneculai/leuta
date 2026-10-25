@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jsonError } from "@/lib/http";
 import { handleUpdate, type TgUpdate } from "@/lib/notify/bot";
 import { verifyWebhookSecret } from "@/lib/notify/telegram";
 
@@ -9,9 +10,7 @@ export const dynamic = "force-dynamic";
  * fără el, cererea e ignorată (oricine altcineva ar putea apela adresa).
  */
 export async function POST(req: NextRequest) {
-  if (!verifyWebhookSecret(req.headers.get("x-telegram-bot-api-secret-token"))) {
-    return NextResponse.json({ error: "Neautorizat." }, { status: 401 });
-  }
+  if (!verifyWebhookSecret(req.headers.get("x-telegram-bot-api-secret-token"))) return jsonError("Neautorizat.", 401);
   try {
     const update = (await req.json()) as TgUpdate;
     await handleUpdate(update);
