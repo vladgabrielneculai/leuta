@@ -26,7 +26,8 @@ Dacă funcționalitatea nu atinge structura bazei de date, spune asta pe scurt (
 ## Commit-uri
 
 - Toate commit-urile se fac cu autorul **Vlad Gabriel Neculai `<81146225+vladgabrielneculai@users.noreply.github.com>`** (setat automat din `.claude/settings.json`; dacă lipsește, rulează `git config user.name` / `git config user.email` cu aceste valori înainte de commit).
-- **Nu adăuga linia `Co-Authored-By:`** în mesajele de commit. Repository-ul e privat și Vercel (planul Hobby) blochează deploy-urile pentru commit-urile cu alt autor sau co-autor decât proprietarul contului.
+- **Nu adăuga linia `Co-Authored-By:`** (nici `Claude-Session:`) în mesajele de commit și nicio atribuire în descrierile pull request-urilor. Repository-ul e privat și Vercel (planul Hobby) blochează deploy-urile pentru commit-urile cu alt autor sau co-autor decât proprietarul contului. Singurii contributori sunt dezvoltatorii umani.
+- Regula e impusă automat: `.claude/settings.json` dezactivează atribuirea, hook-ul `.githooks/commit-msg` (activat la pornirea sesiunii prin `core.hooksPath`) șterge liniile de co-autor AI și refuză autorii AI, iar workflow-ul `.github/workflows/human-authors.yml` pică pentru orice commit cu autor sau co-autor AI.
 - Lucrează doar pe `main`, `staging` și branch-ul curent; branch-urile vechi se șterg după merge.
 
 ## Branch-uri și pull request-uri
