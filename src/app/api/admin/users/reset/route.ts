@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPasswordReset, logAuthEvent, requestMeta, requireAdmin, RESET_HOURS } from "@/lib/auth";
 import { getSystemDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -15,14 +15,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const id = Number(body.id);
-    if (!Number.isInteger(id)) return NextResponse.json({ error: "Cont invalid." }, { status: 400 });
-    if (id === auth.session.id) {
-      return NextResponse.json({ error: "Propriul cont îl schimbi din Setări → Securitate." }, { status: 400 });
-    }
+    if (!Number.isInteger(id)) return jsonError("Cont invalid.");
+    if (id === auth.session.id) return jsonError("Propriul cont îl schimbi din Setări → Securitate.");
     const user = await (await getSystemDb())
       .prepare("SELECT id, username FROM users WHERE id = ? AND disabled_at IS NULL")
       .get<{ id: number; username: string }>(id);
-    if (!user) return NextResponse.json({ error: "Contul nu există sau e dezactivat." }, { status: 404 });
+    if (!user) return jsonError("Contul nu există sau e dezactivat.", 404);
 
     const { code, expiresAt } = await createPasswordReset(user.id, auth.session.id);
     const base = (process.env.APP_URL || req.nextUrl.origin).replace(/\/$/, "");

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRecentAuth } from "@/lib/auth";
+import { FINANCIAL_TABLES } from "@/lib/crud";
 import { getDb, getSystemDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
 
@@ -10,12 +11,6 @@ export const dynamic = "force-dynamic";
  * Spre deosebire de backup (Setări → Exportă JSON), care conține doar datele financiare și se poate restaura,
  * aici intră și contul, profilul, notificările și istoricul de securitate. Hash-urile (parolă, sesiuni), cheia 2FA și cheile Face ID / amprentă nu se exportă: nu sunt date despre tine, ci mecanisme de acces.
  */
-
-const FINANCIAL = [
-  "categories", "goals", "investments", "loans", "entries",
-  "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases",
-  "trips", "trip_funds", "trip_expenses",
-] as const;
 
 const strip = (rows: Record<string, unknown>[]) => rows.map(({ user_id: _owner, ...rest }) => rest);
 
@@ -28,7 +23,7 @@ export async function GET() {
     const sys = await getSystemDb();
 
     const financial: Record<string, unknown[]> = {};
-    for (const t of FINANCIAL) financial[t] = strip(await db.prepare(`SELECT * FROM ${t}`).all<Record<string, unknown>>());
+    for (const t of FINANCIAL_TABLES) financial[t] = strip(await db.prepare(`SELECT * FROM ${t}`).all<Record<string, unknown>>());
 
     const data = {
       account: await sys.prepare("SELECT username, created_at, is_admin, disabled_at FROM users WHERE id = ?").get(uid),

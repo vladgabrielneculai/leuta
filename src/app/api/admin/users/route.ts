@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, requireRecentAuth, revokeSessions } from "@/lib/auth";
 import { getSystemDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -40,13 +40,13 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const id = Number(body.id);
     const disabled = !!body.disabled;
-    if (!Number.isInteger(id)) return NextResponse.json({ error: "Cont invalid." }, { status: 400 });
-    if (id === auth.session.id) return NextResponse.json({ error: "Nu îți poți dezactiva propriul cont." }, { status: 400 });
+    if (!Number.isInteger(id)) return jsonError("Cont invalid.");
+    if (id === auth.session.id) return jsonError("Nu îți poți dezactiva propriul cont.");
     const db = await getSystemDb();
     const res = await db
       .prepare(`UPDATE users SET disabled_at = ${disabled ? "now()" : "NULL"} WHERE id = ? AND NOT is_admin`)
       .run(id);
-    if (!res.changes) return NextResponse.json({ error: "Contul nu există sau este administrator." }, { status: 404 });
+    if (!res.changes) return jsonError("Contul nu există sau este administrator.", 404);
     if (disabled) await revokeSessions(id);
     return NextResponse.json({ ok: true });
   } catch (err) {
@@ -62,10 +62,10 @@ export async function DELETE(req: NextRequest) {
   if ("response" in recent) return recent.response;
   try {
     const id = Number(req.nextUrl.searchParams.get("id"));
-    if (!Number.isInteger(id)) return NextResponse.json({ error: "Cont invalid." }, { status: 400 });
-    if (id === auth.session.id) return NextResponse.json({ error: "Nu îți poți șterge propriul cont de aici." }, { status: 400 });
+    if (!Number.isInteger(id)) return jsonError("Cont invalid.");
+    if (id === auth.session.id) return jsonError("Nu îți poți șterge propriul cont de aici.");
     const res = await (await getSystemDb()).prepare("DELETE FROM users WHERE id = ? AND NOT is_admin").run(id);
-    if (!res.changes) return NextResponse.json({ error: "Contul nu există sau este administrator." }, { status: 404 });
+    if (!res.changes) return jsonError("Contul nu există sau este administrator.", 404);
     return NextResponse.json({ ok: true });
   } catch (err) {
     return errorResponse(err, "Contul nu a putut fi șters.");

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRecentAuth } from "@/lib/auth";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 import { clearAllFinancialData, seedDemoData } from "@/lib/seed";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: "Toate datele financiare au fost șterse." });
     }
 
-    return NextResponse.json({ error: "Acțiune necunoscută." }, { status: 400 });
+    return jsonError("Acțiune necunoscută.");
   } catch (err) {
     return errorResponse(err, "Eroare la procesare.");
   }
