@@ -17,3 +17,14 @@ export function errorResponse(err: unknown, fallback: string, status = 500) {
 
 /** Limita pentru fișierele încărcate (grafice de rambursare, backup-uri). */
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+/** Răspuns de eroare cu mesaj pentru client: `{ error, ...extra }` și codul HTTP dat. */
+export function jsonError(error: string, status = 400, extra?: Record<string, unknown>) {
+  return NextResponse.json({ error, ...extra }, { status });
+}
+
+/** Adresa aplicației pentru linkuri trimise în afară (email, Telegram): APP_URL sau domeniul cererii. */
+export function appUrl(req: Request) {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
+  return `https://${req.headers.get("x-forwarded-host") ?? req.headers.get("host")}`;
+}

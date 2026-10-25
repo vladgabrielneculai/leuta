@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRecentAuth, SESSION_COOKIE } from "@/lib/auth";
 import { getSystemDb } from "@/lib/db";
-import { errorResponse } from "@/lib/http";
+import { errorResponse, jsonError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -17,18 +17,11 @@ export async function DELETE(req: NextRequest) {
   const me = auth.session;
   try {
     const body = await req.json().catch(() => ({}));
-    if (String(body.confirm ?? "").trim() !== me.username) {
-      return NextResponse.json({ error: "Scrie exact numele de utilizator ca să confirmi ștergerea." }, { status: 400 });
-    }
+    if (String(body.confirm ?? "").trim() !== me.username) return jsonError("Scrie exact numele de utilizator ca să confirmi ștergerea.");
     const db = await getSystemDb();
     if (me.is_admin) {
       const admins = await db.prepare("SELECT COUNT(*)::int AS c FROM users WHERE is_admin AND id <> ?").get<{ c: number }>(me.id);
-      if (!admins?.c) {
-        return NextResponse.json(
-          { error: "Ești singurul administrator. Contul de administrator nu se poate șterge din aplicație." },
-          { status: 409 },
-        );
-      }
+      if (!admins?.c) return jsonError("Ești singurul administrator. Contul de administrator nu se poate șterge din aplicație.", 409);
     }
     await db.prepare("DELETE FROM users WHERE id = ?").run(me.id);
     const res = NextResponse.json({ ok: true });

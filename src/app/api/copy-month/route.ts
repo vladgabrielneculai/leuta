@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jsonError } from "@/lib/http";
 import { getDb } from "@/lib/db";
 import { isMonth } from "@/lib/util";
 
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 // Copiază în luna țintă intrările marcate ca recurente din luna sursă.
 export async function POST(req: NextRequest) {
   const { from, to } = (await req.json()) as { from: string; to: string };
-  if (!isMonth(from) || !isMonth(to)) return NextResponse.json({ error: "Luna trebuie să fie în formatul AAAA-LL." }, { status: 400 });
+  if (!isMonth(from) || !isMonth(to)) return jsonError("Luna trebuie să fie în formatul AAAA-LL.");
   const db = await getDb();
   const rows = await db.prepare("SELECT * FROM entries WHERE month = ? AND recurring = 1").all(from);
   const existsSql =

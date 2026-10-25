@@ -97,7 +97,7 @@ export default function BudgetPage() {
   const t = s.totals;
 
   // Rotunjit la 2 zecimale: 33,33 + 33,33 + 33,34 trebuie să dea exact 100.
-  const sum = Math.round((Number(custom.needs) + Number(custom.wants) + Number(custom.savings)) * 100) / 100;
+  const sum = r2(Number(custom.needs) + Number(custom.wants) + Number(custom.savings));
   const saveCustom = async () => {
     await api("/api/settings", "PUT", { custom_needs: custom.needs, custom_wants: custom.wants, custom_savings: custom.savings });
     reload();
