@@ -12,7 +12,7 @@ export type Suggestion = { categoryId: number | null; source: "rule" | "auto" | 
 const KEYWORDS: Record<string, string[]> = {
   "Alimente": [
     "kaufland", "lidl", "carrefour", "mega image", "profi", "penny", "auchan", "cora", "selgros", "metro cash",
-    "la doi pasi", "annabella", "freshful", "bringo", "sezamo", "supermarket", "hipermarket", "brutaria", "macelaria",
+    "megaimage", "la doi pasi", "annabella", "freshful", "bringo", "sezamo", "supermarket", "hipermarket", "brutaria", "macelaria",
   ],
   "Restaurante și ieșiri": [
     "glovo", "tazz", "bolt food", "foodpanda", "wolt", "mcdonald", "mc donald", "kfc", "burger king", "starbucks",
@@ -41,7 +41,7 @@ const KEYWORDS: Record<string, string[]> = {
   "Asigurări": ["allianz", "groupama", "omniasig", "generali", "asirom", "signal iduna", "uniqa", "euroins", "grawe", "asigurare"],
   "Călătorii": ["booking.com", "airbnb", "wizz", "ryanair", "tarom", "hotel", "travel"],
   "Chirie": ["chirie"],
-  "Economii": ["depozit", "economii", "cont de economii"],
+  "Economii": ["depozit", "economii", "cont de economii", "round up"],
   "Salariu": ["salariu", "salarii", "salar", "drepturi salariale", "stat de plata"],
   "Tichete de masă": ["edenred", "pluxee", "sodexo", "up romania", "tichete de masa"],
 };
