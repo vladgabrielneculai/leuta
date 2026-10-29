@@ -187,19 +187,20 @@ export function parseDate(raw: string): string | null {
 
 // ---------- Descriere și amprentă ----------
 
-const DETAIL_LABELS = ["terminal", "locatie", "beneficiar", "ordonator", "platitor", "nume beneficiar", "partener", "comerciant"];
+const DETAIL_LABELS = ["tranzactie la", "terminal", "locatie", "beneficiar", "ordonator", "platitor", "nume beneficiar", "partener", "comerciant"];
 
 function clip(s: string, max = 80) {
   return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
 }
 
-/** Numele scurt al comerciantului / partenerului din textul băncii; altfel începutul textului. */
-export function merchantFrom(details: string[]): string {
+/** Numele comerciantului / partenerului de după o etichetă cunoscută („Terminal: …”, „Beneficiar: …”). */
+function labeledMerchant(details: string[]): string | null {
   for (const label of DETAIL_LABELS) {
     for (const line of details) {
       const m = line.match(new RegExp(`(?:^|[\\s,;.-])${label}\\s*:\\s*([^;|]+)`, "i"));
       if (!m) continue;
-      let v = m[1].trim();
+      // ING separă țara cu câte două spații: „GOOGLE *YouTubePremium  GB  g.co/helppay#” → „GOOGLE *YouTubePremium”.
+      let v = m[1].trim().split(/\s{2,}[A-Z]{2}\s{2,}/)[0];
       // „KAUFLAND 1234 RO BUCURESTI” → „KAUFLAND 1234”; „ORO2050B RO OMV 1900/ BUCURESTI” → „OMV 1900”.
       const parts = v.split(/\s+RO\s+/);
       if (parts.length > 1) v = /^[A-Z]{2,4}\d+[A-Z]?$/i.test(parts[0].trim()) ? parts[1] : parts[0];
@@ -207,6 +208,13 @@ export function merchantFrom(details: string[]): string {
       if (v) return clip(v, 60);
     }
   }
+  return null;
+}
+
+/** Numele scurt al comerciantului / partenerului din textul băncii; altfel începutul textului. */
+export function merchantFrom(details: string[]): string {
+  const labeled = labeledMerchant(details);
+  if (labeled) return labeled;
   const first = details.find((d) => d.trim()) ?? "";
   return clip(first.replace(/\s+/g, " ").trim(), 60);
 }
@@ -229,43 +237,63 @@ export function headerSignature(cells: string[]): string {
 
 // ---------- ING ----------
 
-function findIngHeader(table: Table) {
-  for (let r = 0; r < Math.min(table.length, 40); r++) {
-    const cells = table[r].map(normalize);
-    const date = cells.indexOf("data");
-    const details = cells.findIndex((c) => c === "detalii tranzactie" || c === "detalii tranzactii");
-    const debit = cells.indexOf("debit");
-    const credit = cells.indexOf("credit");
-    if (date >= 0 && details >= 0 && (debit >= 0 || credit >= 0)) return { row: r, date, details, debit, credit };
-  }
-  return null;
+function ingHeader(row: string[]) {
+  const cells = row.map(normalize);
+  const date = cells.indexOf("data");
+  const details = cells.findIndex((c) => c === "detalii tranzactie" || c === "detalii tranzactii");
+  const debit = cells.indexOf("debit");
+  const credit = cells.indexOf("credit");
+  return date >= 0 && details >= 0 && (debit >= 0 || credit >= 0) ? { date, details, debit, credit } : null;
 }
 
-function parseIng(table: Table, h: NonNullable<ReturnType<typeof findIngHeader>>, currency: string): Transaction[] {
+function findIngHeader(table: Table) {
+  for (let r = 0; r < Math.min(table.length, 40); r++) {
+    if (ingHeader(table[r])) return r;
+  }
+  return -1;
+}
+
+/**
+ * Exportul ING e împărțit pe pagini: fiecare repetă titularul, antetul și semnăturile, iar numărul de coloane diferă
+ * de la o pagină la alta. Antetul începe cu o celulă goală, deci rândurile de date sunt decalate față de el; decalajul
+ * se află din coloana în care stă data. După ultima pagină vin soldurile și tranzacțiile în așteptare, care se sar.
+ */
+function parseIng(table: Table, currency: string): Transaction[] {
   const out: Omit<Transaction, "hash">[] = [];
-  const open: { tx: { date: string; amount: number; lines: string[] } | null } = { tx: null };
+  let header: ReturnType<typeof ingHeader> = null;
+  let open: { date: string; amount: number; lines: string[]; details: number } | null = null;
   const flush = () => {
-    const t = open.tx;
-    if (t) out.push({ date: t.date, amount: t.amount, currency, description: merchantFrom(t.lines.slice(1)) || t.lines[0], details: t.lines.join(" | ") });
-    open.tx = null;
+    if (open) {
+      const description = labeledMerchant(open.lines.slice(1)) ?? clip(open.lines[0], 60);
+      out.push({ date: open.date, amount: open.amount, currency, description, details: open.lines.join(" | ") });
+    }
+    open = null;
   };
-  for (let r = h.row + 1; r < table.length; r++) {
-    const row = table[r];
-    const first = (row[h.date] ?? "").trim();
-    const detail = (row[h.details] ?? "").trim();
-    const date = first ? parseDate(first) : null;
+  for (const row of table) {
+    const h = ingHeader(row);
+    if (h) {
+      flush();
+      header = h;
+      continue;
+    }
+    if (!header) continue;
+    const first = row.findIndex((c) => c.trim());
+    const date = first >= 0 && first <= header.date ? parseDate(row[first]) : null;
     if (date) {
       flush();
-      const debit = h.debit >= 0 ? parseAmount(row[h.debit] ?? "") : null;
-      const credit = h.credit >= 0 ? parseAmount(row[h.credit] ?? "") : null;
+      const shift = header.date - first;
+      const cell = (col: number) => (col >= 0 ? (row[col - shift] ?? "").trim() : "");
+      const debit = parseAmount(cell(header.debit));
+      const credit = parseAmount(cell(header.credit));
       const amount = (credit ?? 0) - Math.abs(debit ?? 0);
-      if (amount !== 0) open.tx = { date, amount, lines: [detail] };
-    } else if (!row.slice(0, h.details).some((c) => c.trim()) && detail && open.tx) {
-      // Rândurile de detaliu au coloanele dinaintea detaliilor goale.
-      open.tx.lines.push(detail);
-    } else if (row.some((c) => c.trim())) {
-      // Sold inițial/final, titular, semnătură: textul de după tabel nu aparține tranzacției.
+      if (amount !== 0) open = { date, amount, lines: [cell(header.details)], details: header.details - shift };
+    } else if (open && first === open.details) {
+      // Rândurile de detaliu au doar coloana detaliilor completată.
+      open.lines.push(row[first].trim());
+    } else {
+      // Semnături, titular, solduri, tranzacții în așteptare: nimic nu mai e tranzacție până la următorul antet.
       flush();
+      header = null;
     }
   }
   flush();
@@ -366,9 +394,9 @@ export function parseStatement(table: Table, saved?: Record<string, Mapping>): P
   if (!rows.length) throw new Error("Fișierul nu conține date.");
 
   const ing = findIngHeader(rows);
-  if (ing) {
-    const signature = headerSignature(rows[ing.row]);
-    const transactions = parseIng(rows, ing, accountCurrency(rows, ing.row));
+  if (ing >= 0) {
+    const signature = headerSignature(rows[ing]);
+    const transactions = parseIng(rows, accountCurrency(rows, ing));
     return { status: "ok", bank: "ING", transactions, signature };
   }
 

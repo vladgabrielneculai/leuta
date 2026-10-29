@@ -58,6 +58,21 @@ test("ING Home'Bank: tranzacții pe mai multe rânduri, fără soldurile de la f
   assert.deepEqual(again.transactions.map((x) => x.hash), t.map((x) => x.hash));
 });
 
+test("ING Home'Bank, exportul real: pagini cu antet decalat și lățimi diferite, fără tranzacțiile în așteptare", () => {
+  const r = parseStatement(fixture("ing-homebank-pagini.csv"));
+  assert.equal(r.status, "ok");
+  assert.equal(r.bank, "ING");
+  const t = r.transactions;
+  assert.deepEqual(t.map((x) => x.amount), [-42.43, 5589, -6.14, -32, 48, -250]);
+  assert.deepEqual(t.map((x) => x.description), [
+    "LIDL", "ACME SOFTWARE SRL", "Tranzactie Round Up", "GOOGLE *YouTubePremium", "Maria Ionescu", "Ion Popescu",
+  ]);
+  assert.equal(t[0].date, "2026-10-01");
+  assert.equal(t[5].date, "2026-10-03");
+  // Sold inițial + tranzacții = sold final.
+  assert.equal(Math.round((100 + t.reduce((s, x) => s + x.amount, 0)) * 100) / 100, 5406.43);
+});
+
 test("BCR George: UTF-16, separator „;”, sumă cu semn", () => {
   const r = parseStatement(fixture("bcr-george.csv"));
   assert.equal(r.status, "ok");
