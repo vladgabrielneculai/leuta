@@ -26,7 +26,8 @@ export type Mapping = {
 };
 
 export type Transaction = {
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD: ziua plății (la card, data autorizării), ziua în care intră în buget
+  posted: string; // ziua din extras (la card, data decontării)
   amount: number; // negativ = plată, pozitiv = încasare
   currency: string;
   description: string; // comerciantul / partenerul, scurt
@@ -222,7 +223,8 @@ export function merchantFrom(details: string[]): string {
 function withHashes(txs: Omit<Transaction, "hash">[]): Transaction[] {
   const seen = new Map<string, number>();
   return txs.map((t) => {
-    const key = `${t.date}|${t.amount.toFixed(2)}|${t.currency}|${normalize(t.details)}`;
+    // Pe ziua din extras, nu pe ziua plății: amprentele tranzacțiilor importate deja rămân aceleași.
+    const key = `${t.posted}|${t.amount.toFixed(2)}|${t.currency}|${normalize(t.details)}`;
     const n = (seen.get(key) ?? 0) + 1; // două cafele identice în aceeași zi rămân două tranzacții
     seen.set(key, n);
     return { ...t, hash: createHash("sha256").update(`${key}#${n}`).digest("hex").slice(0, 40) };
@@ -236,6 +238,21 @@ export function headerSignature(cells: string[]): string {
 }
 
 // ---------- ING ----------
+
+/**
+ * La plățile cu cardul, extrasul ING trece ziua decontării; ziua plății e în „Data autorizarii:29-09-2026”.
+ * O dată de autorizare după decontare sau cu mai mult de o lună înainte e greșită și nu se folosește.
+ */
+function authorizationDate(lines: string[], posted: string): string | null {
+  for (const line of lines) {
+    const m = line.match(/data autoriz[aă]rii\s*:\s*(\S+)/i);
+    const date = m ? parseDate(m[1]) : null;
+    if (!date) continue;
+    const days = (Date.parse(posted) - Date.parse(date)) / 86_400_000;
+    return days >= 0 && days <= 31 ? date : null;
+  }
+  return null;
+}
 
 function ingHeader(row: string[]) {
   const cells = row.map(normalize);
@@ -265,7 +282,8 @@ function parseIng(table: Table, currency: string): Transaction[] {
   const flush = () => {
     if (open) {
       const description = labeledMerchant(open.lines.slice(1)) ?? clip(open.lines[0], 60);
-      out.push({ date: open.date, amount: open.amount, currency, description, details: open.lines.join(" | ") });
+      const date = authorizationDate(open.lines, open.date) ?? open.date;
+      out.push({ date, posted: open.date, amount: open.amount, currency, description, details: open.lines.join(" | ") });
     }
     open = null;
   };
@@ -363,6 +381,7 @@ export function applyMapping(table: Table, m: Mapping, fallbackCurrency = "RON")
     const currency = (m.currency !== undefined ? row[m.currency] : "")?.trim().toUpperCase() || fallbackCurrency;
     out.push({
       date,
+      posted: date,
       amount,
       currency: /^[A-Z]{3}$/.test(currency) ? currency : fallbackCurrency,
       description: merchantFrom(parts) || "Tranzacție",
@@ -421,4 +440,42 @@ export function parseStatement(table: Table, saved?: Record<string, Mapping>): P
     sample: rows.slice(mapping.header + 1, mapping.header + 6),
     guess: mapping,
   };
+}
+
+// ---------- Intrări trecute deja de mână ----------
+
+export type ExistingEntry = {
+  id: number;
+  day: string; // YYYY-MM-DD, ziua intrării (ora contează doar ca ziua să fie cea din România)
+  kind: string;
+  amount: number;
+  currency: string;
+  description: string;
+  category: string | null;
+};
+
+/**
+ * Intrarea existentă care corespunde fiecărei tranzacții: aceeași direcție (plată ↔ cheltuială, cost fix sau economii;
+ * încasare ↔ venit), aceeași sumă și monedă, iar ziua intrării e ziua plății sau ziua din extras. O intrare acoperă
+ * cel mult o tranzacție, deci două cafele identice și una trecută de mână lasă una de importat. Potrivirile pe ziua
+ * plății au întâietate față de cele pe ziua din extras.
+ */
+export function matchExisting(
+  txs: Pick<Transaction, "date" | "posted" | "amount" | "currency">[],
+  entries: ExistingEntry[],
+): (ExistingEntry | null)[] {
+  const cents = (n: number) => Math.round(Math.abs(n) * 100);
+  const free = [...entries];
+  const out: (ExistingEntry | null)[] = txs.map(() => null);
+  for (const dayOf of [(t: (typeof txs)[number]) => t.date, (t: (typeof txs)[number]) => t.posted]) {
+    txs.forEach((t, i) => {
+      if (out[i]) return;
+      const k = free.findIndex(
+        (e) =>
+          e.day === dayOf(t) && e.currency === t.currency && cents(e.amount) === cents(t.amount) && (e.kind === "income") === t.amount > 0,
+      );
+      if (k >= 0) out[i] = free.splice(k, 1)[0];
+    });
+  }
+  return out;
 }
