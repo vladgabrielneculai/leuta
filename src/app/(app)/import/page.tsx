@@ -53,7 +53,7 @@ export default function ImportPage() {
           (data as Parsed).rows.map((r) => ({
             ...r,
             chosen: r.categoryId,
-            include: !r.duplicate && SUPPORTED.has(r.currency),
+            include: !r.duplicate && !r.existing && SUPPORTED.has(r.currency),
           })),
         );
       }
@@ -81,6 +81,7 @@ export default function ImportPage() {
     [included],
   );
   const duplicates = rows.filter((r) => r.duplicate).length;
+  const existing = rows.filter((r) => r.existing).length;
 
   const save = async () => {
     setBusy("save");
@@ -169,7 +170,7 @@ export default function ImportPage() {
       {parsed && (
         <Panel
           title={`2. Verifică (${parsed.bank})`}
-          aside={<span className="text-[12px] text-ink-faint">{rows.length} tranzacții{duplicates > 0 && ` · ${duplicates} importate deja`}</span>}
+          aside={<span className="text-[12px] text-ink-faint">{rows.length} tranzacții{duplicates > 0 && ` · ${duplicates} importate deja`}{existing > 0 && ` · ${existing} trecute deja de mână`}</span>}
           pad={false}
         >
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-4 py-3 text-[13px] sm:px-5">
@@ -246,7 +247,11 @@ function PreviewItem({ row, categories, onChange }: { row: Row; categories: Impo
         <span className="block truncate text-[13.5px] font-medium text-ink" title={row.details}>{row.description}</span>
         <span className="block text-[11.5px] text-ink-faint">
           <span className="sm:hidden">{fmtDate(row.date)} · </span>
-          {row.duplicate ? "importată deja" : unsupported ? `monedă nesuportată (${row.currency})` : row.source === "rule" ? "categorie din regula ta" : row.source === "auto" ? "categorie propusă" : "fără categorie"}
+          {row.duplicate
+            ? "importată deja"
+            : row.existing
+              ? `există deja: ${[row.existing.description, row.existing.category].filter(Boolean).join(" · ") || "intrare fără descriere"}`
+              : unsupported ? `monedă nesuportată (${row.currency})` : row.source === "rule" ? "categorie din regula ta" : row.source === "auto" ? "categorie propusă" : "fără categorie"}
         </span>
       </span>
       <span className={`text-right text-[13.5px] font-semibold tabular-nums ${row.amount < 0 ? "text-rosu" : "text-leu"}`}>
