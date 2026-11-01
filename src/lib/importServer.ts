@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 import { isBetaDeployment } from "./beta";
 import { getDb, getSetting, setSetting } from "./db";
 import { suggestCategory, type ImportCategory, type ImportRule } from "./importRules";
-import { decodeText, parseCsv, parseStatement, tableFromCells, type Mapping, type Table, type Transaction } from "./statementImport";
+import {
+  decodeText, matchExisting, parseCsv, parseStatement, tableFromCells,
+  type ExistingEntry, type Mapping, type Table, type Transaction,
+} from "./statementImport";
 
 /** Importul extraselor e încă în beta: în producție rutele nu există. */
 export function betaOnly(): NextResponse | null {
@@ -70,19 +73,50 @@ export type PreviewRow = Transaction & {
   categoryId: number | null;
   source: "rule" | "auto" | null;
   duplicate: boolean;
+  /** Intrarea trecută deja de mână pentru aceeași tranzacție; rămâne cum e, iar tranzacția nu se bifează. */
+  existing: { description: string; category: string | null } | null;
 };
 
-/** Tranzacțiile cu categoria propusă și semnul că au mai fost importate. */
+/** Intrările care nu vin din import, din perioada extrasului, cu ziua lor în ora României. */
+async function manualEntries(transactions: Transaction[]): Promise<ExistingEntry[]> {
+  const days = transactions.flatMap((t) => [t.date, t.posted]).sort();
+  if (!days.length) return [];
+  return (await getDb())
+    .prepare(
+      `SELECT e.id, to_char(e.created_at AT TIME ZONE 'Europe/Bucharest', 'YYYY-MM-DD') AS day, e.kind, e.amount, e.currency,
+              e.description, c.name AS category
+       FROM entries e LEFT JOIN categories c ON c.id = e.category_id
+       WHERE e.import_hash IS NULL
+         AND e.created_at >= ?::date::timestamp AT TIME ZONE 'Europe/Bucharest'
+         AND e.created_at < (?::date + 1)::timestamp AT TIME ZONE 'Europe/Bucharest'
+       ORDER BY e.id`,
+    )
+    .all<ExistingEntry>(days[0], days[days.length - 1]);
+}
+
+/** Tranzacțiile cu categoria propusă, semnul că au mai fost importate și intrarea trecută deja de mână. */
 export async function preview(transactions: Transaction[]): Promise<{ rows: PreviewRow[]; categories: ImportCategory[] }> {
-  const [categories, rules] = await Promise.all([userCategories(), userRules()]);
+  const [categories, rules, manual] = await Promise.all([userCategories(), userRules(), manualEntries(transactions)]);
   const hashes = transactions.map((t) => t.hash);
-  const existing = hashes.length
+  const imported = hashes.length
     ? await (await getDb())
         .prepare("SELECT import_hash FROM entries WHERE import_hash = ANY(?::text[])")
         .all<{ import_hash: string }>(hashes)
     : [];
-  const seen = new Set(existing.map((r) => r.import_hash));
-  const rows = transactions.map((t) => ({ ...t, ...suggestCategory(t, rules, categories), duplicate: seen.has(t.hash) }));
+  const seen = new Set(imported.map((r) => r.import_hash));
+  // Tranzacțiile importate deja nu „consumă” intrări trecute de mână.
+  const fresh = transactions.filter((t) => !seen.has(t.hash));
+  const found = matchExisting(fresh, manual);
+  const matches = new Map(fresh.map((t, i) => [t, found[i]]));
+  const rows = transactions.map((t) => {
+    const match = matches.get(t);
+    return {
+      ...t,
+      ...suggestCategory(t, rules, categories),
+      duplicate: seen.has(t.hash),
+      existing: match ? { description: match.description, category: match.category } : null,
+    };
+  });
   return { rows, categories };
 }
 

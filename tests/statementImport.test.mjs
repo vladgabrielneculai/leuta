@@ -9,7 +9,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  decodeText, parseAmount, parseCsv, parseDate, parseStatement, applyMapping, merchantFrom,
+  decodeText, parseAmount, parseCsv, parseDate, parseStatement, applyMapping, merchantFrom, matchExisting,
 } from "../src/lib/statementImport.ts";
 import { suggestCategory, learnPattern } from "../src/lib/importRules.ts";
 
@@ -67,7 +67,10 @@ test("ING Home'Bank, exportul real: pagini cu antet decalat și lățimi diferit
   assert.deepEqual(t.map((x) => x.description), [
     "LIDL", "ACME SOFTWARE SRL", "Tranzactie Round Up", "GOOGLE *YouTubePremium", "Maria Ionescu", "Ion Popescu",
   ]);
-  assert.equal(t[0].date, "2026-10-01");
+  // Plata cu cardul intră în buget în ziua autorizării (29 sep), nu în ziua decontării din extras (1 oct).
+  assert.equal(t[0].date, "2026-09-29");
+  assert.equal(t[0].posted, "2026-10-01");
+  assert.equal(t[1].date, "2026-10-01");
   assert.equal(t[5].date, "2026-10-03");
   // Sold inițial + tranzacții = sold final.
   assert.equal(Math.round((100 + t.reduce((s, x) => s + x.amount, 0)) * 100) / 100, 5406.43);
@@ -134,4 +137,41 @@ test("tiparul învățat din comerciant ignoră cifrele variabile", () => {
   assert.equal(learnPattern("MEGA IMAGE 0123"), "mega image");
   assert.equal(learnPattern("STARBUCKS UNIRII"), "starbucks unirii");
   assert.equal(learnPattern("12"), null);
+});
+
+test("intrările trecute de mână: aceeași zi, sumă și direcție, cel mult o tranzacție pe intrare", () => {
+  const tx = (date, posted, amount, currency = "RON") => ({ date, posted, amount, currency });
+  const entry = (id, day, kind, amount, currency = "RON") => ({ id, day, kind, amount, currency, description: `e${id}`, category: null });
+  const txs = [
+    tx("2026-09-29", "2026-10-01", -42.43), // ziua plății
+    tx("2026-10-03", "2026-10-05", -20), // ziua din extras
+    tx("2026-10-05", "2026-10-05", -10), // două cafele identice, o singură intrare
+    tx("2026-10-05", "2026-10-05", -10),
+    tx("2026-10-05", "2026-10-05", 5589), // încasare ↔ venit
+    tx("2026-10-06", "2026-10-06", -15), // altă zi decât intrarea
+    tx("2026-10-07", "2026-10-07", -7), // sumă egală, dar intrarea e venit
+    tx("2026-10-08", "2026-10-08", -5, "EUR"), // altă monedă
+  ];
+  const entries = [
+    entry(1, "2026-09-29", "variable", 42.43),
+    entry(2, "2026-10-05", "fixed", 20),
+    entry(3, "2026-10-05", "variable", 10),
+    entry(4, "2026-10-05", "income", 5589),
+    entry(5, "2026-10-07", "variable", 15),
+    entry(6, "2026-10-07", "income", 7),
+    entry(7, "2026-10-08", "variable", 5),
+  ];
+  assert.deepEqual(matchExisting(txs, entries).map((e) => e?.id ?? null), [1, 2, 3, null, 4, null, null, null]);
+});
+
+test("ziua plății are întâietate față de ziua din extras", () => {
+  const txs = [
+    { date: "2026-10-05", posted: "2026-10-07", amount: -20, currency: "RON" },
+    { date: "2026-10-07", posted: "2026-10-07", amount: -20, currency: "RON" },
+  ];
+  const entries = [
+    { id: 1, day: "2026-10-07", kind: "variable", amount: 20, currency: "RON", description: "", category: null },
+    { id: 2, day: "2026-10-05", kind: "variable", amount: 20, currency: "RON", description: "", category: null },
+  ];
+  assert.deepEqual(matchExisting(txs, entries).map((e) => e?.id), [2, 1]);
 });
