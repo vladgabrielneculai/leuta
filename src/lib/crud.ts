@@ -3,7 +3,7 @@ import type { DbInterface } from "./db";
 export const TABLES: Record<string, { columns: string[]; filters: string[]; order: string }> = {
   categories: { columns: ["name", "kind", "bucket", "color"], filters: ["kind"], order: "kind, name" },
   entries: {
-    columns: ["month", "kind", "category_id", "goal_id", "investment_id", "description", "amount", "currency", "recurring"],
+    columns: ["month", "kind", "category_id", "goal_id", "investment_id", "description", "amount", "currency", "recurring", "created_at"],
     filters: ["month", "kind", "goal_id", "investment_id"],
     order: "id",
   },
@@ -80,6 +80,16 @@ function positive(v: unknown, what: string) {
  * La modificare, `current` e rândul din baza de date, pentru verificările care leagă mai multe coloane.
  */
 export const VALIDATE: Record<string, (data: Record<string, unknown>, isNew: boolean, current?: Record<string, unknown>) => void> = {
+  entries(d) {
+    // Ziua tranzacției (YYYY-MM-DD), salvată la prânz în ora României, ca la import: ziua rămâne aceeași în orice fus.
+    if (!("created_at" in d)) return;
+    if (d.created_at === null) {
+      delete d.created_at;
+      return;
+    }
+    if (!isIsoDay(d.created_at)) throw new Error("Alege data tranzacției.");
+    d.created_at = `${d.created_at} 12:00 Europe/Bucharest`;
+  },
   trips(d, isNew, current) {
     if (isNew || "name" in d) {
       d.name = String(d.name ?? "").trim();

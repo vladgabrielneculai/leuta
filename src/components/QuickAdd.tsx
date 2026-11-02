@@ -26,7 +26,32 @@ export type QuickEntry = {
   amount: number;
   currency: Currency;
   recurring: number;
+  month?: string;
+  created_at?: string | null;
 };
+
+/** Ziua locală YYYY-MM-DD a unui moment. */
+function dayOf(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Data propusă pentru o intrare nouă în luna analizată: azi, dacă e luna curentă; altfel ultima sau prima zi a ei. */
+function defaultDay(month: string) {
+  const today = dayOf(new Date());
+  if (today.startsWith(month)) return today;
+  if (month < today.slice(0, 7)) {
+    const [y, m] = month.split("-").map(Number);
+    return dayOf(new Date(y, m, 0));
+  }
+  return `${month}-01`;
+}
+
+/** Data unei intrări existente; dacă ziua salvată nu e în luna intrării (trecută mai târziu), prima zi a lunii. */
+function entryDay(entry: QuickEntry) {
+  const saved = entry.created_at ? dayOf(new Date(entry.created_at)) : null;
+  if (saved && (!entry.month || saved.startsWith(entry.month))) return saved;
+  return entry.month ? `${entry.month}-01` : dayOf(new Date());
+}
 
 type OpenArgs = { kind?: Kind; entry?: QuickEntry; /** deschide direct varianta pentru vacanța în curs */ trip?: boolean };
 const QuickAddCtx = createContext<(args?: OpenArgs) => void>(() => undefined);
@@ -69,6 +94,10 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const [dest, setDest] = useState(editing?.goal_id ? `g:${editing.goal_id}` : editing?.investment_id ? `i:${editing.investment_id}` : "");
   const [description, setDescription] = useState(editing?.description ?? "");
   const [recurring, setRecurring] = useState(!!editing?.recurring);
+  // Ziua tranzacției: o folosește importul extrasului ca să recunoască intrările trecute deja de mână.
+  const [date, setDate] = useState(editing ? entryDay(editing) : defaultDay(month));
+  const [dateTouched, setDateTouched] = useState(false);
+  const targetMonth = date.slice(0, 7);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const amountRef = useRef<HTMLInputElement>(null);
@@ -117,8 +146,15 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       return;
     }
     const catName = kind === "saving" ? null : kindCats.find((c) => c.id === categoryId)?.name;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setErr("Alege data.");
+      return;
+    }
+    // La modificare, data și luna se schimbă doar dacă ai ales altă dată.
+    const dated = !editing || dateTouched;
     const payload = {
-      month: editing ? undefined : month,
+      month: dated ? targetMonth : undefined,
+      created_at: dated ? date : undefined,
       kind,
       category_id: kind === "saving" ? kindCats[0]?.id ?? null : categoryId,
       goal_id: kind === "saving" && dest.startsWith("g:") ? Number(dest.slice(2)) : null,
@@ -136,7 +172,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       } else {
         await api("/api/crud/entries", "POST", payload);
         const what = catName ?? (kind === "saving" ? "Economii" : "Intrare");
-        onDone(`${what}: ${currency === "EUR" ? eur(value) : lei(value)} trecut în ${monthLabel(month)}`);
+        onDone(`${what}: ${currency === "EUR" ? eur(value) : lei(value)} trecut în ${monthLabel(targetMonth)}`);
       }
       bump();
       onClose();
@@ -167,7 +203,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     }`;
 
   return (
-    <Modal open onClose={onClose} title={editing ? "Modifică intrarea" : tripMode || waitingTrip ? `Cheltuială de vacanță` : `Adaugă în ${monthLabel(month)}`}>
+    <Modal open onClose={onClose} title={editing ? "Modifică intrarea" : tripMode || waitingTrip ? `Cheltuială de vacanță` : `Adaugă în ${monthLabel(/^\d{4}-\d{2}$/.test(targetMonth) ? targetMonth : month)}`}>
       {trip && (
         <div className="mb-4 grid grid-cols-2 gap-1 rounded-md border border-line bg-paper p-1" role="radiogroup" aria-label="Unde se trece">
           {[
@@ -299,6 +335,24 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
               </div>
             )}
           </div>
+
+          <label className="flex items-center gap-3">
+            <span className="label mb-0! shrink-0">Data</span>
+            <input
+              type="date"
+              className="field min-w-0 flex-1"
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value);
+                setDateTouched(true);
+                setErr(null);
+              }}
+              aria-label="Data tranzacției"
+            />
+          </label>
+          {!editing && targetMonth !== month && /^\d{4}-\d{2}/.test(targetMonth) && (
+            <p className="-mt-2 text-[12px] text-ink-faint">Se trece în {monthLabel(targetMonth)}, luna datei alese.</p>
+          )}
 
           <input
             className="field"
