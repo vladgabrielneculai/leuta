@@ -1,9 +1,9 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { lei, eur, monthLabel, parseAmount, type Currency, type Kind } from "@/lib/util";
+import { addMonths, lei, eur, monthLabel, parseAmount, type Currency, type Kind } from "@/lib/util";
 import { activeTrip, type TripListItem } from "@/lib/trips";
-import { api, Modal, Skeleton, Toast, useApi, useApp } from "./ui";
+import { api, Modal, Skeleton, Toast, useApi, useApp, useIsMobile } from "./ui";
 import { TripExpenseForm } from "./Trips";
 
 /**
@@ -68,24 +68,54 @@ const KINDS: { kind: Kind; label: string; color: string }[] = [
   { kind: "saving", label: "Economii", color: "var(--c-galben)" },
 ];
 
+/** Mesajul de după salvare; cu `undo`, mesajul are butonul „Anulează” (pe telefon, după ștergere). */
+type Done = { text: string; undo?: () => void };
+
 export function QuickAddProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<OpenArgs | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<Done | null>(null);
   const open = useCallback((args: OpenArgs = {}) => {
     setToast(null); // mesajul precedent nu rămâne peste fereastră
     setState(args);
   }, []);
+  const clearToast = useCallback(() => setToast(null), []);
+  const undo = toast?.undo;
   return (
     <QuickAddCtx.Provider value={open}>
       {children}
-      {state && <QuickAddSheet key={state.entry?.id ?? state.kind ?? (state.trip ? "vacanta" : "nou")} args={state} onClose={() => setState(null)} onDone={setToast} />}
-      <Toast message={toast} onDone={() => setToast(null)} />
+      {state && (
+        <QuickAddSheet
+          key={state.entry?.id ?? state.kind ?? (state.trip ? "vacanta" : "nou")}
+          args={state}
+          onClose={() => setState(null)}
+          onDone={(text, u) => setToast({ text, undo: u })}
+        />
+      )}
+      <Toast
+        message={toast?.text ?? null}
+        onDone={clearToast}
+        action={
+          undo
+            ? {
+                label: "Anulează",
+                onClick: () => {
+                  setToast(null);
+                  undo();
+                },
+              }
+            : undefined
+        }
+      />
     </QuickAddCtx.Provider>
   );
 }
 
-function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () => void; onDone: (msg: string) => void }) {
+/** Câte categorii apar pe telefon înainte de „Altele”: cele mai folosite, ca alegerea să fie dintr-o privire. */
+const TOP_CATEGORIES = 6;
+
+function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () => void; onDone: (msg: string, undo?: () => void) => void }) {
   const { month, bump, confirm, eurRate, beta } = useApp();
+  const mobile = useIsMobile();
   const editing = args.entry;
   const [kind, setKind] = useState<Kind>(editing?.kind ?? args.kind ?? "variable");
   // Returul (bani înapoi) e salvat ca sumă negativă la aceeași categorie; în formular apare suma pozitivă și bifa.
@@ -123,7 +153,31 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const { data: settings } = useApi<Record<string, string>>("/api/settings");
   const investments = settings?.enable_investments === "1" ? invs ?? [] : [];
 
+  // Pe telefon, categoriile sunt ordonate după cât de des le folosești (intrările din luna analizată și din cele două dinainte).
+  // Tot de aici aflăm dacă folosești euro: dacă nu, alegerea monedei stă în „Detalii”.
+  const m1 = addMonths(month, -1);
+  const m2 = addMonths(month, -2);
+  const { data: h0 } = useApi<QuickEntry[]>(mobile ? `/api/crud/entries?month=${month}` : null);
+  const { data: h1 } = useApi<QuickEntry[]>(mobile ? `/api/crud/entries?month=${m1}` : null);
+  const { data: h2 } = useApi<QuickEntry[]>(mobile ? `/api/crud/entries?month=${m2}` : null);
+  const history = [...(h0 ?? []), ...(h1 ?? []), ...(h2 ?? [])];
+  const uses = new Map<number, number>();
+  for (const e of history) if (e.category_id) uses.set(e.category_id, (uses.get(e.category_id) ?? 0) + 1);
+  const usesEur = history.some((e) => e.currency === "EUR");
+
   const kindCats = (cats ?? []).filter((c) => c.kind === kind);
+  // Sortare stabilă: la egalitate rămâne ordinea alfabetică de pe server.
+  const sortedCats = mobile ? [...kindCats].sort((a, b) => (uses.get(b.id) ?? 0) - (uses.get(a.id) ?? 0)) : kindCats;
+  const [allCats, setAllCats] = useState(false);
+  const hiddenCats = mobile && !allCats ? Math.max(0, sortedCats.length - TOP_CATEGORIES) : 0;
+  // Categoria aleasă rămâne la vedere chiar dacă nu e printre cele mai folosite.
+  const shownCats = hiddenCats
+    ? sortedCats.filter((c, i) => i < TOP_CATEGORIES || c.id === categoryId)
+    : sortedCats;
+  // Pe telefon, data, descrierea, moneda și bifele stau strânse în „Detalii”; la modificare sunt deschise.
+  const [detailsOpen, setDetailsOpen] = useState(!!editing);
+  const compact = mobile && !detailsOpen;
+  const showCurrency = !mobile || usesEur || currency === "EUR" || detailsOpen;
   // Returul are sens doar la cheltuieli; o intrare deja salvată ca retur rămâne editabilă și în afara versiunii beta.
   const canRefund = (kind === "variable" || kind === "fixed") && (beta || refund);
   const value = parseAmount(amount);
@@ -141,17 +195,19 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     setErr(null);
   };
 
-  const submit = async () => {
+  const submit = async (pick?: { categoryId?: number; dest?: string }) => {
+    const categoryId_ = pick?.categoryId ?? categoryId;
+    const dest_ = pick?.dest ?? dest;
     if (!(value > 0)) {
       setErr("Scrie o sumă mai mare decât 0.");
       amountRef.current?.focus();
       return;
     }
-    if (kind !== "saving" && !categoryId) {
+    if (kind !== "saving" && !categoryId_) {
       setErr("Alege o categorie.");
       return;
     }
-    const catName = kind === "saving" ? null : kindCats.find((c) => c.id === categoryId)?.name;
+    const catName = kind === "saving" ? null : kindCats.find((c) => c.id === categoryId_)?.name;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       setErr("Alege data.");
       return;
@@ -162,9 +218,9 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       month: dated ? targetMonth : undefined,
       created_at: dated ? date : undefined,
       kind,
-      category_id: kind === "saving" ? kindCats[0]?.id ?? null : categoryId,
-      goal_id: kind === "saving" && dest.startsWith("g:") ? Number(dest.slice(2)) : null,
-      investment_id: kind === "saving" && dest.startsWith("i:") ? Number(dest.slice(2)) : null,
+      category_id: kind === "saving" ? kindCats[0]?.id ?? null : categoryId_,
+      goal_id: kind === "saving" && dest_.startsWith("g:") ? Number(dest_.slice(2)) : null,
+      investment_id: kind === "saving" && dest_.startsWith("i:") ? Number(dest_.slice(2)) : null,
       description: description.trim(),
       amount: canRefund && refund ? -value : value,
       currency,
@@ -193,11 +249,33 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const remove = async () => {
     if (!editing) return;
     const name = editing.description || kindCats.find((c) => c.id === editing.category_id)?.name || "această intrare";
-    if (!(await confirm({ title: "Ștergere intrare", message: `Sigur dorești să ștergi „${name}” (${lei(editing.amount)})?`, confirmText: "Șterge", danger: true }))) return;
+    // Pe telefon nu mai cerem confirmarea: ștergem imediat și oferim „Anulează” în mesajul de jos.
+    if (!mobile && !(await confirm({ title: "Ștergere intrare", message: `Sigur dorești să ștergi „${name}” (${lei(editing.amount)})?`, confirmText: "Șterge", danger: true }))) return;
     try {
       await api(`/api/crud/entries?id=${editing.id}`, "DELETE");
       bump();
-      onDone("Intrare ștearsă");
+      // Anularea pune înapoi aceeași intrare (cu un id nou), în aceeași lună și cu aceeași dată.
+      const restore = async () => {
+        try {
+          await api("/api/crud/entries", "POST", {
+            month: editing.month,
+            created_at: entryDay(editing),
+            kind: editing.kind,
+            category_id: editing.category_id,
+            goal_id: editing.goal_id,
+            investment_id: editing.investment_id,
+            description: editing.description,
+            amount: editing.amount,
+            currency: editing.currency,
+            recurring: editing.recurring,
+          });
+          bump();
+          onDone("Intrarea a fost pusă înapoi");
+        } catch (e) {
+          onDone((e as Error).message);
+        }
+      };
+      onDone(mobile ? `Șters: ${name}` : "Intrare ștearsă", mobile ? restore : undefined);
       onClose();
     } catch (e) {
       setErr((e as Error).message);
@@ -289,6 +367,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
                 }}
                 aria-label="Sumă"
               />
+              {showCurrency && (
               <div className="grid shrink-0 grid-rows-2 gap-1" role="radiogroup" aria-label="Monedă">
                 {(["RON", "EUR"] as Currency[]).map((c) => (
                   <button
@@ -303,16 +382,30 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
                   </button>
                 ))}
               </div>
+              )}
             </div>
             {currency === "EUR" && value > 0 && <p className="mt-1 text-right text-[12px] text-ink-faint num">≈ {lei(value * eurRate)}</p>}
           </div>
 
           <div>
-            <span className="label">{kind === "saving" ? "Unde merg banii" : "Categoria"}</span>
+            <span className="label">
+              {kind === "saving" ? "Unde merg banii" : "Categoria"}
+              {compact && !editing && <span className="ml-1.5 font-normal text-ink-faint">· atinge ca să salvezi</span>}
+            </span>
             {kind === "saving" ? (
               <div className="flex flex-wrap gap-1.5">
                 {[{ v: "", name: "Economii generale" }, ...(goals ?? []).map((g) => ({ v: `g:${g.id}`, name: g.name })), ...investments.map((i) => ({ v: `i:${i.id}`, name: i.name }))].map((d) => (
-                  <button key={d.v} type="button" className={chip(dest === d.v)} aria-pressed={dest === d.v} onClick={() => setDest(d.v)}>
+                  <button
+                    key={d.v}
+                    type="button"
+                    className={chip(dest === d.v)}
+                    aria-pressed={dest === d.v}
+                    disabled={busy}
+                    onClick={() => {
+                      setDest(d.v);
+                      if (compact && !editing && value > 0) submit({ dest: d.v });
+                    }}
+                  >
                     {d.name}
                   </button>
                 ))}
@@ -323,63 +416,97 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
               <p className="text-[13px] text-ink-soft">Nu ai categorii pentru acest tip. Le poți adăuga din Setări.</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {kindCats.map((c) => (
+                {shownCats.map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     className={chip(categoryId === c.id)}
                     aria-pressed={categoryId === c.id}
+                    disabled={busy}
                     onClick={() => {
                       stayMonthly();
                       setCategoryId(c.id);
                       setErr(null);
+                      // Pe telefon, cu suma scrisă și detaliile strânse, atingerea categoriei salvează direct.
+                      if (compact && !editing && value > 0) submit({ categoryId: c.id });
                     }}
                   >
                     <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: c.color }} aria-hidden />
                     {c.name}
                   </button>
                 ))}
+                {hiddenCats > 0 && (
+                  <button type="button" className={`${chip(false)} border-dashed text-ink-soft`} onClick={() => setAllCats(true)}>
+                    Altele ({hiddenCats})…
+                  </button>
+                )}
               </div>
             )}
           </div>
 
-          <label className="flex items-center gap-3">
-            <span className="label mb-0! shrink-0">Data</span>
-            <input
-              type="date"
-              className="field min-w-0 flex-1"
-              value={date}
-              onChange={(e) => {
-                setDate(e.target.value);
-                setDateTouched(true);
-                setErr(null);
-              }}
-              aria-label="Data tranzacției"
-            />
-          </label>
-          {!editing && targetMonth !== month && /^\d{4}-\d{2}/.test(targetMonth) && (
-            <p className="-mt-2 text-[12px] text-ink-faint">Se trece în {monthLabel(targetMonth)}, luna datei alese.</p>
-          )}
-
-          <input
-            className="field"
-            placeholder="Descriere (opțional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            aria-label="Descriere"
-          />
-
-          {canRefund && (
-            <label className="-mt-1 flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Scade din cheltuielile categoriei, nu se adună la venituri">
-              <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={refund} onChange={(e) => setRefund(e.target.checked)} />
-              <span>Bani înapoi (retur, rambursare): scade din {kindCats.find((c) => c.id === categoryId)?.name ?? "categorie"}</span>
+          {compact ? (
+            // Pe telefon, rândul „Detalii” spune ce se va salva (azi, fără descriere) și se deschide doar dacă vrei altceva.
+            <button
+              type="button"
+              className="-mt-1 flex min-h-[44px] items-center justify-between gap-3 rounded-md border border-line bg-paper px-3 text-left text-[13.5px] text-ink-soft active:bg-sheet"
+              onClick={() => setDetailsOpen(true)}
+              aria-expanded={false}
+            >
+              <span className="min-w-0 truncate">
+                <span className="font-medium text-ink">Detalii</span>
+                <span className="mx-1.5 text-ink-faint">·</span>
+                {[
+                  date === dayOf(new Date()) ? "azi" : date.split("-").reverse().join("."),
+                  description.trim() || "fără descriere",
+                  recurring ? "lunar" : null,
+                  refund && canRefund ? "retur" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+              <span className="shrink-0 text-ink-faint" aria-hidden>›</span>
+            </button>
+          ) : (
+            <>
+            <label className="flex items-center gap-3">
+              <span className="label mb-0! shrink-0">Data</span>
+              <input
+                type="date"
+                className="field min-w-0 flex-1"
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setDateTouched(true);
+                  setErr(null);
+                }}
+                aria-label="Data tranzacției"
+              />
             </label>
+            {!editing && targetMonth !== month && /^\d{4}-\d{2}/.test(targetMonth) && (
+              <p className="-mt-2 text-[12px] text-ink-faint">Se trece în {monthLabel(targetMonth)}, luna datei alese.</p>
+            )}
+  
+            <input
+              className="field"
+              placeholder="Descriere (opțional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              aria-label="Descriere"
+            />
+  
+            {canRefund && (
+              <label className="-mt-1 flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Scade din cheltuielile categoriei, nu se adună la venituri">
+                <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={refund} onChange={(e) => setRefund(e.target.checked)} />
+                <span>Bani înapoi (retur, rambursare): scade din {kindCats.find((c) => c.id === categoryId)?.name ?? "categorie"}</span>
+              </label>
+            )}
+  
+            <label className="flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Se poate copia în luna următoare">
+              <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
+              <span>Se repetă lunar</span>
+            </label>
+            </>
           )}
-
-          <label className="flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Se poate copia în luna următoare">
-            <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
-            <span>Se repetă lunar</span>
-          </label>
 
           {err && <p className="text-[13px] text-rosu" role="alert">{err}</p>}
 

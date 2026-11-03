@@ -650,23 +650,51 @@ export function Skeleton({ variant = "page" }: { variant?: "page" | "block" }) {
   );
 }
 
-export function Toast({ message, onDone }: { message: string | null; onDone: () => void }) {
+/**
+ * Mesaj scurt, care dispare singur. Cu `action` (ex. „Anulează”), mesajul are un buton și stă mai mult pe ecran;
+ * `onDone` se cheamă când mesajul dispare fără ca butonul să fi fost atins.
+ */
+export function Toast({ message, onDone, action }: { message: string | null; onDone: () => void; action?: { label: string; onClick: () => void } }) {
   useEffect(() => {
     if (!message) return;
-    const t = setTimeout(onDone, 3200);
+    const t = setTimeout(onDone, action ? 4500 : 3200);
     return () => clearTimeout(t);
-  }, [message, onDone]);
+  }, [message, onDone, action]);
   if (!message || typeof document === "undefined") return null;
   // Pe telefon, centrat deasupra barei de navigare de jos; pe ecrane mari, în colțul din dreapta.
   return createPortal(
     <div
       role="status"
-      className="sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-90 rounded-md bg-ink px-4 py-3 text-center text-[14px] text-sheet shadow-lg sm:inset-x-auto sm:right-5 sm:rounded-md sm:py-2.5 sm:text-left lg:bottom-5"
+      className={`sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-90 rounded-md bg-ink text-[14px] text-sheet shadow-lg sm:inset-x-auto sm:right-5 sm:rounded-md sm:text-left lg:bottom-5 ${
+        action ? "flex items-center gap-3 py-1.5 pl-4 pr-1.5" : "px-4 py-3 text-center sm:py-2.5"
+      }`}
     >
-      {message}
+      {action ? (
+        <>
+          <span className="min-w-0 flex-1">{message}</span>
+          <button type="button" className="min-h-[40px] shrink-0 rounded-[4px] px-3 font-semibold text-galben active:bg-sheet/10" onClick={action.onClick}>
+            {action.label}
+          </button>
+        </>
+      ) : (
+        message
+      )}
     </div>,
     document.body,
   );
+}
+
+/** Ecran de telefon (sub pragul `lg` al Tailwind, unde apare meniul lateral). Pe server și la prima randare: false. */
+export function useIsMobile() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023.98px)");
+    const update = () => setMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return mobile;
 }
 
 // ---------- Iconițe mici pentru acțiuni (pe telefon înlocuiesc textul butoanelor) ----------
