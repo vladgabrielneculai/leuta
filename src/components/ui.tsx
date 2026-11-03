@@ -406,16 +406,19 @@ export function Money({
 export function PageHeader({ title, intro, actions }: { title: string; intro?: ReactNode; actions?: ReactNode }) {
   const { month } = useApp();
   return (
-    <header className="mb-6 sm:mb-8" data-tour="title">
-      <ReceiptMeta month={month} label={monthLabel(month, true)} />
+    <header className="mb-4 sm:mb-8" data-tour="title">
+      {/* Pe telefon, antetul e doar titlul: antetul de bon și explicația stau pe ecranul mare. */}
+      <div className="hidden lg:block">
+        <ReceiptMeta month={month} label={monthLabel(month, true)} />
+      </div>
       <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
         <div className="max-w-2xl">
-          <h1 className="text-[24px] font-bold leading-tight sm:text-[31px]">{title}</h1>
-          {intro && <p className="mt-1.5 text-[14px] text-ink-soft sm:text-[15px]">{intro}</p>}
+          <h1 className="text-[22px] font-bold leading-tight sm:text-[31px]">{title}</h1>
+          {intro && <p className="mt-1.5 hidden text-[14px] text-ink-soft sm:text-[15px] lg:block">{intro}</p>}
         </div>
         {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto *:min-w-[40%] *:flex-1 sm:*:min-w-0 sm:*:flex-none [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}
       </div>
-      <div className="rule-double mt-4" aria-hidden />
+      <div className="rule-double mt-3 sm:mt-4" aria-hidden />
     </header>
   );
 }
@@ -814,6 +817,96 @@ export function Tabs<T extends string>({
 }
 
 /** Inel de progres (0–100%), cu procentul în mijloc. */
+/**
+ * Pentru paginile cu multe secțiuni (ex. Setări). Pe ecran mare: tab-urile obișnuite. Pe telefon: o listă de rânduri
+ * (nume + o frază); atingi unul și se deschide secțiunea, cu „‹ Toate” deasupra. Butonul „înapoi” al telefonului
+ * revine la listă (secțiunea deschisă e trecută în adresă, ca #securitate).
+ */
+export function SectionsNav<T extends string>({
+  tabs,
+  value,
+  onChange,
+  label,
+  backLabel,
+  children,
+  ...rest
+}: {
+  tabs: readonly { key: T; label: string; short?: string; hint?: string }[];
+  value: T;
+  onChange: (t: T) => void;
+  label: string;
+  /** textul de deasupra secțiunii deschise, pe telefon (ex. „Toate setările”) */
+  backLabel: string;
+  children: ReactNode;
+  "data-tour"?: string;
+}) {
+  const mobile = useIsMobile();
+  const [picked, setPicked] = useState(false);
+  useEffect(() => {
+    const sync = () => {
+      const h = window.location.hash.slice(1);
+      const found = tabs.some((t) => t.key === h);
+      setPicked(found);
+      if (found) onChange(h as T);
+    };
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!mobile) {
+    return (
+      <>
+        <Tabs tabs={tabs} value={value} onChange={onChange} className="mb-5" label={label} data-tour={rest["data-tour"]} />
+        {children}
+      </>
+    );
+  }
+  if (!picked) {
+    return (
+      <ul className="overflow-hidden rounded-md border border-line bg-sheet" aria-label={label} data-tour={rest["data-tour"]}>
+        {tabs.map((t) => (
+          <li key={t.key} className="border-b border-line last:border-b-0">
+            <button
+              type="button"
+              className="flex min-h-[60px] w-full items-center gap-3 px-3.5 py-2.5 text-left active:bg-paper"
+              onClick={() => {
+                onChange(t.key);
+                setPicked(true);
+                history.pushState(null, "", `#${t.key}`);
+                window.scrollTo(0, 0);
+              }}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-medium text-ink">{t.label}</span>
+                {t.hint && <span className="block truncate text-[12.5px] text-ink-soft">{t.hint}</span>}
+              </span>
+              <span className="shrink-0 text-[18px] text-ink-faint" aria-hidden>›</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return (
+    <>
+      <button
+        type="button"
+        className="mb-3 flex min-h-[40px] items-center gap-1 text-[14px] font-medium text-albastru"
+        onClick={() => {
+          if (window.location.hash) history.back();
+          else setPicked(false);
+        }}
+      >
+        <span className="text-[20px] leading-none" aria-hidden>‹</span> {backLabel}
+      </button>
+      <h2 className="mb-3 text-[18px] font-semibold">{tabs.find((t) => t.key === value)?.label}</h2>
+      {children}
+    </>
+  );
+}
+
 export function Ring({ value, color = "var(--c-leu)", size = 76, stroke = 8, children }: { value: number; color?: string; size?: number; stroke?: number; children?: ReactNode }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
