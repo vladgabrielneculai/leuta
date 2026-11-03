@@ -10,7 +10,7 @@ import { ThemeChooser } from "@/components/ThemeToggle";
 import DatabaseManager from "@/components/DatabaseManager";
 import { useTourReplay } from "@/components/Tour";
 
-type Category = { id: number; name: string; kind: Kind; bucket: Bucket; color: string };
+type Category = { id: number; name: string; kind: Kind; bucket: Bucket; color: string; parent_id?: number | null };
 const PALETTE = ["#3D7A4E", "#5E9A6C", "#2E5C8A", "#4A7BA8", "#27496D", "#6A4E99", "#8A6BB8", "#B5456A", "#C9657F", "#DB8BA4", "#C99A1E", "#8A989C"];
 
 const PARAMS: { key: string; label: string; hint: string; step: number; investmentOnly?: boolean }[] = [
@@ -26,15 +26,18 @@ function CategoryRow({
   onSaved,
   onDelete,
   onError,
+  parents,
 }: {
   c: Category;
   allCats?: Category[];
+  /** Beta: categoriile care pot fi părinte (același tip, fără părinte); lipsă = fără subcategorii. */
+  parents?: Category[];
   onSaved: () => void;
   onDelete: () => void;
   onError?: (msg: string) => void;
 }) {
   const [d, setD] = useState(c);
-  const dirty = d.name !== c.name || d.bucket !== c.bucket || d.color !== c.color;
+  const dirty = d.name !== c.name || d.bucket !== c.bucket || d.color !== c.color || (d.parent_id ?? null) !== (c.parent_id ?? null);
   const hasBucket = c.kind !== "income" && c.kind !== "saving";
 
   const save = async () => {
@@ -49,7 +52,8 @@ function CategoryRow({
       return;
     }
     try {
-      await api("/api/crud/categories", "PUT", { ...d, name: trimmed });
+      const { parent_id, ...rest } = d;
+      await api("/api/crud/categories", "PUT", { ...rest, name: trimmed, ...(parents ? { parent_id: parent_id ?? null } : {}) });
       onSaved();
     } catch (err: any) {
       onError?.(err?.message || "Eroare la salvarea categoriei");
@@ -59,9 +63,24 @@ function CategoryRow({
   return (
     // Un singur rând, și pe telefon: culoare | nume | nevoie/dorință | acțiune. Cât timp rândul are modificări
     // nesalvate, butonul de ștergere devine „Salvează” (✓).
-    <li className="flex items-center gap-1.5 py-1.5 sm:gap-2">
+    <li className={`flex items-center gap-1.5 py-1.5 sm:gap-2 ${c.parent_id ? "pl-5 sm:pl-7" : ""}`}>
+      {c.parent_id ? <span className="-ml-4 w-3 shrink-0 text-ink-faint sm:-ml-5" aria-hidden>↳</span> : null}
       <input type="color" value={d.color} onChange={(e) => setD({ ...d, color: e.target.value })} className="h-9 w-7 shrink-0 cursor-pointer rounded-sm border border-line bg-field p-0.5 sm:w-8" aria-label="Culoare" />
       <input className="field min-w-0 flex-1 py-1.5!" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} aria-label="Nume categorie" />
+      {parents && (
+        <select
+          className="field w-24 shrink-0 px-1! py-1.5! text-[12.5px] sm:w-36"
+          value={d.parent_id ?? ""}
+          onChange={(e) => setD({ ...d, parent_id: e.target.value ? Number(e.target.value) : null })}
+          aria-label={`Categoria-părinte pentru ${c.name}`}
+          title="Subcategorie a…"
+        >
+          <option value="">principală</option>
+          {parents.filter((p) => p.id !== c.id).map((p) => (
+            <option key={p.id} value={p.id}>în {p.name}</option>
+          ))}
+        </select>
+      )}
       {hasBucket && (
         // Comutator compact (în loc de listă): o atingere schimbă între nevoie și dorință.
         <button
@@ -93,6 +112,13 @@ function CategoryRow({
 
 const kinds: Kind[] = ["income", "fixed", "variable", "saving"];
 
+/** Categoriile principale în ordine, fiecare urmată de subcategoriile ei (beta). */
+function orderByParent(list: Category[]) {
+  const ids = new Set(list.map((c) => c.id));
+  const top = list.filter((c) => !c.parent_id || !ids.has(c.parent_id));
+  return top.flatMap((p) => [p, ...list.filter((c) => c.parent_id === p.id)]);
+}
+
 const SETTINGS_TABS = [
   { key: "general", label: "General" },
   { key: "calcule", label: "Calcule" },
@@ -115,6 +141,7 @@ export default function SettingsPage() {
     inflationError,
     refreshInflation,
     confirm,
+    beta,
   } = useApp();
   const { data: cats, reload } = useApi<Category[]>("/api/crud/categories");
   const { data: settings } = useApi<Record<string, string>>("/api/settings");
@@ -237,11 +264,16 @@ export default function SettingsPage() {
             [catKind].map((k) => (
               <div key={k} className="mb-4">
                 <ul>
-                  {cats.filter((c) => c.kind === k).map((c) => (
+                  {orderByParent(cats.filter((c) => c.kind === k)).map((c) => (
                     <CategoryRow
-                      key={`${c.id}-${c.name}-${c.bucket}-${c.color}`}
+                      key={`${c.id}-${c.name}-${c.bucket}-${c.color}-${c.parent_id ?? 0}`}
                       c={c}
                       allCats={cats}
+                      parents={
+                        beta && !cats.some((x) => x.parent_id === c.id)
+                          ? cats.filter((x) => x.kind === k && !x.parent_id && x.id !== c.id)
+                          : undefined
+                      }
                       onSaved={() => changed("Categorie salvată")}
                       onDelete={() => delCat(c)}
                       onError={(msg) => setToast(msg)}

@@ -28,10 +28,10 @@ export async function POST(req: NextRequest) {
     const db = await getDb();
     const res = await db
       .prepare(
-        `INSERT INTO scheduled_entries (name, category_id, amount, currency, frequency, day, month_of_year, start_month, end_month, is_subscription)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO scheduled_entries (name, category_id, amount, currency, frequency, day, month_of_year, start_month, end_month, is_subscription, remind_days)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(s.name, s.category_id, s.amount, s.currency, s.frequency, s.day, s.month_of_year, s.start_month, s.end_month, s.is_subscription);
+      .run(s.name, s.category_id, s.amount, s.currency, s.frequency, s.day, s.month_of_year, s.start_month, s.end_month, s.is_subscription, s.remind_days);
     const created = await materializeDue(true);
     return NextResponse.json({ ok: true, id: res.lastInsertRowid, created });
   } catch (err) {
@@ -63,9 +63,9 @@ export async function PUT(req: NextRequest) {
     const res = await db
       .prepare(
         `UPDATE scheduled_entries SET name = ?, category_id = ?, amount = ?, currency = ?, frequency = ?, day = ?, month_of_year = ?,
-           start_month = ?, end_month = ?, is_subscription = ? WHERE id = ?`,
+           start_month = ?, end_month = ?, is_subscription = ?, remind_days = ? WHERE id = ?`,
       )
-      .run(s.name, s.category_id, s.amount, s.currency, s.frequency, s.day, s.month_of_year, s.start_month, s.end_month, s.is_subscription, id);
+      .run(s.name, s.category_id, s.amount, s.currency, s.frequency, s.day, s.month_of_year, s.start_month, s.end_month, s.is_subscription, s.remind_days, id);
     if (!res.changes) return NextResponse.json({ error: "Programarea nu există." }, { status: 404 });
     return NextResponse.json({ ok: true, created: await materializeDue(true) });
   } catch (err) {

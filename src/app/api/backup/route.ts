@@ -20,7 +20,10 @@ const ORDER = FINANCIAL_TABLES;
 
 // coloană → tabelul părinte al cărui id îl referă
 const FKS: Record<string, Record<string, string>> = {
-  entries: { category_id: "categories", goal_id: "goals", investment_id: "investments" },
+  categories: { parent_id: "categories" },
+  entries: { category_id: "categories", goal_id: "goals", investment_id: "investments", account_id: "accounts" },
+  transfers: { from_account_id: "accounts", to_account_id: "accounts" },
+  entry_tags: { entry_id: "entries", tag_id: "tags" },
   scheduled_entries: { category_id: "categories" },
   investment_values: { investment_id: "investments" },
   loan_prepayments: { loan_id: "loans" },
@@ -30,7 +33,10 @@ const FKS: Record<string, Record<string, string>> = {
   trip_expenses: { trip_id: "trips" },
 };
 
-const HAS_ID = new Set(["categories", "goals", "investments", "loans", "scheduled_entries", "entries", "loan_prepayments", "loan_schedules", "planned_purchases", "trips"]);
+const HAS_ID = new Set([
+  "categories", "goals", "investments", "loans", "accounts", "scheduled_entries", "entries", "loan_prepayments", "loan_schedules",
+  "planned_purchases", "trips", "transfers", "tags", "debts",
+]);
 
 // Exportul (toate datele financiare) și restaurarea (le înlocuiește) cer identitatea confirmată recent.
 export async function GET() {
@@ -88,7 +94,9 @@ export async function POST(req: NextRequest) {
         const rows = body.data[t];
         if (!rows) continue;
         idMap[t] = new Map();
-        for (const row of rows) {
+        // Subcategoriile după categoriile-părinte, ca legătura parent_id să găsească id-ul nou.
+        const ordered = t === "categories" ? [...rows].sort((a, b) => Number(!!a.parent_id) - Number(!!b.parent_id)) : rows;
+        for (const row of ordered) {
           const oldId = row.id;
           const rec: Record<string, unknown> = { ...row };
           delete rec.id;
@@ -102,7 +110,9 @@ export async function POST(req: NextRequest) {
             (t === "investment_values" && rec.investment_id === null) ||
             (FKS[t]?.loan_id && rec.loan_id === null) ||
             (FKS[t]?.trip_id && rec.trip_id === null) ||
-            (t === "import_rules" && rec.category_id === null)
+            (t === "import_rules" && rec.category_id === null) ||
+            (t === "transfers" && (rec.from_account_id === null || rec.to_account_id === null)) ||
+            (t === "entry_tags" && (rec.entry_id === null || rec.tag_id === null))
           ) continue;
           if (Object.keys(rec).some((k) => !/^[a-z_]+$/.test(k))) throw new Error(`Coloană invalidă în ${t}`);
           const res = await insertRow(tx, t, rec, " ON CONFLICT DO NOTHING");

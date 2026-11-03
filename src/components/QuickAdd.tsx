@@ -13,7 +13,7 @@ import { TripExpenseForm } from "./Trips";
  * varianta „Vacanță”: cheltuiala merge la vacanța în curs, în moneda ei, nu în bugetul lunar.
  */
 
-type Category = { id: number; name: string; kind: Kind; color: string };
+type Category = { id: number; name: string; kind: Kind; color: string; parent_id?: number | null };
 type Goal = { id: number; name: string };
 type Investment = { id: number; name: string };
 export type QuickEntry = {
@@ -28,6 +28,8 @@ export type QuickEntry = {
   recurring: number;
   month?: string;
   created_at?: string | null;
+  account_id?: number | null;
+  split_group?: string | null;
 };
 
 /** Ziua locală YYYY-MM-DD a unui moment. */
@@ -59,6 +61,15 @@ const QuickAddCtx = createContext<(args?: OpenArgs) => void>(() => undefined);
 /** Deschide fereastra de adăugare (opțional cu tipul ales) sau de editare a unei intrări. */
 export function useQuickAdd() {
   return useContext(QuickAddCtx);
+}
+
+const LAST_ACCOUNT = "leuta:ultimul-cont";
+
+/** Categoriile principale în ordine, fiecare urmată de subcategoriile ei. */
+function orderByParent<T extends { id: number; parent_id?: number | null }>(list: T[]) {
+  const ids = new Set(list.map((c) => c.id));
+  const top = list.filter((c) => !c.parent_id || !ids.has(c.parent_id));
+  return top.flatMap((p) => [p, ...list.filter((c) => c.parent_id === p.id)]);
 }
 
 const KINDS: { kind: Kind; label: string; color: string }[] = [
@@ -121,12 +132,51 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const { data: goals } = useApi<Goal[]>("/api/crud/goals");
   const { data: invs } = useApi<Investment[]>("/api/crud/investments");
   const { data: settings } = useApi<Record<string, string>>("/api/settings");
+  // Conturile (beta): pe ce cont s-a făcut plata. Ultimul cont ales se propune data viitoare.
+  const { data: accountsData } = useApi<{ accounts: { id: number; name: string; archived: number }[] }>(beta ? "/api/accounts" : null);
+  const accounts = (accountsData?.accounts ?? []).filter((a) => !a.archived || a.id === editing?.account_id);
+  const [accountId, setAccountId] = useState<number | null | undefined>(editing ? editing.account_id ?? null : undefined);
+  useEffect(() => {
+    if (accountId !== undefined || !accountsData) return;
+    let last: number | null = null;
+    try {
+      last = Number(localStorage.getItem(LAST_ACCOUNT)) || null;
+    } catch {}
+    setAccountId(accounts.some((a) => a.id === last) ? last : null);
+  }, [accountsData, accountId, accounts]);
   const investments = settings?.enable_investments === "1" ? invs ?? [] : [];
 
-  const kindCats = (cats ?? []).filter((c) => c.kind === kind);
+  // Subcategoriile (beta) stau imediat după categoria lor.
+  const kindCats = orderByParent((cats ?? []).filter((c) => c.kind === kind));
+  // Etichetele (beta): text liber, refolosite după nume.
+  const { data: allTags } = useApi<{ id: number; name: string }[]>(beta ? "/api/crud/tags" : null);
+  const { data: entryTags } = useApi<{ id: number; name: string }[]>(beta && editing ? `/api/entries/tags?entry_id=${editing.id}` : null);
+  const [tags, setTags] = useState<string[] | null>(editing ? null : []);
+  const [tagInput, setTagInput] = useState("");
+  useEffect(() => {
+    if (tags === null && entryTags) setTags(entryTags.map((t) => t.name));
+  }, [entryTags, tags]);
+  const addTag = (raw: string) => {
+    const name = raw.trim().replace(/^#+/, "");
+    if (!name) return;
+    setTags((prev) => ((prev ?? []).some((t) => t.toLowerCase() === name.toLowerCase()) ? prev : [...(prev ?? []), name]));
+    setTagInput("");
+  };
+  const tagSuggestions = (allTags ?? [])
+    .filter((t) => !(tags ?? []).some((x) => x.toLowerCase() === t.name.toLowerCase()) && t.name.toLowerCase().includes(tagInput.trim().toLowerCase()))
+    .slice(0, 6);
+  // Plata împărțită pe categorii (beta, doar la adăugarea unei cheltuieli).
+  const [split, setSplit] = useState(false);
+  const [parts, setParts] = useState<Record<number, string>>({});
+  const togglePart = (id: number) =>
+    setParts((prev) => (id in prev ? Object.fromEntries(Object.entries(prev).filter(([k]) => Number(k) !== id)) : { ...prev, [id]: "" }));
+  const value = parseAmount(amount);
   // Returul are sens doar la cheltuieli; o intrare deja salvată ca retur rămâne editabilă și în afara versiunii beta.
   const canRefund = (kind === "variable" || kind === "fixed") && (beta || refund);
-  const value = parseAmount(amount);
+  const canSplit = beta && !editing && (kind === "variable" || kind === "fixed");
+  const splitOn = canSplit && split && !refund;
+  const partSum = Object.values(parts).reduce((sum, v) => sum + (parseAmount(v) || 0), 0);
+  const partLeft = Math.round((value - partSum) * 100) / 100;
 
   // Suma e primul lucru de completat: tastatura numerică apare imediat (doar la adăugare).
   useEffect(() => {
@@ -147,6 +197,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       amountRef.current?.focus();
       return;
     }
+    if (splitOn) return submitSplit();
     if (kind !== "saving" && !categoryId) {
       setErr("Alege o categorie.");
       return;
@@ -169,18 +220,65 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       amount: canRefund && refund ? -value : value,
       currency,
       recurring: recurring ? 1 : 0,
+      // Contul se trimite doar când lista conturilor s-a încărcat, ca să nu ștergem din greșeală legătura existentă.
+      ...(accountsData && accountId !== undefined ? { account_id: accountId } : {}),
     };
+    if (accountsData && accountId) {
+      try {
+        localStorage.setItem(LAST_ACCOUNT, String(accountId));
+      } catch {}
+    }
     setBusy(true);
     try {
       if (editing) {
         await api("/api/crud/entries", "PUT", { id: editing.id, ...payload });
+        await saveTags([editing.id]);
         onDone("Modificare salvată");
       } else {
-        await api("/api/crud/entries", "POST", payload);
+        const row = await api<{ id: number }>("/api/crud/entries", "POST", payload);
+        await saveTags([row.id]);
         const what = catName ?? (kind === "saving" ? "Economii" : "Intrare");
         const sum = currency === "EUR" ? eur(value) : lei(value);
         onDone(canRefund && refund ? `Retur ${what}: ${sum} scăzut din ${monthLabel(targetMonth)}` : `${what}: ${sum} trecut în ${monthLabel(targetMonth)}`);
       }
+      bump();
+      onClose();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Etichetele (beta) se salvează după intrare; dacă nu s-au încărcat încă (la modificare), nu se ating. */
+  const saveTags = async (ids: number[]) => {
+    if (!beta || tags === null) return;
+    const pending = tagInput.trim() ? [...tags, tagInput.trim()] : tags;
+    if (!editing && pending.length === 0) return;
+    await api("/api/entries/tags", "PUT", { entry_ids: ids, tags: pending });
+  };
+
+  const submitSplit = async () => {
+    const list = Object.entries(parts)
+      .map(([id, v]) => ({ category_id: Number(id), amount: parseAmount(v) || 0 }))
+      .filter((p) => p.amount > 0);
+    if (list.length < 2) return setErr("Alege cel puțin două categorii și scrie suma fiecăreia.");
+    if (Math.abs(partLeft) >= 0.005) return setErr(partLeft > 0 ? `Mai ai de împărțit ${lei(partLeft)}.` : `Părțile depășesc totalul cu ${lei(-partLeft)}.`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return setErr("Alege data.");
+    setBusy(true);
+    try {
+      const res = await api<{ entries: { id: number }[] }>("/api/entries/split", "POST", {
+        month: targetMonth,
+        created_at: date,
+        kind,
+        description: description.trim(),
+        currency,
+        amount: value,
+        parts: list,
+        ...(accountsData && accountId !== undefined ? { account_id: accountId } : {}),
+      });
+      await saveTags(res.entries.map((e) => e.id));
+      onDone(`Plată împărțită pe ${list.length} categorii: ${currency === "EUR" ? eur(value) : lei(value)}`);
       bump();
       onClose();
     } catch (e) {
@@ -323,25 +421,83 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
               <p className="text-[13px] text-ink-soft">Nu ai categorii pentru acest tip. Le poți adăuga din Setări.</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {kindCats.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={chip(categoryId === c.id)}
-                    aria-pressed={categoryId === c.id}
-                    onClick={() => {
-                      stayMonthly();
-                      setCategoryId(c.id);
-                      setErr(null);
-                    }}
-                  >
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: c.color }} aria-hidden />
-                    {c.name}
-                  </button>
-                ))}
+                {kindCats.map((c) => {
+                  const on = splitOn ? c.id in parts : categoryId === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={chip(on)}
+                      aria-pressed={on}
+                      onClick={() => {
+                        stayMonthly();
+                        setErr(null);
+                        if (splitOn) togglePart(c.id);
+                        else setCategoryId(c.id);
+                      }}
+                    >
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: c.color }} aria-hidden />
+                      {c.parent_id ? <span className="text-[12px] opacity-60" aria-hidden>↳</span> : null}
+                      {c.name}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
+
+          {canSplit && !refund && (
+            <div className="-mt-2">
+              <label className="flex min-h-[36px] items-center gap-2.5 text-[14px] text-ink-soft">
+                <input
+                  type="checkbox"
+                  className="h-[18px] w-[18px] shrink-0"
+                  checked={split}
+                  onChange={(e) => {
+                    setSplit(e.target.checked);
+                    setParts(e.target.checked && categoryId ? { [categoryId]: amount } : {});
+                  }}
+                />
+                Împarte pe mai multe categorii (un singur bon)
+              </label>
+              {splitOn && (
+                <div className="mt-2 flex flex-col gap-2 rounded-md border border-line bg-paper p-3">
+                  {Object.keys(parts).length === 0 && <p className="text-[13px] text-ink-faint">Atinge categoriile de mai sus și scrie suma fiecăreia.</p>}
+                  {Object.entries(parts).map(([id, v]) => (
+                    <label key={id} className="flex items-center gap-2 text-[14px]">
+                      <span className="min-w-0 flex-1 truncate">{kindCats.find((c) => c.id === Number(id))?.name}</span>
+                      <input
+                        className="field num w-28"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={v}
+                        onChange={(e) => setParts({ ...parts, [id]: e.target.value.replace(/[^\d.,]/g, "") })}
+                        aria-label={`Suma pentru ${kindCats.find((c) => c.id === Number(id))?.name}`}
+                      />
+                    </label>
+                  ))}
+                  {Object.keys(parts).length > 0 && (
+                    <p className={`text-right text-[12.5px] ${Math.abs(partLeft) < 0.005 ? "text-leu" : "text-ink-soft"}`}>
+                      {Math.abs(partLeft) < 0.005 ? "Împărțit complet ✓" : partLeft > 0 ? `Mai ai de împărțit ${lei(partLeft)}` : `Peste total cu ${lei(-partLeft)}`}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {accounts.length > 0 && (
+            <div>
+              <span className="label">{kind === "income" ? "În contul" : "Din contul"}</span>
+              <div className="flex flex-wrap gap-1.5">
+                {[{ id: null as number | null, name: "Niciunul" }, ...accounts].map((a) => (
+                  <button key={a.id ?? 0} type="button" className={chip(accountId === a.id)} aria-pressed={accountId === a.id} onClick={() => setAccountId(a.id)}>
+                    {a.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <label className="flex items-center gap-3">
             <span className="label mb-0! shrink-0">Data</span>
@@ -368,6 +524,41 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
             onChange={(e) => setDescription(e.target.value)}
             aria-label="Descriere"
           />
+
+          {beta && tags !== null && (
+            <div>
+              <span className="label">Etichete (opțional)</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {tags.map((t) => (
+                  <button key={t} type="button" className="rounded-full border border-albastru/40 bg-albastru-tint px-2.5 py-1 text-[13px] text-albastru" onClick={() => setTags(tags.filter((x) => x !== t))} aria-label={`Scoate eticheta ${t}`}>
+                    #{t} ×
+                  </button>
+                ))}
+                <input
+                  className="field min-w-[8rem] flex-1 py-1.5!"
+                  placeholder="ex. vacanță, cadou"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === ",") {
+                      e.preventDefault();
+                      addTag(tagInput.replace(/,$/, ""));
+                    }
+                  }}
+                  aria-label="Etichetă nouă"
+                />
+              </div>
+              {tagSuggestions.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {tagSuggestions.map((t) => (
+                    <button key={t.id} type="button" className="rounded-full border border-line px-2 py-0.5 text-[12.5px] text-ink-soft" onClick={() => addTag(t.name)}>
+                      + #{t.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {canRefund && (
             <label className="-mt-1 flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Scade din cheltuielile categoriei, nu se adună la venituri">

@@ -8,7 +8,10 @@
  *   apropiată, la categorii de costuri fixe sau la comercianți de abonamente cunoscuți.
  */
 
-export type Frequency = "monthly" | "yearly";
+export type Frequency = "monthly" | "quarterly" | "yearly";
+
+/** Câte luni are un ciclu: 1 (lunar), 3 (trimestrial), 12 (anual). */
+export const cycleMonths = (f: Frequency) => (f === "yearly" ? 12 : f === "quarterly" ? 3 : 1);
 
 export type Schedule = {
   id: number;
@@ -24,6 +27,8 @@ export type Schedule = {
   last_month: string | null;
   is_subscription: number;
   active: number;
+  /** cu câte zile înainte de scadență vine mementoul (beta); null = fără */
+  remind_days?: number | null;
 };
 
 export type Today = { date: string; month: string; day: number }; // date = YYYY-MM-DD
@@ -47,7 +52,10 @@ export function daysInMonth(month: string): number {
 
 /** Data scadenței într-o lună (null dacă programarea anuală nu cade în luna aceea). */
 export function dueDate(s: Pick<Schedule, "frequency" | "day" | "month_of_year">, month: string): string | null {
-  if (s.frequency === "yearly" && Number(month.slice(5, 7)) !== s.month_of_year) return null;
+  const m = Number(month.slice(5, 7));
+  if (s.frequency === "yearly" && m !== s.month_of_year) return null;
+  // Trimestrial: luna din ciclu și din 3 în 3 luni (3 → martie, iunie, septembrie, decembrie).
+  if (s.frequency === "quarterly" && (((m - (s.month_of_year ?? 1)) % 3) + 3) % 3 !== 0) return null;
   const day = Math.min(s.day, daysInMonth(month));
   return `${month}-${String(day).padStart(2, "0")}`;
 }
@@ -84,8 +92,37 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
 }
 
-/** Costul lunar echivalent (o plată anuală se împarte la 12). */
-export const monthlyCost = (s: Pick<Schedule, "amount" | "frequency">) => (s.frequency === "yearly" ? s.amount / 12 : s.amount);
+/** Costul lunar echivalent (o plată anuală se împarte la 12, una trimestrială la 3). */
+export const monthlyCost = (s: Pick<Schedule, "amount" | "frequency">) => s.amount / cycleMonths(s.frequency);
+
+/**
+ * Banii de pus deoparte pentru o plată rară (trimestrială sau anuală), ca să nu vină pe nepusă masă:
+ * suma lunară și cât ar trebui să fie strâns până azi, după câte luni au trecut din ciclu.
+ * La plățile lunare nu e nimic de strâns.
+ */
+export function setAside(s: Schedule, t: Today): { monthly: number; shouldHave: number; next: string | null } | null {
+  const cycle = cycleMonths(s.frequency);
+  if (cycle === 1 || !s.active) return null;
+  const next = nextDue(s, t);
+  if (!next) return null;
+  const monthsLeft = Math.max(0, (Number(next.slice(0, 4)) - Number(t.month.slice(0, 4))) * 12 + Number(next.slice(5, 7)) - Number(t.month.slice(5, 7)));
+  const elapsed = Math.min(cycle, Math.max(0, cycle - monthsLeft));
+  const monthly = s.amount / cycle;
+  return { monthly, shouldHave: Math.round(monthly * elapsed * 100) / 100, next };
+}
+
+/** Programările al căror memento cade azi: scadența e peste exact `remind_days` zile (0 = chiar azi). */
+export function remindersDue(list: Schedule[], t: Today): { schedule: Schedule; date: string; days: number }[] {
+  const out: { schedule: Schedule; date: string; days: number }[] = [];
+  for (const s of list) {
+    if (s.remind_days === null || s.remind_days === undefined || !s.active) continue;
+    const date = nextDue(s, t);
+    if (!date) continue;
+    const days = daysBetween(t.date, date);
+    if (days === s.remind_days) out.push({ schedule: s, date, days });
+  }
+  return out;
+}
 
 // ---------- Detectarea abonamentelor ----------
 

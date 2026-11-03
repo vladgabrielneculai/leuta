@@ -19,8 +19,32 @@ function Change({ now, before, invert = false }: { now: number; before: number |
   );
 }
 
-function CategoryTable({ rows, compareYear, year, invert }: { rows: YearCategory[]; compareYear: string | null; year: string; invert: boolean }) {
-  const total = rows.reduce((s, r) => s + r.amount, 0);
+/**
+ * Subcategoriile (beta) se adună la categoria-părinte: rândul părintelui arată totalul, iar subcategoriile apar
+ * dedesubt, cu „↳”. Un părinte fără intrări proprii apare tot, dacă are subcategorii cu sume.
+ */
+function groupByParent(rows: YearCategory[], all: YearCategory[]) {
+  const byId = new Map(all.map((c) => [c.id, c]));
+  const children = (id: number) => rows.filter((r) => r.parent_id === id);
+  const top = new Map<number, YearCategory>();
+  for (const r of rows) {
+    const pid = r.parent_id && byId.has(r.parent_id) ? r.parent_id : null;
+    if (!pid) top.set(r.id, top.get(r.id) ?? r);
+    else if (!top.has(pid)) top.set(pid, rows.find((x) => x.id === pid) ?? { ...byId.get(pid)!, amount: 0, compare: 0 });
+  }
+  return [...top.values()]
+    .map((p) => {
+      const kids = children(p.id);
+      const total = { ...p, amount: p.amount + kids.reduce((s, k) => s + k.amount, 0), compare: p.compare + kids.reduce((s, k) => s + k.compare, 0) };
+      return { row: total, kids };
+    })
+    .sort((a, b) => b.row.amount - a.row.amount)
+    .flatMap(({ row, kids }) => [{ ...row, child: false }, ...kids.sort((a, b) => b.amount - a.amount).map((k) => ({ ...k, child: true }))]);
+}
+
+function CategoryTable({ rows: flat, compareYear, year, invert }: { rows: YearCategory[]; compareYear: string | null; year: string; invert: boolean }) {
+  const total = flat.reduce((s, r) => s + r.amount, 0);
+  const rows = groupByParent(flat, flat);
   return (
     <div className="overflow-x-auto">
       <table className="num w-full min-w-[420px] text-[14px]">
@@ -35,8 +59,9 @@ function CategoryTable({ rows, compareYear, year, invert }: { rows: YearCategory
         </thead>
         <tbody>
           {rows.map((c) => (
-            <tr key={c.id} className="border-b border-line/60">
-              <td className="py-2 pr-3">
+            <tr key={c.id} className={`border-b border-line/60 ${c.child ? "text-ink-soft" : ""}`}>
+              <td className={`py-2 pr-3 ${c.child ? "pl-6" : ""}`}>
+                {c.child && <span className="mr-1 text-ink-faint" aria-hidden>↳</span>}
                 <span className="mr-2 inline-block h-2.5 w-2.5 rounded-xs align-middle" style={{ background: c.color }} aria-hidden />
                 {c.name}
               </td>
