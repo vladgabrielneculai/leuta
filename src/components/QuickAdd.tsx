@@ -95,6 +95,16 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
     setState(args);
   }, []);
   const clearToast = useCallback(() => setToast(null), []);
+  // Scurtătura din iconița aplicației (manifest.ts) deschide direct adăugarea: /?add=1 (sau /?add=income etc. pentru un tip anume).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const add = params.get("add");
+    if (add === null) return;
+    params.delete("add");
+    const rest = params.toString();
+    history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : "") + window.location.hash);
+    open(KINDS.some((k) => k.kind === add) ? { kind: add as Kind } : {});
+  }, [open]);
   const undo = toast?.undo;
   return (
     <QuickAddCtx.Provider value={open}>
@@ -124,6 +134,13 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
       />
     </QuickAddCtx.Provider>
   );
+}
+
+/** O vibrație scurtă la salvare (doar telefoanele care o permit, ex. Android; iPhone o ignoră). */
+function tick() {
+  try {
+    navigator.vibrate?.(12);
+  } catch {}
 }
 
 /** Câte categorii apar pe telefon înainte de „Altele”: cele mai folosite, ca alegerea să fie dintr-o privire. */
@@ -247,10 +264,12 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       if (editing) {
         await api("/api/crud/entries", "PUT", { id: editing.id, ...payload });
         onDone("Modificare salvată");
+        if (mobile) tick();
       } else {
         await api("/api/crud/entries", "POST", payload);
         const what = catName ?? (kind === "saving" ? "Economii" : "Intrare");
         const sum = currency === "EUR" ? eur(value) : lei(value);
+        if (mobile) tick();
         onDone(canRefund && refund ? `Retur ${what}: ${sum} scăzut din ${monthLabel(targetMonth)}` : `${what}: ${sum} trecut în ${monthLabel(targetMonth)}`);
       }
       bump();
