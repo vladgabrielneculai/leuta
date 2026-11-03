@@ -32,6 +32,9 @@ type AppCtx = {
   confirm: (opts: string | ConfirmOptions) => Promise<boolean>;
   version: number;
   bump: () => void;
+  /** Versiunea beta: funcționalitățile noi apar doar aici (vezi lib/beta.ts). Shell o află din /api/auth/status. */
+  beta: boolean;
+  setBeta: (b: boolean) => void;
 };
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -53,6 +56,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   } | null>(null);
 
   const [version, setVersion] = useState(0);
+  const [beta, setBeta] = useState(false);
 
   useEffect(() => watchSystemTheme(), []);
 
@@ -142,6 +146,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         confirm,
         version,
         bump: () => setVersion((v) => v + 1),
+        beta,
+        setBeta,
       }}
     >
       {children}

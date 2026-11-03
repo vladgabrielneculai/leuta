@@ -88,7 +88,10 @@ function KindSection({
                   {e.recurring ? (
                     <span className="shrink-0 text-[13px] text-albastru" title="Se repetă lunar" aria-label="lunar">↻</span>
                   ) : null}
-                  <span className="num shrink-0 text-right text-[14px] font-medium">
+                  {e.amount < 0 && (
+                    <span className="shrink-0 text-[13px] text-leu" title="Retur: bani înapoi, scăzuți din categorie" aria-label="retur">↩</span>
+                  )}
+                  <span className={`num shrink-0 text-right text-[14px] font-medium ${e.amount < 0 ? "text-leu" : ""}`}>
                     {e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
                   </span>
                   <span className={`shrink-0 text-ink-faint transition-transform ${open ? "rotate-90" : ""}`} aria-hidden>›</span>
@@ -98,7 +101,7 @@ function KindSection({
                     <div className="min-w-0 flex-1 text-ink-soft">
                       <p className="whitespace-pre-wrap wrap-break-word text-ink">{e.description || <span className="text-ink-faint">Fără descriere</span>}</p>
                       <p className="mt-0.5 text-[12px] text-ink-faint">
-                        {[e.recurring ? "Se repetă lunar" : "O singură dată", e.currency === "EUR" ? `= ${lei(e.amount * rate)}` : ""].filter(Boolean).join(" · ")}
+                        {[e.amount < 0 ? "Retur (bani înapoi)" : "", e.recurring ? "Se repetă lunar" : "O singură dată", e.currency === "EUR" ? `= ${lei(e.amount * rate)}` : ""].filter(Boolean).join(" · ")}
                       </p>
                     </div>
                     <button type="button" className="btn-ghost shrink-0 gap-1.5 border border-line px-3 py-1.5 text-[13px]" onClick={() => quickAdd({ entry: e })}>

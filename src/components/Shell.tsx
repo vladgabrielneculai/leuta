@@ -25,6 +25,8 @@ const ICON = {
   admin: "M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z",
   import: "M12 3v12M7 10l5 5 5-5M4 17v3h16v-3",
   repeat: "M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3",
+  search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-5-5",
+  year: "M4 20V10M10 20V4M16 20v-7M22 20H2",
 };
 
 type NavItem = { href: string; label: string; color: string; icon: string };
@@ -37,6 +39,8 @@ const NAV_DAILY: NavItem[] = [
 const BETA_NAV: NavItem[] = [
   { href: "/import", label: "Import extras", color: "var(--c-mov)", icon: ICON.import },
   { href: "/abonamente", label: "Abonamente", color: "var(--c-galben)", icon: ICON.repeat },
+  { href: "/cautare", label: "Caută", color: "var(--c-albastru)", icon: ICON.search },
+  { href: "/anual", label: "Anul în cifre", color: "var(--c-leu)", icon: ICON.year },
 ];
 const NAV_PLAN: NavItem[] = [
   { href: "/credite", label: "Credite", color: "var(--c-mov)", icon: ICON.loans },
@@ -197,7 +201,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<StatusUser | null>(null);
   const [secured, setSecured] = useState(true);
-  const [beta, setBeta] = useState(false);
+  const { beta, setBeta } = useApp();
   // Îndemnul spre 2FA poate fi amânat (câteva zile), ca să nu ocupe mereu partea de sus a ecranului.
   const [securitySnoozed, setSecuritySnoozed] = useState(true);
   useEffect(() => {

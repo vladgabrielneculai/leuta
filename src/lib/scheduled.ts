@@ -150,7 +150,8 @@ const median = (xs: number[]) => {
 export function detectSubscriptions(entries: EntryLite[], t: Today, ignored: string[] = []): Detected[] {
   const groups = new Map<string, EntryLite[]>();
   for (const e of entries) {
-    if (e.scheduled_id || e.kind === "income" || e.kind === "saving" || !looksLikeSubscription(e)) continue;
+    // Returul (sumă negativă) nu e o plată: nu intră în detectarea abonamentelor.
+    if (e.scheduled_id || e.kind === "income" || e.kind === "saving" || e.amount <= 0 || !looksLikeSubscription(e)) continue;
     const key = paymentKey(e.description);
     if (key.length < 3 || ignored.includes(key)) continue;
     groups.set(key, [...(groups.get(key) ?? []), e]);
