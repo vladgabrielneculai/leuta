@@ -12,6 +12,8 @@ import { currentMonth, eur, lei, monthLabel, pct, r2 } from "@/lib/util";
 import { ReceiptMeta } from "@/components/receipt";
 import ActiveTripCard from "@/components/ActiveTripCard";
 import { ScheduledAlerts } from "@/components/ScheduledAlerts";
+import { EntryFeed } from "@/components/EntryFeed";
+import type { QuickEntry } from "@/components/QuickAdd";
 import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Ring, Skeleton, Stat, STAT_STRIP, Tabs, useApi, useApp, useTab } from "@/components/ui";
 
 type S = Summary & { fxError: string | null; beta?: boolean };
@@ -101,6 +103,95 @@ function LeuBand({ s }: { s: S }) {
   );
 }
 
+/**
+ * Pe telefon, Acasă începe cu o singură cifră: cât ți-a rămas luna aceasta. Sub ea, banda venitului
+ * și trei cifre mici; legenda benzii se deschide la atingere. Pe ecran mare rămân banda și cifrele obișnuite.
+ */
+function MobileHero({ s }: { s: S }) {
+  const t = s.totals;
+  const [open, setOpen] = useState(false);
+  const over = t.unallocated < 0;
+  const segments = [
+    { key: "fixed", label: "Costuri fixe", value: t.fixed, color: "var(--c-albastru)" },
+    { key: "loans", label: "Rate credite", value: t.loanPayments + t.loanInsurance + t.prepayFees, color: "var(--c-mov)" },
+    { key: "variable", label: "Cheltuieli", value: t.variable, color: "var(--c-rosu)" },
+    { key: "saved", label: "Pus deoparte", value: t.savedTotal, color: "var(--c-galben)" },
+    { key: "free", label: "Rămas", value: Math.max(0, t.unallocated), color: "var(--c-leu)" },
+  ].filter((x) => x.value > 0);
+  const base = Math.max(t.income, t.spent + t.savedTotal) || 1;
+  return (
+    <section className="mb-5 lg:hidden" data-tour="band">
+      {s.profile.firstName && <p className="mb-2 text-[14px] text-ink-soft">Bună, {s.profile.firstName}!</p>}
+      <button type="button" className="panel block w-full p-4 text-left" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <div className="text-[13px] text-ink-soft">{t.income > 0 ? (over ? "Ai depășit venitul lunii cu" : "Ți-au rămas luna aceasta") : "Venitul lunii"}</div>
+        <Money value={t.income > 0 ? Math.abs(t.unallocated) : 0} rate={s.fx.rate} size="xl" tone={over ? "rosu" : undefined} />
+        <div className="mt-0.5 text-[12.5px] text-ink-faint">
+          {t.income > 0 ? <>din {lei(t.income)} venit în {monthLabel(s.month)}</> : "Adaugă veniturile ca să vezi cât îți rămâne."}
+        </div>
+        {t.income > 0 && (
+          <div className="mt-3 flex h-3 w-full overflow-hidden rounded-full bg-line/60" role="img" aria-label="Distribuția venitului">
+            {segments.map((seg) => (
+              <div key={seg.key} className="h-full" style={{ width: `${(seg.value / base) * 100}%`, background: seg.color, borderRight: "2px solid var(--c-sheet)" }} />
+            ))}
+          </div>
+        )}
+        {open && (
+          <ul className="mt-3 flex flex-col gap-1">
+            {segments.map((seg) => (
+              <li key={seg.key} className="flex items-center gap-2 text-[13px]">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: seg.color }} />
+                <span className="min-w-0 flex-1 truncate text-ink-soft">{seg.label}</span>
+                <span className="num font-medium">{lei(seg.value)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-dashed border-line pt-3" data-tour="stats">
+          {[
+            { label: "Cheltuit", value: lei(t.spent), hint: <Delta now={t.spent} before={s.prev?.spent} invert /> },
+            { label: "Pus deoparte", value: lei(t.savedTotal), hint: `${pct(t.savingsRate)} din venit` },
+            { label: "Rate / venit", value: pct(t.dti), hint: t.dti > 40 ? "peste 40%" : "prag 40%", bad: t.dti > 40 },
+          ].map((x) => (
+            <div key={x.label} className="min-w-0">
+              <div className="truncate text-[11.5px] text-ink-faint">{x.label}</div>
+              <div className={`num truncate text-[14px] font-semibold ${x.bad ? "text-rosu" : "text-ink"}`}>{x.value}</div>
+              <div className="truncate text-[11px] text-ink-faint">{x.hint}</div>
+            </div>
+          ))}
+        </div>
+      </button>
+    </section>
+  );
+}
+
+/** Pe telefon, pe Acasă: ultimele intrări din lună, cu legătură spre toată luna. */
+function RecentEntries({ rate }: { rate: number }) {
+  const { month } = useApp();
+  const { data: entries, reload } = useApi<QuickEntry[]>(`/api/crud/entries?month=${month}`);
+  const { data: cats } = useApi<{ id: number; name: string; color: string }[]>("/api/crud/categories");
+  const { data: goals } = useApi<{ id: number; name: string }[]>("/api/crud/goals");
+  const { data: invs } = useApi<{ id: number; name: string }[]>("/api/crud/investments");
+  if (!entries || !cats || !goals || !invs) return null;
+  return (
+    <section className="mb-6 lg:hidden">
+      <div className="mb-2 flex items-baseline justify-between px-1">
+        <h2 className="text-[16px] font-semibold">Ultimele intrări</h2>
+        {entries.length > 0 && <Link href="/luna" className="text-[13px] font-medium text-albastru">Toată luna ›</Link>}
+      </div>
+      <EntryFeed
+        entries={entries}
+        cats={cats}
+        goals={goals}
+        invs={invs}
+        rate={rate}
+        limit={5}
+        onChanged={reload}
+        empty={<p className="rounded-md border border-dashed border-line-strong px-4 py-5 text-center text-[13.5px] text-ink-soft">Nimic trecut luna aceasta. Apasă <strong>+</strong> jos ca să adaugi prima intrare.</p>}
+      />
+    </section>
+  );
+}
+
 export default function Dashboard() {
   const { month } = useApp();
   const { data: s, error } = useApi<S>(`/api/summary?month=${month}`);
@@ -169,13 +260,18 @@ export default function Dashboard() {
         </p>
       )}
 
-      <LeuBand s={s} />
+      <MobileHero s={s} />
+      <div className="hidden lg:block">
+        <LeuBand s={s} />
+      </div>
 
       <ActiveTripCard />
 
+      <RecentEntries rate={s.fx.rate} />
+
       {/* Pe telefon cifrele cheie stau pe un singur rând care se derulează lateral, nu pe trei rânduri. */}
       <div
-        className={`panel mb-6 xl:grid-cols-5 ${STAT_STRIP}`}
+        className={`panel mb-6 max-lg:hidden! xl:grid-cols-5 ${STAT_STRIP}`}
         data-tour="stats"
       >
         <Stat label="Cheltuit" accent="var(--c-rosu)" hint={<Delta now={t.spent} before={s.prev?.spent} invert />}>

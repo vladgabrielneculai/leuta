@@ -31,7 +31,7 @@ export type QuickEntry = {
 };
 
 /** Ziua locală YYYY-MM-DD a unui moment. */
-function dayOf(d: Date) {
+export function dayOf(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
@@ -47,10 +47,26 @@ function defaultDay(month: string) {
 }
 
 /** Data unei intrări existente; dacă ziua salvată nu e în luna intrării (trecută mai târziu), prima zi a lunii. */
-function entryDay(entry: QuickEntry) {
+export function entryDay(entry: QuickEntry) {
   const saved = entry.created_at ? dayOf(new Date(entry.created_at)) : null;
   if (saved && (!entry.month || saved.startsWith(entry.month))) return saved;
   return entry.month ? `${entry.month}-01` : dayOf(new Date());
+}
+
+/** Pune înapoi o intrare ștearsă (butonul „Anulează”): aceeași lună, dată și sumă, cu un id nou. */
+export async function restoreEntry(e: QuickEntry) {
+  await api("/api/crud/entries", "POST", {
+    month: e.month,
+    created_at: entryDay(e),
+    kind: e.kind,
+    category_id: e.category_id,
+    goal_id: e.goal_id,
+    investment_id: e.investment_id,
+    description: e.description,
+    amount: e.amount,
+    currency: e.currency,
+    recurring: e.recurring,
+  });
 }
 
 type OpenArgs = { kind?: Kind; entry?: QuickEntry; /** deschide direct varianta pentru vacanța în curs */ trip?: boolean };
@@ -254,21 +270,9 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     try {
       await api(`/api/crud/entries?id=${editing.id}`, "DELETE");
       bump();
-      // Anularea pune înapoi aceeași intrare (cu un id nou), în aceeași lună și cu aceeași dată.
       const restore = async () => {
         try {
-          await api("/api/crud/entries", "POST", {
-            month: editing.month,
-            created_at: entryDay(editing),
-            kind: editing.kind,
-            category_id: editing.category_id,
-            goal_id: editing.goal_id,
-            investment_id: editing.investment_id,
-            description: editing.description,
-            amount: editing.amount,
-            currency: editing.currency,
-            recurring: editing.recurring,
-          });
+          await restoreEntry(editing);
           bump();
           onDone("Intrarea a fost pusă înapoi");
         } catch (e) {
