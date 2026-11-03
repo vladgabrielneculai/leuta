@@ -8,11 +8,12 @@ import type { Summary } from "@/lib/analytics";
 import { lei, monthLabel, pct, r2, termLabel } from "@/lib/util";
 import BankScheduleImport, { type BankImportResult } from "@/components/BankScheduleImport";
 import LoanForm, { emptyLoan } from "@/components/LoanForm";
+import PayoffPlanner from "@/components/PayoffPlanner";
 import { api, Bar, chartTooltipStyle, Empty, Modal, Money, PageHeader, Panel, Skeleton, Stat, STAT_STRIP, useApi, useApp } from "@/components/ui";
 import { loanFieldsFromSchedule, loanNameFromMeta } from "@/lib/loanImport";
 
 export default function LoansPage() {
-  const { month, bump } = useApp();
+  const { month, bump, beta } = useApp();
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -150,6 +151,13 @@ export default function LoansPage() {
                 Cu mai multe credite, plățile anticipate aduc cel mai mult la cel cu dobânda cea mai mare (metoda avalanșă).
               </p>
             </Panel>
+          )}
+
+          {beta && active.length > 0 && (
+            <PayoffPlanner
+              month={month}
+              debts={active.map((l) => ({ id: l.loan.id, name: l.loan.name, balance: l.status.balance, rate: l.status.currentRate, payment: l.status.nextPayment }))}
+            />
           )}
         </>
       )}

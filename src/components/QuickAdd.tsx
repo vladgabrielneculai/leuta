@@ -85,10 +85,13 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
 }
 
 function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () => void; onDone: (msg: string) => void }) {
-  const { month, bump, confirm, eurRate } = useApp();
+  const { month, bump, confirm, eurRate, beta } = useApp();
   const editing = args.entry;
   const [kind, setKind] = useState<Kind>(editing?.kind ?? args.kind ?? "variable");
-  const [amount, setAmount] = useState(editing ? (Number.isInteger(editing.amount) ? String(editing.amount) : editing.amount.toFixed(2).replace(".", ",")) : "");
+  // Returul (bani înapoi) e salvat ca sumă negativă la aceeași categorie; în formular apare suma pozitivă și bifa.
+  const startAmount = editing ? Math.abs(editing.amount) : 0;
+  const [amount, setAmount] = useState(editing ? (Number.isInteger(startAmount) ? String(startAmount) : startAmount.toFixed(2).replace(".", ",")) : "");
+  const [refund, setRefund] = useState(!!editing && editing.amount < 0);
   const [currency, setCurrency] = useState<Currency>(editing?.currency ?? "RON");
   const [categoryId, setCategoryId] = useState<number | null>(editing?.category_id ?? null);
   const [dest, setDest] = useState(editing?.goal_id ? `g:${editing.goal_id}` : editing?.investment_id ? `i:${editing.investment_id}` : "");
@@ -121,6 +124,8 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const investments = settings?.enable_investments === "1" ? invs ?? [] : [];
 
   const kindCats = (cats ?? []).filter((c) => c.kind === kind);
+  // Returul are sens doar la cheltuieli; o intrare deja salvată ca retur rămâne editabilă și în afara versiunii beta.
+  const canRefund = (kind === "variable" || kind === "fixed") && (beta || refund);
   const value = parseAmount(amount);
 
   // Suma e primul lucru de completat: tastatura numerică apare imediat (doar la adăugare).
@@ -132,6 +137,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     stayMonthly();
     setKind(k);
     setCategoryId(null);
+    if (k === "income" || k === "saving") setRefund(false);
     setErr(null);
   };
 
@@ -160,7 +166,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       goal_id: kind === "saving" && dest.startsWith("g:") ? Number(dest.slice(2)) : null,
       investment_id: kind === "saving" && dest.startsWith("i:") ? Number(dest.slice(2)) : null,
       description: description.trim(),
-      amount: value,
+      amount: canRefund && refund ? -value : value,
       currency,
       recurring: recurring ? 1 : 0,
     };
@@ -172,7 +178,8 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       } else {
         await api("/api/crud/entries", "POST", payload);
         const what = catName ?? (kind === "saving" ? "Economii" : "Intrare");
-        onDone(`${what}: ${currency === "EUR" ? eur(value) : lei(value)} trecut în ${monthLabel(targetMonth)}`);
+        const sum = currency === "EUR" ? eur(value) : lei(value);
+        onDone(canRefund && refund ? `Retur ${what}: ${sum} scăzut din ${monthLabel(targetMonth)}` : `${what}: ${sum} trecut în ${monthLabel(targetMonth)}`);
       }
       bump();
       onClose();
@@ -361,6 +368,13 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
             onChange={(e) => setDescription(e.target.value)}
             aria-label="Descriere"
           />
+
+          {canRefund && (
+            <label className="-mt-1 flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Scade din cheltuielile categoriei, nu se adună la venituri">
+              <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={refund} onChange={(e) => setRefund(e.target.checked)} />
+              <span>Bani înapoi (retur, rambursare): scade din {kindCats.find((c) => c.id === categoryId)?.name ?? "categorie"}</span>
+            </label>
+          )}
 
           <label className="flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Se poate copia în luna următoare">
             <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
