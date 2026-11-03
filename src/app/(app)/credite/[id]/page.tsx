@@ -251,7 +251,7 @@ export default function LoanDetail() {
 
   return (
     <>
-      <Link href="/credite" className="mb-3 inline-block text-[14px] text-albastru hover:underline">‹ Toate creditele</Link>
+      <Link href="/credite" className="mb-3 hidden text-[14px] lg:inline-block text-albastru hover:underline">‹ Toate creditele</Link>
       <PageHeader
         title={loan.name}
         intro={`${loan.bank || "Bancă nespecificată"} · ${lei(loan.principal)} pe ${termLabel(loan.term_months)} · ${

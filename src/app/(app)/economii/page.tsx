@@ -508,7 +508,7 @@ export default function SavingsPage() {
             <Field label={`${valueFor.inv.name}: valoarea totală a poziției (lei)`} hint="Din contul brokerului sau al băncii, la sfârșitul lunii">
               <input className="field num" type="number" min={0} step="0.01" value={valueFor.value} onChange={(e) => setValueFor({ ...valueFor, value: e.target.value })} autoFocus />
             </Field>
-            <div className="flex justify-end gap-2">
+            <div className="form-actions">
               <button type="button" className="btn-ghost" onClick={() => setValueFor(null)}>Renunță</button>
               <button type="submit" className="btn-primary">Salvează valoarea</button>
             </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BUCKET_LABEL, KIND_LABEL, type Bucket, type Kind } from "@/lib/util";
-import { api, downloadFile, Field, PageHeader, Panel, Tabs, Toast, TrashIcon, useApi, useApp, useTab } from "@/components/ui";
+import { api, downloadFile, Field, PageHeader, Panel, SectionsNav, Tabs, Toast, TrashIcon, useApi, useApp, useTab } from "@/components/ui";
 import AccountSecurity from "@/components/AccountSecurity";
 import SecurityCenter from "@/components/SecurityCenter";
 import NotificationSettings from "@/components/NotificationSettings";
@@ -94,11 +94,11 @@ function CategoryRow({
 const kinds: Kind[] = ["income", "fixed", "variable", "saving"];
 
 const SETTINGS_TABS = [
-  { key: "general", label: "General" },
-  { key: "calcule", label: "Calcule" },
-  { key: "notificari", label: "Notificări", short: "Alerte" },
-  { key: "securitate", label: "Securitate" },
-  { key: "date", label: "Date" },
+  { key: "general", label: "General", hint: "Categorii, temă și tutorial" },
+  { key: "calcule", label: "Calcule", hint: "Fondul de urgență, randament, inflație" },
+  { key: "notificari", label: "Notificări", short: "Alerte", hint: "Telegram și e-mail" },
+  { key: "securitate", label: "Securitate", hint: "Parolă, Face ID, 2FA și dispozitive" },
+  { key: "date", label: "Date", hint: "Copie de siguranță și restaurare" },
 ] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
 
@@ -207,7 +207,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Setări" intro="Categoriile, aspectul, notificările, securitatea și parametrii calculelor." />
 
-      <Tabs tabs={SETTINGS_TABS} value={tab} onChange={setTab} className="mb-5" label="Secțiunile setărilor" data-tour="setari-tabs" />
+      <SectionsNav tabs={SETTINGS_TABS} value={tab} onChange={setTab} label="Secțiunile setărilor" backLabel="Toate setările" data-tour="setari-tabs">
 
       {tab === "general" && (
         <div className="grid gap-4 lg:gap-6 xl:grid-cols-[1.4fr_1fr] xl:items-start">
@@ -454,6 +454,7 @@ export default function SettingsPage() {
 
         </div>
       )}
+      </SectionsNav>
       <Toast message={toast} onDone={() => setToast(null)} />
     </>
   );
