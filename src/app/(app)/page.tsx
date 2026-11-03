@@ -8,7 +8,7 @@ import {
 import { useEffect, useState } from "react";
 import type { Summary } from "@/lib/analytics";
 import { celebrateOnce } from "@/lib/confetti";
-import { currentMonth, eur, lei, monthLabel, pct, r2 } from "@/lib/util";
+import { eur, lei, monthLabel, pct, r2 } from "@/lib/util";
 import { ReceiptMeta } from "@/components/receipt";
 import ActiveTripCard from "@/components/ActiveTripCard";
 import { ScheduledAlerts } from "@/components/ScheduledAlerts";
@@ -193,14 +193,14 @@ function RecentEntries({ rate }: { rate: number }) {
 }
 
 export default function Dashboard() {
-  const { month } = useApp();
+  const { month, nowMonth } = useApp();
   const { data: s, error } = useApi<S>(`/api/summary?month=${month}`);
   const [tab, setTab] = useTab<DashTab>("panou", "luna", ["luna", "evolutie", "obiective"]);
   const [trendView, setTrendView] = useState<"sume" | "rata">("sume");
 
   // Luna trecută s-a încheiat pe plus → confetti, o singură dată pe lună.
   useEffect(() => {
-    if (s && month === currentMonth() && s.prev?.hasData && s.prev.unallocated > 0) celebrateOnce(`luna-plus:${s.prev.month}`);
+    if (s && month === nowMonth && s.prev?.hasData && s.prev.unallocated > 0) celebrateOnce(`luna-plus:${s.prev.month}`);
   }, [s, month]);
 
   if (error) return <Empty title="Panoul nu s-a putut încărca">{error}</Empty>;
@@ -253,7 +253,7 @@ export default function Dashboard() {
 
   return (
     <>
-      {s.beta && month === currentMonth() && <ScheduledAlerts />}
+      {s.beta && month === nowMonth && <ScheduledAlerts />}
       {s.fxError && (
         <p className="mb-4 rounded-md bg-galben-tint px-3 py-2 text-[13px]">
           Cursul BNR nu a putut fi actualizat ({s.fxError}). Sumele în euro folosesc ultimul curs salvat.

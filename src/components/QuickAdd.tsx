@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { budgetMonthOf, budgetMonthRange, CALENDAR_CYCLE, cycleActive, defaultDayIn, rangeLabel, type PayCycle } from "@/lib/payCycle";
 import { addMonths, lei, eur, monthLabel, parseAmount, type Currency, type Kind } from "@/lib/util";
 import { activeTrip, type TripListItem } from "@/lib/trips";
 import { api, Modal, Skeleton, Toast, useApi, useApp, useIsMobile } from "./ui";
@@ -36,28 +37,25 @@ export function dayOf(d: Date) {
 }
 
 /** Data propusă pentru o intrare nouă în luna analizată: azi, dacă e luna curentă; altfel ultima sau prima zi a ei. */
-function defaultDay(month: string) {
-  const today = dayOf(new Date());
-  if (today.startsWith(month)) return today;
-  if (month < today.slice(0, 7)) {
-    const [y, m] = month.split("-").map(Number);
-    return dayOf(new Date(y, m, 0));
-  }
-  return `${month}-01`;
+function defaultDay(month: string, cycle: PayCycle) {
+  return defaultDayIn(month, cycle, dayOf(new Date()));
 }
 
-/** Data unei intrări existente; dacă ziua salvată nu e în luna intrării (trecută mai târziu), prima zi a lunii. */
-export function entryDay(entry: QuickEntry) {
+/**
+ * Data unei intrări existente; dacă ziua salvată nu cade în luna intrării (trecută mai târziu), prima zi a lunii.
+ * Cu luna de la salariu, „în luna intrării” înseamnă între salariul acelei luni și următorul.
+ */
+export function entryDay(entry: QuickEntry, cycle: PayCycle = CALENDAR_CYCLE) {
   const saved = entry.created_at ? dayOf(new Date(entry.created_at)) : null;
-  if (saved && (!entry.month || saved.startsWith(entry.month))) return saved;
-  return entry.month ? `${entry.month}-01` : dayOf(new Date());
+  if (saved && (!entry.month || budgetMonthOf(saved, cycle) === entry.month)) return saved;
+  return entry.month ? budgetMonthRange(entry.month, cycle).start : dayOf(new Date());
 }
 
 /** Pune înapoi o intrare ștearsă (butonul „Anulează”): aceeași lună, dată și sumă, cu un id nou. */
-export async function restoreEntry(e: QuickEntry) {
+export async function restoreEntry(e: QuickEntry, cycle: PayCycle = CALENDAR_CYCLE) {
   await api("/api/crud/entries", "POST", {
     month: e.month,
-    created_at: entryDay(e),
+    created_at: entryDay(e, cycle),
     kind: e.kind,
     category_id: e.category_id,
     goal_id: e.goal_id,
@@ -147,7 +145,7 @@ function tick() {
 const TOP_CATEGORIES = 6;
 
 function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () => void; onDone: (msg: string, undo?: () => void) => void }) {
-  const { month, bump, confirm, eurRate, beta } = useApp();
+  const { month, bump, confirm, eurRate, beta, cycle } = useApp();
   const mobile = useIsMobile();
   const editing = args.entry;
   const [kind, setKind] = useState<Kind>(editing?.kind ?? args.kind ?? "variable");
@@ -161,9 +159,10 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const [description, setDescription] = useState(editing?.description ?? "");
   const [recurring, setRecurring] = useState(!!editing?.recurring);
   // Ziua tranzacției: o folosește importul extrasului ca să recunoască intrările trecute deja de mână.
-  const [date, setDate] = useState(editing ? entryDay(editing) : defaultDay(month));
+  const [date, setDate] = useState(editing ? entryDay(editing, cycle) : defaultDay(month, cycle));
   const [dateTouched, setDateTouched] = useState(false);
-  const targetMonth = date.slice(0, 7);
+  // Luna în care intră: a datei alese sau, cu luna de la salariu, luna salariului din care se plătește.
+  const targetMonth = /^\d{4}-\d{2}-\d{2}$/.test(date) ? budgetMonthOf(date, cycle) : date.slice(0, 7);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const amountRef = useRef<HTMLInputElement>(null);
@@ -291,7 +290,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       bump();
       const restore = async () => {
         try {
-          await restoreEntry(editing);
+          await restoreEntry(editing, cycle);
           bump();
           onDone("Intrarea a fost pusă înapoi");
         } catch (e) {
@@ -506,7 +505,10 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
               />
             </label>
             {!editing && targetMonth !== month && /^\d{4}-\d{2}/.test(targetMonth) && (
-              <p className="-mt-2 text-[12px] text-ink-faint">Se trece în {monthLabel(targetMonth)}, luna datei alese.</p>
+              <p className="-mt-2 text-[12px] text-ink-faint">
+                Se trece în {monthLabel(targetMonth)}
+                {cycleActive(cycle) ? `, luna salariului din care se plătește (${rangeLabel(targetMonth, cycle)}).` : ", luna datei alese."}
+              </p>
             )}
   
             <input

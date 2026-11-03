@@ -3,6 +3,8 @@ import { getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
 import { learnPattern } from "@/lib/importRules";
 import { betaOnly } from "@/lib/importServer";
+import { budgetMonthOf } from "@/lib/payCycle";
+import { loadPayCycle } from "@/lib/profileServer";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +49,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Fiecare tranzacție intră în luna de buget a datei ei (cu luna de la salariu, plățile dinainte de salariu
+    // intră în luna dinainte).
+    const cycle = await loadPayCycle();
     const result = await db.transaction(async (tx) => {
       // În loturi: un extras pe un an are sute de rânduri, iar fiecare cerere separată la bază costă.
       let imported = 0;
@@ -61,7 +66,7 @@ export async function POST(req: NextRequest) {
           )
           .run(
             ...batch.flatMap((r) => [
-              r.date.slice(0, 7), cats.get(r.categoryId), r.categoryId, String(r.description).slice(0, 200),
+              budgetMonthOf(r.date, cycle), cats.get(r.categoryId), r.categoryId, String(r.description).slice(0, 200),
               Math.round(Math.abs(r.amount) * 100) / 100, r.currency, r.date, r.hash,
             ]),
           );

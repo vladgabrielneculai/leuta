@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { addMonths, currentMonth, monthLabel } from "@/lib/util";
+import { addMonths, monthLabel } from "@/lib/util";
+import { cycleActive, rangeLabel } from "@/lib/payCycle";
 import { api, useApp } from "./ui";
 import Logo from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
@@ -23,8 +24,9 @@ export function Icon({ d, className = "h-[21px] w-[21px]", strokeWidth = 1.7 }: 
 type StatusUser = { id: number; username: string; isAdmin: boolean; firstName: string };
 
 function MonthPicker() {
-  const { month, setMonth } = useApp();
-  const isNow = month === currentMonth();
+  const { month, setMonth, nowMonth, cycle } = useApp();
+  const isNow = month === nowMonth;
+  const range = cycleActive(cycle) ? rangeLabel(month, cycle) : null;
   return (
     <div className="panel p-3" data-tour="month">
       <div className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ink-faint">Luna analizată</div>
@@ -33,8 +35,9 @@ function MonthPicker() {
         <span className="whitespace-nowrap font-display text-[14.5px] font-semibold capitalize text-ink">{monthLabel(month)}</span>
         <button className="btn-ghost px-2 active:scale-95" onClick={() => setMonth(addMonths(month, 1))} aria-label="Luna următoare">›</button>
       </div>
+      {range && <div className="text-center text-[11.5px] text-ink-faint" title="Luna de buget începe în ziua salariului">{range}</div>}
       {!isNow && (
-        <button className="mt-1.5 w-full text-[12px] font-medium text-albastru hover:underline transition-colors" onClick={() => setMonth(currentMonth())}>
+        <button className="mt-1.5 w-full text-[12px] font-medium text-albastru hover:underline transition-colors" onClick={() => setMonth(nowMonth)}>
           Înapoi la luna curentă
         </button>
       )}
@@ -44,8 +47,9 @@ function MonthPicker() {
 
 /** Varianta compactă, în mijlocul barei de sus pe telefon: luna analizată e mereu vizibilă. */
 function MonthPickerCompact() {
-  const { month, setMonth } = useApp();
-  const isNow = month === currentMonth();
+  const { month, setMonth, nowMonth, cycle } = useApp();
+  const isNow = month === nowMonth;
+  const range = cycleActive(cycle) ? rangeLabel(month, cycle) : null;
   // Glisarea orizontală pe alegerea lunii schimbă luna (spre stânga: luna următoare), ca pe un calendar.
   const start = useRef<{ x: number; y: number } | null>(null);
   return (
@@ -65,11 +69,15 @@ function MonthPickerCompact() {
       <button className="h-10 w-10 shrink-0 rounded-full text-[20px] text-ink-soft active:scale-95 active:bg-sheet" onClick={() => setMonth(addMonths(month, -1))} aria-label="Luna anterioară">‹</button>
       <button
         className="flex min-w-0 flex-col items-center px-1 leading-tight"
-        onClick={() => !isNow && setMonth(currentMonth())}
+        onClick={() => !isNow && setMonth(nowMonth)}
         title={isNow ? undefined : "Înapoi la luna curentă"}
       >
         <span className="truncate font-display text-[14.5px] font-semibold capitalize text-ink">{monthLabel(month)}</span>
-        {!isNow && <span className="text-[11px] font-medium text-albastru">înapoi la azi</span>}
+        {!isNow ? (
+          <span className="text-[11px] font-medium text-albastru">înapoi la azi</span>
+        ) : (
+          range && <span className="text-[11px] text-ink-faint">{range}</span>
+        )}
       </button>
       <button className="h-10 w-10 shrink-0 rounded-full text-[20px] text-ink-soft active:scale-95 active:bg-sheet" onClick={() => setMonth(addMonths(month, 1))} aria-label="Luna următoare">›</button>
     </div>

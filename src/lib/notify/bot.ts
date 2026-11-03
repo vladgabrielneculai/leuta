@@ -2,10 +2,10 @@ import { buildSummary } from "../analytics";
 import { sha256 } from "../auth";
 import { getDb, getSystemDb, runAsUser } from "../db";
 import { eur, lei, monthLabel, type Kind } from "../util";
-import { dailyMessage, sendTelegramMessage } from "./notifications";
+import { budgetNow, dailyMessage, sendTelegramMessage } from "./notifications";
 import type { Message } from "./render";
 import { editTelegram, esc, sendTelegram, tg, type Keyboard } from "./telegram";
-import { localNow } from "./time";
+import { currentBudgetMonthForUser } from "../profileServer";
 
 /**
  * Botul de Telegram: legarea contului, adăugarea cheltuielilor din chat („45 mâncare”) și comenzi rapide.
@@ -118,7 +118,7 @@ async function addEntry(chatId: number, text: string) {
   const cats = await categories();
   const cat = await guessCategory(p.description, p.income, cats);
   const kind: Kind = p.income ? "income" : cat?.kind === "fixed" ? "fixed" : "variable";
-  const month = localNow().month;
+  const month = await currentBudgetMonthForUser();
   const info = await (await getDb())
     .prepare("INSERT INTO entries (month, kind, category_id, description, amount, currency, recurring) VALUES (?, ?, ?, ?, ?, ?, 0)")
     .run(month, kind, cat?.id ?? null, p.description, p.amount, p.currency);
@@ -128,12 +128,12 @@ async function addEntry(chatId: number, text: string) {
 // Rapoartele (/azi, /luna, /sold) pleacă drept bon-imagine, ca notificările.
 
 async function todayMessage(): Promise<Message> {
-  const m = await dailyMessage(localNow());
+  const m = await dailyMessage(await budgetNow());
   return { ...m, emoji: "📋", title: "Azi", footer: undefined };
 }
 
 async function monthMessage(): Promise<Message> {
-  const now = localNow();
+  const now = await budgetNow();
   const s = await buildSummary(now.month);
   const t = s.totals;
   const top = s.categories.filter((c) => c.amount > 0).slice(0, 6);
@@ -152,7 +152,7 @@ async function monthMessage(): Promise<Message> {
 }
 
 async function loansMessage(): Promise<Message | null> {
-  const s = await buildSummary(localNow().month);
+  const s = await buildSummary(await currentBudgetMonthForUser());
   if (!s.loans.length) return null;
   return {
     emoji: "💳",

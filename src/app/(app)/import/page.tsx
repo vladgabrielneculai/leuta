@@ -6,7 +6,8 @@ import type { ImportCategory } from "@/lib/importRules";
 import type { PreviewRow } from "@/lib/importServer";
 import type { Mapping } from "@/lib/statementImport";
 import { KIND_LABEL, lei, type Kind } from "@/lib/util";
-import { api, Empty, Field, PageHeader, Panel, Toast, TrashIcon, useApi } from "@/components/ui";
+import { budgetMonthOf } from "@/lib/payCycle";
+import { api, Empty, Field, PageHeader, Panel, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
 
 type NeedsMapping = { status: "needs-mapping"; signature: string; header: number; headers: string[]; sample: string[][]; guess: Partial<Mapping> };
 type Parsed = { status: "ok"; bank: string; filename: string; rows: PreviewRow[]; categories: ImportCategory[] };
@@ -21,6 +22,7 @@ const SUPPORTED = new Set(["RON", "EUR"]);
  * propuse și confirmi. Categoriile corectate devin reguli pentru importurile următoare.
  */
 export default function ImportPage() {
+  const { cycle } = useApp();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState<"read" | "save" | null>(null);
@@ -94,7 +96,7 @@ export default function ImportPage() {
           learn: r.chosen !== r.categoryId || r.source === null,
         })),
       });
-      const months = [...new Set(included.map((r) => r.date.slice(0, 7)))].sort();
+      const months = [...new Set(included.map((r) => budgetMonthOf(r.date, cycle)))].sort();
       setDone({ ...res, months });
       setParsed(null);
       setRows([]);
