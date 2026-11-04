@@ -111,7 +111,7 @@ export function EntryFeed({
 
   const nameOf = (e: QuickEntry) =>
     e.kind === "saving"
-      ? (e.goal_id ? goals.find((g) => g.id === e.goal_id)?.name : e.investment_id ? invs.find((i) => i.id === e.investment_id)?.name : null) ?? "Economii generale"
+      ? `${e.amount < 0 ? "Retragere din " : ""}${(e.goal_id ? goals.find((g) => g.id === e.goal_id)?.name : e.investment_id ? invs.find((i) => i.id === e.investment_id)?.name : null) ?? "Economii generale"}`
       : catMap.get(e.category_id ?? 0)?.name ?? "Fără categorie";
 
   // Cele mai noi sus: după zi, apoi după ordinea adăugării.
@@ -172,11 +172,11 @@ export function EntryFeed({
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14.5px] text-ink">{e.description || name}</span>
                         <span className="block truncate text-[12px] text-ink-faint">
-                          {[e.description ? name : null, cardName(e) ? `💳 ${cardName(e)}` : null, e.recurring ? "↻ lunar" : null, e.amount < 0 ? "↩ retur" : null].filter(Boolean).join(" · ") ||
+                          {[e.description ? name : null, cardName(e) ? `💳 ${cardName(e)}` : null, e.recurring ? "↻ lunar" : null, e.amount < 0 && e.kind !== "saving" ? "↩ retur" : null].filter(Boolean).join(" · ") ||
                             { income: "Venit", fixed: "Cost fix", variable: "Cheltuială", saving: "Economii" }[e.kind]}
                         </span>
                       </span>
-                      <span className={`num shrink-0 text-[14.5px] font-semibold ${e.kind === "income" || e.amount < 0 ? "text-leu" : "text-ink"}`}>
+                      <span className={`num shrink-0 text-[14.5px] font-semibold ${e.kind === "income" || (e.amount < 0 && e.kind !== "saving") ? "text-leu" : e.amount < 0 ? "text-rosu" : "text-ink"}`}>
                         {e.kind === "income" ? "+" : ""}
                         {sum}
                       </span>

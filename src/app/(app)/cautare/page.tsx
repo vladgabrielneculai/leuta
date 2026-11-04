@@ -188,13 +188,13 @@ export default function SearchPage() {
                               {[
                                 e.day ? fmtDay(e.day) : monthLabel(e.month),
                                 KIND_LABEL[e.kind],
-                                e.amount < 0 ? "retur" : "",
+                                e.amount < 0 ? (e.kind === "saving" ? "retragere" : "retur") : "",
                                 e.split_group ? "plată împărțită" : "",
                                 e.tags ? e.tags.split(", ").map((x) => `#${x}`).join(" ") : "",
                               ].filter(Boolean).join(" · ")}
                             </span>
                           </span>
-                          <span className={`num shrink-0 text-right text-[14px] font-medium ${e.amount < 0 ? "text-leu" : ""}`}>
+                          <span className={`num shrink-0 text-right text-[14px] font-medium ${e.amount < 0 ? (e.kind === "saving" ? "text-rosu" : "text-leu") : ""}`}>
                             {e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
                           </span>
                         </button>

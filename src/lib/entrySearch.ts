@@ -114,7 +114,7 @@ export function filtersSql(f: EntryFilters): { where: string; params: unknown[] 
     parts.push("ABS(e.amount) <= ?");
     params.push(f.max);
   }
-  if (f.refunds) parts.push("e.amount < 0");
+  if (f.refunds) parts.push("e.amount < 0 AND e.kind <> 'saving'"); // retragerile din economii nu sunt retururi
   return { where: parts.length ? `WHERE ${parts.join(" AND ")}` : "", params };
 }
 

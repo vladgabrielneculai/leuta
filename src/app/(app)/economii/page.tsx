@@ -5,6 +5,7 @@ import { celebrateOnce } from "@/lib/confetti";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { GoalView, InvestmentView, Summary } from "@/lib/analytics";
 import { lei, monthLabel, pct, r2 } from "@/lib/util";
+import { useQuickAdd } from "@/components/QuickAdd";
 import { api, Bar, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Skeleton, Stat, Toast, useApi, useApp } from "@/components/ui";
 
 const GOAL_COLORS = ["#C99A1E", "#3D7A4E", "#2E5C8A", "#B5456A", "#6A4E99"];
@@ -122,6 +123,9 @@ function PensionCard({ investments, month, eurRate }: { investments: InvestmentV
 
 export default function SavingsPage() {
   const { month, bump } = useApp();
+  const quickAdd = useQuickAdd();
+  // Retragerea se trece ca intrare negativă la Economii, în luna analizată; soldul obiectivului scade.
+  const withdrawFrom = (g: GoalView) => quickAdd({ kind: "saving", withdraw: true, dest: `g:${g.id}`, available: Math.max(0, g.saved) });
   const { data: s, reload } = useApi<Summary>(`/api/summary?month=${month}`);
   const [goal, setGoal] = useState<GoalDraft | null>(null);
 
@@ -266,7 +270,14 @@ export default function SavingsPage() {
       <Panel tour="econ-fund"
         className="mb-6"
         title="Fondul de urgență"
-        aside={emergency && <button className="btn-ghost" onClick={() => openGoalEditor(emergency)}>Editează</button>}
+        aside={
+          emergency && (
+            <div className="flex gap-1">
+              {emergency.saved > 0 && <button className="btn-ghost" onClick={() => withdrawFrom(emergency)}>Retrage</button>}
+              <button className="btn-ghost" onClick={() => openGoalEditor(emergency)}>Editează</button>
+            </div>
+          )
+        }
       >
         {emergency ? (
           <EmergencyGauge s={s} />
@@ -300,7 +311,10 @@ export default function SavingsPage() {
                       <span className="h-4 w-1.5 rounded-xs" style={{ background: g.color }} />
                       <h3 className="text-[17px] font-semibold">{g.name}</h3>
                     </div>
-                    <button className="btn-ghost -mr-2 -mt-1 px-2" onClick={() => openGoalEditor(g)}>Editează</button>
+                    <div className="-mr-2 -mt-1 flex">
+                      {g.saved > 0 && <button className="btn-ghost px-2" onClick={() => withdrawFrom(g)}>Retrage</button>}
+                      <button className="btn-ghost px-2" onClick={() => openGoalEditor(g)}>Editează</button>
+                    </div>
                   </div>
                   <div className="num mt-3 flex flex-wrap items-baseline justify-between gap-x-3">
                     <span className="num font-display text-[20px] font-semibold sm:text-[22px]">{lei(g.saved)}</span>
