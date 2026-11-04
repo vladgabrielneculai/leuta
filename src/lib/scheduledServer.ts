@@ -1,7 +1,7 @@
 import { isBetaDeployment } from "./beta";
 import { currentUserId, getDb, getSetting, setSetting } from "./db";
 import {
-  daysBetween, detectSubscriptions, dueMonths, monthlyCost, nextDue, paymentKey, priceIncrease, today,
+  daysBetween, detectSubscriptions, dueMonths, monthlyCost, nextDue, paymentKey, priceIncrease, setAside, today,
   type Detected, type EntryLite, type Schedule,
 } from "./scheduled";
 
@@ -64,7 +64,11 @@ export async function materializeQuietly() {
 
 // ---------- Prezentarea pentru pagină ----------
 
-export type ScheduleView = Schedule & { category: string | null; kind: string | null; next: string | null; monthly: number };
+export type ScheduleView = Schedule & {
+  category: string | null; kind: string | null; next: string | null; monthly: number;
+  /** plățile trimestriale și anuale: cât pui deoparte lunar și cât ar trebui să ai strâns până azi */
+  aside: { monthly: number; shouldHave: number; next: string | null } | null;
+};
 
 export type Alert =
   | { type: "renewal"; name: string; date: string; days: number; amount: number; currency: string }
@@ -127,7 +131,7 @@ export async function overview() {
   const scheduleKeys = new Set(rows.map((s) => paymentKey(s.name)));
   const detected: Detected[] = detectSubscriptions(lite, t, ignored).filter((d) => !scheduleKeys.has(d.key));
 
-  const schedules: ScheduleView[] = rows.map((s) => ({ ...s, next: nextDue(s, t), monthly: monthlyCost(s) }));
+  const schedules: ScheduleView[] = rows.map((s) => ({ ...s, next: nextDue(s, t), monthly: monthlyCost(s), aside: setAside(s, t) }));
 
   const alerts: Alert[] = [];
   for (const s of schedules) {
@@ -156,8 +160,9 @@ function addMonths(month: string, n: number) {
 // ---------- Validare ----------
 
 export type ScheduleInput = {
-  name: string; category_id: number; amount: number; currency: string; frequency: "monthly" | "yearly";
+  name: string; category_id: number; amount: number; currency: string; frequency: "monthly" | "quarterly" | "yearly";
   day: number; month_of_year: number | null; start_month: string; end_month: string | null; is_subscription: number;
+  remind_days: number | null;
 };
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -170,18 +175,23 @@ export function parseScheduleInput(b: Record<string, unknown>): ScheduleInput {
   const amount = Math.round(Number(b.amount) * 100) / 100;
   if (!Number.isFinite(amount) || amount <= 0 || amount >= 1e9) throw new Error("Suma trebuie să fie mai mare decât zero.");
   const currency = b.currency === "EUR" ? "EUR" : "RON";
-  const frequency = b.frequency === "yearly" ? "yearly" : "monthly";
+  const frequency = b.frequency === "yearly" ? "yearly" : b.frequency === "quarterly" ? "quarterly" : "monthly";
   const day = Number(b.day);
   if (!Number.isInteger(day) || day < 1 || day > 31) throw new Error("Ziua trebuie să fie între 1 și 31.");
-  const month_of_year = frequency === "yearly" ? Number(b.month_of_year) : null;
-  if (frequency === "yearly" && (!Number.isInteger(month_of_year) || month_of_year! < 1 || month_of_year! > 12)) {
-    throw new Error("Alege luna plății anuale.");
+  const month_of_year = frequency === "monthly" ? null : Number(b.month_of_year);
+  if (frequency !== "monthly" && (!Number.isInteger(month_of_year) || month_of_year! < 1 || month_of_year! > 12)) {
+    throw new Error(frequency === "yearly" ? "Alege luna plății anuale." : "Alege o lună în care vine plata trimestrială.");
+  }
+  const rawRemind = b.remind_days;
+  const remind_days = rawRemind === null || rawRemind === undefined || rawRemind === "" ? null : Number(rawRemind);
+  if (remind_days !== null && (!Number.isInteger(remind_days) || remind_days < 0 || remind_days > 30)) {
+    throw new Error("Mementoul poate veni cu 0 până la 30 de zile înainte.");
   }
   const start_month = String(b.start_month ?? today().month);
   if (!MONTH_RE.test(start_month)) throw new Error("Luna de început nu e validă.");
   const end_month = b.end_month ? String(b.end_month) : null;
   if (end_month && (!MONTH_RE.test(end_month) || end_month < start_month)) throw new Error("Luna de sfârșit trebuie să fie după cea de început.");
-  return { name, category_id, amount, currency, frequency, day, month_of_year, start_month, end_month, is_subscription: b.is_subscription ? 1 : 0 };
+  return { name, category_id, amount, currency, frequency, day, month_of_year, start_month, end_month, is_subscription: b.is_subscription ? 1 : 0, remind_days };
 }
 
 /** Categoria trebuie să fie a utilizatorului (RLS o ascunde pe a altora). */

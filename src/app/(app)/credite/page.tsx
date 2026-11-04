@@ -9,6 +9,9 @@ import { lei, monthLabel, pct, r2, termLabel } from "@/lib/util";
 import BankScheduleImport, { type BankImportResult } from "@/components/BankScheduleImport";
 import LoanForm, { emptyLoan } from "@/components/LoanForm";
 import PayoffPlanner from "@/components/PayoffPlanner";
+import CardDebts from "@/components/CardDebts";
+import { installmentsLeft, minPayment, type CardDebt } from "@/lib/debts";
+import type { ScheduleView } from "@/lib/scheduledServer";
 import { api, Bar, chartTooltipStyle, Empty, Modal, Money, PageHeader, Panel, Skeleton, Stat, STAT_STRIP, useApi, useApp } from "@/components/ui";
 import { loanFieldsFromSchedule, loanNameFromMeta } from "@/lib/loanImport";
 
@@ -20,6 +23,19 @@ export default function LoansPage() {
   const [importBusy, setImportBusy] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const { data: s } = useApi<Summary>(`/api/summary?month=${month}`);
+  // Beta: carduri / descoperit și cumpărăturile în rate (programări cu lună de sfârșit).
+  const { data: debts, reload: reloadDebts } = useApi<CardDebt[]>(beta ? "/api/crud/debts" : null);
+  const { data: sched, reload: reloadSched } = useApi<{ schedules: ScheduleView[] }>(beta ? "/api/scheduled" : null);
+  const cardDebts = (debts ?? []).filter((d) => d.active && d.balance > 0);
+  const bnpl = (sched?.schedules ?? [])
+    .filter((x) => x.active && x.end_month && x.kind !== "income" && x.currency === "RON")
+    .map((x) => ({ x, ...installmentsLeft({ ...x, end_month: x.end_month! }) }))
+    .filter((r) => r.count > 0);
+  // Id-uri negative / decalate ca să nu se ciocnească cu creditele în planificator.
+  const extraDebts = [
+    ...cardDebts.map((d) => ({ id: 1_000_000 + d.id, name: d.name, balance: d.balance, rate: d.rate, payment: minPayment(d) })),
+    ...bnpl.map((r) => ({ id: 2_000_000 + r.x.id, name: r.x.name, balance: r.left, rate: 0, payment: r.x.amount })),
+  ];
 
   const loans = s?.loans ?? [];
   const active = loans.filter((l) => l.status.balance > 0);
@@ -153,13 +169,19 @@ export default function LoansPage() {
             </Panel>
           )}
 
-          {beta && active.length > 0 && (
-            <PayoffPlanner
-              month={month}
-              debts={active.map((l) => ({ id: l.loan.id, name: l.loan.name, balance: l.status.balance, rate: l.status.currentRate, payment: l.status.nextPayment }))}
-            />
-          )}
         </>
+      )}
+
+      {beta && s && <CardDebts debts={debts ?? []} installments={sched?.schedules ?? []} reload={() => { reloadDebts(); reloadSched(); }} />}
+
+      {beta && s && active.length + extraDebts.length > 0 && (
+        <PayoffPlanner
+          month={month}
+          debts={[
+            ...active.map((l) => ({ id: l.loan.id, name: l.loan.name, balance: l.status.balance, rate: l.status.currentRate, payment: l.status.nextPayment })),
+            ...extraDebts,
+          ]}
+        />
       )}
 
       <Modal open={importing} onClose={() => setImporting(false)} title="Credit nou din graficul băncii">

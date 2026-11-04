@@ -10,6 +10,7 @@ import { sendTelegram, sendTelegramDocument, sendTelegramPhoto, telegramConfigur
 import { buildReceipt } from "../receipt/model";
 import { receiptFilename, renderReceiptPdf } from "../receipt/pdf";
 import { addDays, daysBetween, isoWeek, localNow, longDate, shortDate, type LocalNow } from "./time";
+import { remindersDue, type Schedule } from "../scheduled";
 
 /**
  * Notificările unui utilizator: ce se trimite, pe ce canal, o singură dată.
@@ -178,6 +179,28 @@ export async function dueAlerts(now: LocalNow, ignoreWindow = false): Promise<Al
     }
   }
   return out;
+}
+
+/**
+ * Facturile și plățile programate cu memento (beta, `scheduled_entries.remind_days`): un mesaj în ziua aleasă
+ * dinaintea scadenței. Merg pe canalele „Scadențe” (loan_due), ca ratele.
+ */
+export async function billReminders(now: LocalNow): Promise<Alert[]> {
+  const rows = await (await getDb())
+    .prepare("SELECT * FROM scheduled_entries WHERE active = 1 AND remind_days IS NOT NULL")
+    .all<Schedule>()
+    .catch(() => [] as Schedule[]); // tabelul sau coloana lipsesc pe o bază veche: fără mementouri
+  const t = { date: now.date, month: now.month, day: now.day };
+  return remindersDue(rows, t).map(({ schedule: s, date, days }) => ({
+    key: `bill${s.id}:${date}`,
+    message: {
+      emoji: "🧾",
+      title: days === 0 ? `Azi: ${s.name}` : `${s.name} în ${days === 1 ? "o zi" : `${days} zile`}`,
+      subtitle: longDate(date),
+      intro: "Plata programată intră singură în buget în ziua scadenței. Verifică să ai banii în cont.",
+      kpis: [{ label: "De plată", value: s.currency === "EUR" ? `${s.amount.toFixed(2).replace(".", ",")} €` : lei(s.amount, true), tone: "mov" }],
+    },
+  }));
 }
 
 /** Categorii peste 80% / 100% din media obișnuită și luna pe minus. Câte o alertă pe prag, pe lună. */
@@ -412,6 +435,7 @@ export async function runForUser(userId: number, appUrl: string, at: Date = new 
 
     await send("daily", [now.date], () => dailyMessage(now));
     for (const a of await dueAlerts(now)) await send("loan_due", [a.key], async () => a.message);
+    for (const a of await billReminders(now)) await send("loan_due", [a.key], async () => a.message);
     const budget = await budgetAlerts(now);
     if (budget) await send("budget", budget.keys, async () => budget.message);
     if (now.weekday === 0) await send("weekly", [isoWeek(now.date)], () => weeklyMessage(now, appUrl));

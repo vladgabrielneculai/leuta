@@ -11,8 +11,8 @@ export const KIND_INFO: Record<NotifyKind, { label: string; description: string 
     description: "„Ai trecut cheltuielile de azi?” + ce ai introdus azi, cheltuielile lunii și creditul.",
   },
   loan_due: {
-    label: "Scadențe credit și asigurări",
-    description: "Cu 3 zile înainte de rată și cu 7 zile înainte de PAD / asigurarea anuală.",
+    label: "Scadențe credit, asigurări și facturi",
+    description: "Cu 3 zile înainte de rată, cu 7 zile înainte de PAD / asigurarea anuală și, pentru plățile programate cu memento, în ziua aleasă.",
   },
   budget: {
     label: "Alerte de buget",

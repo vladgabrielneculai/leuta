@@ -19,6 +19,7 @@ export const ICON = {
   repeat: "M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3",
   search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-5-5",
   year: "M4 20V10M10 20V4M16 20v-7M22 20H2",
+  wallet: "M3 7h15a3 3 0 0 1 3 3v8H3zM3 7l12-3v3M16 13h2",
   plans: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
 };
 
@@ -32,6 +33,7 @@ export const NAV_DAILY: NavItem[] = [
 export const BETA_NAV: NavItem[] = [
   { href: "/import", label: "Import extras", color: "var(--c-mov)", icon: ICON.import, hint: "Tranzacțiile din extrasul băncii" },
   { href: "/abonamente", label: "Abonamente", color: "var(--c-galben)", icon: ICON.repeat, hint: "Plățile care se repetă" },
+  { href: "/conturi", label: "Conturi", color: "var(--c-leu)", icon: ICON.wallet, hint: "Soldurile și transferurile" },
   { href: "/cautare", label: "Caută", color: "var(--c-albastru)", icon: ICON.search, hint: "Orice intrare, din orice lună" },
   { href: "/anual", label: "Anul în cifre", color: "var(--c-leu)", icon: ICON.year, hint: "Bilanțul anului" },
 ];
