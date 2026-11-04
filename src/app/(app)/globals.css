@@ -471,42 +471,30 @@
 }
 
 /*
- * Animația de început (ecranul de autentificare, IntroSplash.tsx). Durează ~2,8 s:
- * moneda cade rotindu-se pe casa de marcat (0–0,9 s), luciul o traversează, moneda intră în fantă
- * (1,15–1,5 s), apoi bonul iese din fantă rând cu rând (1,4–2,25 s), după care totul se estompează.
- * Perspectiva e în `transform` (perspective()), ca rotirea 3D să meargă și sub clip-path.
+ * Animația de început (ecranul de autentificare, IntroSplash.tsx). Durează ~2,5 s:
+ * rozetele de ghioș se desenează (0–1,4 s), sigla apare (0,15–0,75 s), literele numelui urcă pe rând
+ * (0,6–1,1 s), benzile bancnotelor se trag una după alta (1–1,5 s), apoi apare deviza și totul se estompează.
  */
-@keyframes introCoinDrop {
-  0% { transform: perspective(700px) translateY(-46vh) rotateY(0deg) scale(0.6); opacity: 0; }
-  12% { opacity: 1; }
-  62% { transform: perspective(700px) translateY(0) rotateY(900deg) scale(1); }
-  76% { transform: perspective(700px) translateY(-14px) rotateY(1035deg) scale(1); }
-  90% { transform: perspective(700px) translateY(0) rotateY(1080deg) scale(1); }
-  95% { transform: perspective(700px) translateY(-3px) rotateY(1080deg) scale(1); }
-  100% { transform: perspective(700px) translateY(0) rotateY(1080deg) scale(1); opacity: 1; }
+@keyframes introDraw {
+  0% { stroke-dashoffset: 1; }
+  100% { stroke-dashoffset: 0; }
 }
-@keyframes introShine {
-  0% { transform: translateX(-130%) rotate(20deg); opacity: 0; }
-  20% { opacity: 1; }
-  100% { transform: translateX(130%) rotate(20deg); opacity: 0; }
+@keyframes introRings {
+  0% { transform: translate(-50%, -58%) rotate(-24deg) scale(0.94); }
+  100% { transform: translate(-50%, -58%) rotate(0deg) scale(1); }
 }
-/* Coboară în fantă: pe măsură ce alunecă în jos, partea de sub fantă e tăiată. */
-@keyframes introInsert {
-  0% { transform: none; clip-path: inset(-40% -40% 0 -40%); }
-  100% { transform: translateY(100%); clip-path: inset(-40% -40% 100% -40%); }
+@keyframes introMark {
+  0% { opacity: 0; transform: translateY(10px) scale(0.86); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
 }
-@keyframes introSlot {
-  0%, 100% { box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.5); }
-  50% { box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.5), 0 0 14px rgb(var(--galben) / 0.55); }
+@keyframes introLetter {
+  0% { opacity: 0; transform: translateY(0.45em); }
+  100% { opacity: 1; transform: none; }
 }
-/* Hârtia iese în trepte, ca la o imprimantă termică. */
-@keyframes introPrint {
-  0% { transform: translateY(-101%); }
-  28% { transform: translateY(-72%); }
-  34% { transform: translateY(-70%); }
-  60% { transform: translateY(-38%); }
-  66% { transform: translateY(-36%); }
-  100% { transform: none; }
+@keyframes introBand {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
 }
 @keyframes introFade {
   0% { opacity: 0; transform: translateY(6px); }
@@ -514,22 +502,16 @@
 }
 @keyframes introExit {
   0% { opacity: 1; transform: none; }
-  100% { opacity: 0; transform: scale(1.04); }
+  100% { opacity: 0; transform: scale(1.03); }
 }
 
 .intro-splash.intro-exit { animation: introExit 450ms cubic-bezier(0.4, 0, 0.2, 1) forwards; pointer-events: none; }
-.intro-backdrop { animation: introFade 600ms ease-out both; }
-.intro-coin { animation: introCoinDrop 950ms cubic-bezier(0.22, 0.8, 0.3, 1) both; }
-.intro-coin-insert { animation: introInsert 360ms cubic-bezier(0.5, 0, 0.75, 0.4) 1150ms both; }
-.intro-slot { animation: introSlot 600ms ease-in-out 1300ms both; }
-.intro-shine {
-  position: absolute;
-  inset: -20%;
-  background: linear-gradient(90deg, rgb(255 255 255 / 0) 35%, rgb(255 255 255 / 0.55) 50%, rgb(255 255 255 / 0) 65%);
-  animation: introShine 550ms ease-in-out 850ms both;
-  pointer-events: none;
-}
-.intro-paper { animation: introPrint 850ms cubic-bezier(0.3, 0.5, 0.4, 1) 1420ms both; }
+.intro-rings { animation: introRings 2400ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.intro-ring { stroke-dasharray: 1; animation: introDraw 1400ms cubic-bezier(0.45, 0.05, 0.25, 1) both; }
+.intro-mark { animation: introMark 600ms cubic-bezier(0.2, 0.8, 0.25, 1) 150ms both; }
+.intro-letter { animation: introLetter 520ms cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+.intro-band { transform-origin: left; animation: introBand 360ms cubic-bezier(0.3, 0.7, 0.3, 1) both; }
+.intro-tag { animation: introFade 500ms ease-out 1450ms both; }
 .intro-hint { animation: introFade 500ms ease-out 1300ms both; }
 
 @media (prefers-reduced-motion: reduce) {
