@@ -8,7 +8,7 @@ export const TABLES: Record<string, { columns: string[]; filters: string[]; orde
     filters: ["month", "kind", "goal_id", "investment_id"],
     order: "id",
   },
-  cards: { columns: ["name", "kind", "color"], filters: ["kind"], order: "kind, lower(name), id" },
+  cards: { columns: ["name", "kind", "color", "account_id"], filters: ["kind"], order: "kind, lower(name), id" },
   goals: { columns: ["name", "type", "target", "initial", "deadline", "color"], filters: ["type"], order: "type DESC, id" },
   investments: { columns: ["name", "type", "expected_return"], filters: [], order: "id" },
   loans: {
