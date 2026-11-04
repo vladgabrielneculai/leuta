@@ -235,12 +235,12 @@ export default function OnboardingPage() {
                 </p>
                 <ul className="mt-3 flex flex-col gap-2 text-[14px] text-ink-soft">
                   <li>
-                    🛟 Fondul tău de urgență recomandat: <strong className="text-ink">{data.emergency.months} luni</strong> de cheltuieli
+                    Fondul tău de urgență recomandat: <strong className="text-ink">{data.emergency.months} luni</strong> de cheltuieli
                     esențiale ({data.emergency.reasons.join(", ")}).
                   </li>
-                  {loans.length > 0 && <li>🏦 {loans.length === 1 ? "Creditul tău e" : `Cele ${loans.length} credite sunt`} incluse automat în bugetul lunar.</li>}
-                  {salaryAdded && <li>💼 Salariul e trecut în luna curentă.</li>}
-                  <li>📊 Bugetul „Recomandat pentru tine” ține cont de obiectivele tale.</li>
+                  {loans.length > 0 && <li>{loans.length === 1 ? "Creditul tău e" : `Cele ${loans.length} credite sunt`} incluse automat în bugetul lunar.</li>}
+                  {salaryAdded && <li>Salariul e trecut în luna curentă.</li>}
+                  <li>Bugetul „Recomandat pentru tine” ține cont de obiectivele tale.</li>
                 </ul>
               </div>
               {beta && (

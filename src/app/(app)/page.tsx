@@ -9,10 +9,10 @@ import { useEffect, useState } from "react";
 import type { Summary } from "@/lib/analytics";
 import { celebrateOnce } from "@/lib/confetti";
 import { currentMonth, eur, lei, monthLabel, pct, r2 } from "@/lib/util";
-import { ReceiptMeta } from "@/components/receipt";
 import ActiveTripCard from "@/components/ActiveTripCard";
 import { ScheduledAlerts } from "@/components/ScheduledAlerts";
 import { EntryFeed } from "@/components/EntryFeed";
+import { Guilloche, MicroText } from "@/components/Guilloche";
 import type { QuickEntry } from "@/components/QuickAdd";
 import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Ring, Skeleton, Stat, STAT_STRIP, Tabs, useApi, useApp, useTab } from "@/components/ui";
 
@@ -35,7 +35,6 @@ function LeuBand({ s }: { s: S }) {
 
   return (
     <section className="mb-6 sm:mb-10" data-tour="band">
-      <ReceiptMeta month={s.month} label={monthLabel(s.month, true)} />
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
           {s.profile.firstName && <p className="mb-1 font-display text-[17px] font-semibold text-ink">Bună, {s.profile.firstName}!</p>}
@@ -122,16 +121,18 @@ function MobileHero({ s }: { s: S }) {
   return (
     <section className="mb-5 lg:hidden" data-tour="band">
       {s.profile.firstName && <p className="mb-2 text-[14px] text-ink-soft">Bună, {s.profile.firstName}!</p>}
-      <button type="button" className="panel block w-full p-4 text-left" onClick={() => setOpen(!open)} aria-expanded={open}>
-        <div className="text-[13px] text-ink-soft">{t.income > 0 ? (over ? "Ai depășit venitul lunii cu" : "Ți-au rămas luna aceasta") : "Venitul lunii"}</div>
+      {/* Fără card: cifra stă direct pe pagină. În colț, o rozetă de ghioș abia vizibilă, ca pe bancnote. */}
+      <button type="button" className="relative block w-full overflow-hidden py-1 text-left" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <Guilloche className="absolute -right-6 -top-4 h-36 w-36 text-ink-faint opacity-60" />
+        <div className="relative text-[13px] text-ink-soft">{t.income > 0 ? (over ? "Ai depășit venitul lunii cu" : "Ți-au rămas luna aceasta") : "Venitul lunii"}</div>
         <Money value={t.income > 0 ? Math.abs(t.unallocated) : 0} rate={s.fx.rate} size="xl" tone={over ? "rosu" : undefined} />
         <div className="mt-0.5 text-[12.5px] text-ink-faint">
           {t.income > 0 ? <>din {lei(t.income)} venit în {monthLabel(s.month)}</> : "Adaugă veniturile ca să vezi cât îți rămâne."}
         </div>
         {t.income > 0 && (
-          <div className="mt-3 flex h-3 w-full overflow-hidden rounded-full bg-line/60" role="img" aria-label="Distribuția venitului">
+          <div className="relative mt-4 flex h-1 w-full gap-[3px]" role="img" aria-label="Distribuția venitului">
             {segments.map((seg) => (
-              <div key={seg.key} className="h-full" style={{ width: `${(seg.value / base) * 100}%`, background: seg.color, borderRight: "2px solid var(--c-sheet)" }} />
+              <div key={seg.key} className="h-full" style={{ width: `${(seg.value / base) * 100}%`, background: seg.color }} />
             ))}
           </div>
         )}
@@ -146,19 +147,20 @@ function MobileHero({ s }: { s: S }) {
             ))}
           </ul>
         )}
-        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-dashed border-line pt-3" data-tour="stats">
+        <div className="relative mt-4 grid grid-cols-3" data-tour="stats">
           {[
             { label: "Cheltuit", value: lei(t.spent), hint: <Delta now={t.spent} before={s.prev?.spent} invert /> },
             { label: "Pus deoparte", value: lei(t.savedTotal), hint: `${pct(t.savingsRate)} din venit` },
             { label: "Rate / venit", value: pct(t.dti), hint: t.dti > 40 ? "peste 40%" : "prag 40%", bad: t.dti > 40 },
-          ].map((x) => (
-            <div key={x.label} className="min-w-0">
+          ].map((x, i) => (
+            <div key={x.label} className={`min-w-0 pr-2.5 ${i > 0 ? "border-l border-line pl-2.5" : ""}`}>
               <div className="truncate text-[11.5px] text-ink-faint">{x.label}</div>
-              <div className={`num truncate text-[14px] font-semibold ${x.bad ? "text-rosu" : "text-ink"}`}>{x.value}</div>
+              <div className={`num truncate text-[16px] font-semibold tracking-[-0.03em] ${x.bad ? "text-rosu" : "text-ink"}`}>{x.value}</div>
               <div className="truncate text-[11px] text-ink-faint">{x.hint}</div>
             </div>
           ))}
         </div>
+        <MicroText className="relative mt-3" />
       </button>
     </section>
   );
@@ -175,8 +177,8 @@ function RecentEntries({ rate }: { rate: number }) {
   return (
     <section className="mb-6 lg:hidden">
       <div className="mb-2 flex items-baseline justify-between px-1">
-        <h2 className="text-[16px] font-semibold">Ultimele intrări</h2>
-        {entries.length > 0 && <Link href="/luna" className="text-[13px] font-medium text-albastru">Toată luna ›</Link>}
+        <h2 className="text-[13px] font-medium text-ink-soft">Ultimele intrări</h2>
+        {entries.length > 0 && <Link href="/luna" className="text-[13px] font-medium text-ink underline underline-offset-[3px]">Toată luna</Link>}
       </div>
       <EntryFeed
         entries={entries}
@@ -319,7 +321,6 @@ export default function Dashboard() {
               href="/achizitii"
               className="group flex items-center gap-3 rounded-[4px] border-2 border-dashed border-line-strong bg-sheet/50 px-4 py-3 transition-colors hover:border-ink-faint"
             >
-              <span className="text-[24px]" aria-hidden>🎯</span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[14px] font-semibold text-ink">Îți dorești ceva mai scump?</span>
                 <span className="block text-[12.5px] text-ink-soft">Află dacă îți permiți: plată integrală sau credit.</span>
@@ -404,7 +405,7 @@ export default function Dashboard() {
                       <div className="font-medium leading-snug">{g.name}</div>
                       <div className="num text-[12.5px] text-ink-soft">{lei(g.saved)} din {lei(g.target)}</div>
                       <div className="text-[12px] text-ink-faint">
-                        {g.pct >= 100 ? "Atins 🎉" : g.eta ? <>Estimat: {monthLabel(g.eta)}</> : "Fără contribuții recente"}
+                        {g.pct >= 100 ? "Atins" : g.eta ? <>Estimat: {monthLabel(g.eta)}</> : "Fără contribuții recente"}
                       </div>
                     </div>
                   </li>

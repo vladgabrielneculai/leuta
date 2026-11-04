@@ -482,7 +482,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
         <div className="mb-4 grid grid-cols-2 gap-1 rounded-md border border-line bg-paper p-1" role="radiogroup" aria-label="Unde se trece">
           {[
             { on: false, label: `Bugetul lunii`, hint: monthLabel(month).replace(/^./, (c) => c.toUpperCase()) },
-            { on: true, label: `🧳 Vacanță`, hint: trip.name },
+            { on: true, label: `Vacanță`, hint: trip.name },
           ].map((o) => (
             <button
               key={o.label}

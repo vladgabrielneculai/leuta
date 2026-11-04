@@ -22,7 +22,7 @@ export default function ActiveTripCard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-albastru">
-            🧳 În vacanță · ziua {day} din {total}
+            În vacanță · ziua {day} din {total}
           </div>
           <h3 className="mt-1 truncate text-[17px] font-semibold text-ink">
             {trip.name}

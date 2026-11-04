@@ -189,9 +189,9 @@ export default function AbonamentePage() {
             {data.alerts.map((a, i) => (
               <li key={i} className={`rounded-md p-3 ${a.type === "price" ? "bg-rosu-tint text-rosu" : "bg-galben/15 text-ink"}`}>
                 {a.type === "renewal" ? (
-                  <>🔁 <strong>{a.name}</strong> se reînnoiește {relDays(a.days)} ({fmtDate(a.date)}): {money(a.amount, a.currency)}.</>
+                  <><strong>{a.name}</strong> se reînnoiește {relDays(a.days)} ({fmtDate(a.date)}): {money(a.amount, a.currency)}.</>
                 ) : (
-                  <>📈 <strong>{a.name}</strong> s-a scumpit: de la {money(a.previous, a.currency)} la {money(a.amount, a.currency)} (+{money(a.amount - a.previous, a.currency)} pe plată).</>
+                  <><strong>{a.name}</strong> s-a scumpit: de la {money(a.previous, a.currency)} la {money(a.amount, a.currency)} (+{money(a.amount - a.previous, a.currency)} pe plată).</>
                 )}
               </li>
             ))}

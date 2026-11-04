@@ -22,7 +22,7 @@ type Device = "desktop" | "mobile";
 type Step = { target?: string; title: string; text: string; device?: Device };
 
 const WELCOME: Step = {
-  title: "Bun venit în Leuța! 👋",
+  title: "Bun venit în Leuța!",
   text: "Îți arăt în câțiva pași unde găsești totul. Durează sub un minut și poți sări oricând.",
 };
 
@@ -40,7 +40,7 @@ const TOURS: Record<string, Step[]> = {
     { target: "stats", title: "Cifrele cheie", text: "Cât ai cheltuit, cât ai pus deoparte, cât din venit merge pe rate și cât valorează averea ta netă.", device: "desktop" },
     { target: "stats", title: "Cifrele cheie", text: "Cât ai cheltuit, cât ai pus deoparte și cât merge pe rate. Atinge cardul ca să vezi pe ce s-au împărțit banii.", device: "mobile" },
     { target: "dash-tabs", title: "Mai multe, la o atingere", text: "Evoluția pe 12 luni, averea netă, obiectivele și creditele sunt în tab-urile de aici, ca ecranul să rămână aerisit." },
-    { title: "Gata! 🎉", text: "Pe fiecare pagină nouă îți arăt pe scurt ce găsești acolo. Poți relua tutorialul oricând din Setări." },
+    { title: "Gata!", text: "Pe fiecare pagină nouă îți arăt pe scurt ce găsești acolo. Poți relua tutorialul oricând din Setări." },
   ],
   luna: [
     { target: "title", title: "Luna curentă", text: "Aici treci tot ce intră și iese din cont în luna aleasă, pe categorii." },

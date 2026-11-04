@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { barcodeBars, barcodeDigits } from "@/lib/barcode";
+import type { ReactNode } from "react";
+import { barcodeBars } from "@/lib/barcode";
 
 /**
  * Piesele „de bon” folosite în toată aplicația (același stil ca bonul lunar în PDF):
@@ -49,43 +49,5 @@ export function Leader({
   );
 }
 
-const pad = (n: number) => String(n).padStart(2, "0");
 
 /** Data și ora curente, doar în browser (pe server ar da altă oră decât la afișare). */
-function useNow() {
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    setNow(new Date());
-    const id = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
-
-/** Antetul mărunt de deasupra titlului paginii: „BON NR. 0010 · OCT. 2026 ··· 05.10.2026 14:32”. */
-export function ReceiptMeta({ month, label }: { month: string; label: string }) {
-  const now = useNow();
-  return (
-    <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-faint sm:text-[11.5px]">
-      <span>
-        Bon nr. {month.slice(5, 7).padStart(4, "0")} · {label}
-      </span>
-      <span className="num" suppressHydrationWarning>
-        {now ? `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}` : " "}
-      </span>
-    </div>
-  );
-}
-
-/** Finalul fiecărei pagini, ca la capătul bonului: mulțumiri și un cod de bare. */
-export function ReceiptFooter({ seed }: { seed: string }) {
-  const code = barcodeDigits(seed);
-  return (
-    <footer className="mx-auto mt-12 flex max-w-xs flex-col items-center gap-2 text-ink-faint" aria-hidden>
-      <div className="rule-dashed w-full" />
-      <p className="mt-2 font-mono text-[12px] font-semibold uppercase tracking-[0.12em] text-ink-soft">*** Vă mulțumim! ***</p>
-      <Barcode seed={seed} className="h-10 w-56 text-ink/80" />
-      <p className="font-mono text-[10.5px] tracking-[0.2em]">{code}</p>
-    </footer>
-  );
-}
