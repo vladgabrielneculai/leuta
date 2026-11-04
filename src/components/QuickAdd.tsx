@@ -5,6 +5,7 @@ import { addMonths, lei, eur, monthLabel, parseAmount, type Currency, type Kind 
 import { activeTrip, type TripListItem } from "@/lib/trips";
 import { api, Modal, Skeleton, Toast, useApi, useApp, useIsMobile } from "./ui";
 import { TripExpenseForm } from "./Trips";
+import { lastCardId, rememberCard, useCards } from "./Cards";
 
 /**
  * Adăugarea rapidă, din butonul „+” al barei de jos (pe telefon): suma întâi, apoi categoria dintr-o atingere.
@@ -22,6 +23,8 @@ export type QuickEntry = {
   category_id: number | null;
   goal_id: number | null;
   investment_id: number | null;
+  /** Cardul cu care s-a plătit (beta); lipsește pe intrările vechi. */
+  card_id?: number | null;
   description: string;
   amount: number;
   currency: Currency;
@@ -62,6 +65,7 @@ export async function restoreEntry(e: QuickEntry) {
     category_id: e.category_id,
     goal_id: e.goal_id,
     investment_id: e.investment_id,
+    ...(e.card_id ? { card_id: e.card_id } : {}),
     description: e.description,
     amount: e.amount,
     currency: e.currency,
@@ -186,6 +190,15 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const { data: settings } = useApi<Record<string, string>>("/api/settings");
   const investments = settings?.enable_investments === "1" ? invs ?? [] : [];
 
+  // Cardul cu care plătești (beta, doar la cheltuieli). Fără alegere explicită: cardul intrării modificate sau,
+  // la una nouă, ultimul card folosit pe acest dispozitiv (dacă mai există).
+  const { data: cards } = useCards();
+  const [cardPick, setCardPick] = useState<number | null | undefined>(undefined);
+  const isExpense = kind === "variable" || kind === "fixed";
+  const showCards = beta && isExpense && !!cards && cards.length > 0;
+  const fallbackCard = editing ? editing.card_id ?? null : lastCardId();
+  const cardId = cardPick !== undefined ? cardPick : cards?.some((c) => c.id === fallbackCard) ? fallbackCard : null;
+
   // Pe telefon, categoriile sunt ordonate după cât de des le folosești (intrările din luna analizată și din cele două dinainte).
   // Tot de aici aflăm dacă folosești euro: dacă nu, alegerea monedei stă în „Detalii”.
   const m1 = addMonths(month, -1);
@@ -256,6 +269,8 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       investment_id: kind === "saving" && dest_.startsWith("i:") ? Number(dest_.slice(2)) : null,
       description: description.trim(),
       amount: canRefund && refund ? -value : value,
+      // Doar pe beta trimitem cardul; la venituri și economii nu are sens.
+      ...(beta && cards ? { card_id: isExpense ? cardId : null } : {}),
       currency,
       recurring: recurring ? 1 : 0,
     };
@@ -267,6 +282,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
         if (mobile) tick();
       } else {
         await api("/api/crud/entries", "POST", payload);
+        if (showCards) rememberCard(cardId);
         const what = catName ?? (kind === "saving" ? "Economii" : "Intrare");
         const sum = currency === "EUR" ? eur(value) : lei(value);
         if (mobile) tick();
@@ -409,6 +425,30 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
             </div>
             {currency === "EUR" && value > 0 && <p className="mt-1 text-right text-[12px] text-ink-faint num">≈ {lei(value * eurRate)}</p>}
           </div>
+
+          {showCards && (
+            <div>
+              <span className="label">Cardul folosit</span>
+              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Cardul folosit">
+                {[{ id: null as number | null, name: "Fără card", color: null as string | null }, ...cards.map((c) => ({ id: c.id as number | null, name: c.name, color: c.color }))].map((c) => (
+                  <button
+                    key={c.id ?? 0}
+                    type="button"
+                    role="radio"
+                    aria-checked={cardId === c.id}
+                    className={`${chip(cardId === c.id)} min-h-[36px]! py-1! text-[13px]!`}
+                    onClick={() => {
+                      setCardPick(c.id);
+                      stayMonthly();
+                    }}
+                  >
+                    {c.color ? <span className="h-2 w-3.5 shrink-0 rounded-[2px]" style={{ background: c.color }} aria-hidden /> : null}
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <span className="label">

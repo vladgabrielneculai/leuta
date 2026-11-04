@@ -3,6 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { eur, lei, type Kind } from "@/lib/util";
 import { dayOf, entryDay, restoreEntry, useQuickAdd, type QuickEntry } from "./QuickAdd";
+import { useCards } from "./Cards";
 import { api, Toast, useApp } from "./ui";
 
 /**
@@ -105,6 +106,8 @@ export function EntryFeed({
   const { bump } = useApp();
   const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null);
   const catMap = new Map(cats.map((c) => [c.id, c]));
+  const { data: cards } = useCards();
+  const cardName = (e: QuickEntry) => (e.card_id ? cards?.find((c) => c.id === e.card_id)?.name ?? null : null);
 
   const nameOf = (e: QuickEntry) =>
     e.kind === "saving"
@@ -169,7 +172,7 @@ export function EntryFeed({
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14.5px] text-ink">{e.description || name}</span>
                         <span className="block truncate text-[12px] text-ink-faint">
-                          {[e.description ? name : null, e.recurring ? "↻ lunar" : null, e.amount < 0 ? "↩ retur" : null].filter(Boolean).join(" · ") ||
+                          {[e.description ? name : null, cardName(e) ? `💳 ${cardName(e)}` : null, e.recurring ? "↻ lunar" : null, e.amount < 0 ? "↩ retur" : null].filter(Boolean).join(" · ") ||
                             { income: "Venit", fixed: "Cost fix", variable: "Cheltuială", saving: "Economii" }[e.kind]}
                         </span>
                       </span>
