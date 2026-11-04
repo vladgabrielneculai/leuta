@@ -1,34 +1,34 @@
 import Reveal from "./Reveal";
+import { Guilloche } from "@/components/Guilloche";
+import { TileIcon, type IconName } from "./demo";
 import { SITE } from "@/lib/site/config";
 
-const FEATURES: { title: string; text: string; color: string; tag: string }[] = [
-  { tag: "Îmi permit?", title: "Testează o achiziție înainte să o faci", text: "Plata integrală sau credit? Vezi cum se schimbă bugetul lunar și fondul de urgență pentru mașina, telefonul sau vacanța dorită.", color: "var(--c-leu)" },
-  { tag: "Metode de buget", title: "50/30/20, buget de la zero sau al tău", text: "Compari luna cu metode cunoscute și vezi, în lei, cât e ținta pentru nevoi, dorințe și economii.", color: "var(--c-mov)" },
-  { tag: "Bonul lunii", title: "Un PDF ca un bon de casă", text: "La final de lună descarci bilanțul: ce a intrat, ce a ieșit, ce a rămas. Bun de păstrat sau de trimis.", color: "var(--c-rosu)" },
-  { tag: "Notificări", title: "Pe Telegram sau pe email", text: "Reminder de seară, scadențe la credite și asigurări, alerte de buget, rezumat săptămânal și bilanțul lunii. Le alegi tu.", color: "var(--c-galben)" },
-  { tag: "Curs și inflație", title: "BNR și INS, la zi", text: "Sumele în euro se convertesc cu cursul BNR, iar inflația oficială îți arată cât valorează economiile în timp.", color: "var(--c-albastru)" },
-  { tag: "Grafic de rambursare", title: "Importi creditul din PDF sau Excel", text: "Încarci graficul de la bancă, iar Leuța completează ratele, dobânda și soldul. Fără tastat rând cu rând.", color: "var(--c-leu)" },
+const FEATURES: { title: string; text: string; color: string; icon: IconName }[] = [
+  { icon: "afford", title: "Îmi permit?", text: "Plata integrală sau credit? Vezi cum se schimbă bugetul lunar și fondul de urgență pentru mașina, telefonul sau vacanța dorită.", color: "var(--c-leu)" },
+  { icon: "budget", title: "Metode de buget", text: "50/30/20, buget de la zero sau al tău: vezi, în lei, cât e ținta pentru nevoi, dorințe și economii.", color: "var(--c-mov)" },
+  { icon: "doc", title: "Bilanțul lunii", text: "La final de lună descarci un PDF: ce a intrat, ce a ieșit, ce a rămas. Bun de păstrat sau de trimis.", color: "var(--c-rosu)" },
+  { icon: "bell", title: "Notificări", text: "Pe Telegram sau pe email: reminder de seară, scadențe, alerte de buget, rezumatul săptămânii. Le alegi tu.", color: "var(--c-galben)" },
+  { icon: "euro", title: "Curs și inflație", text: "Sumele în euro se convertesc cu cursul BNR, iar inflația INS îți arată cât valorează economiile în timp.", color: "var(--c-albastru)" },
+  { icon: "import", title: "Grafic de rambursare", text: "Încarci graficul de la bancă, din PDF sau Excel, iar Leuța completează ratele, dobânda și soldul.", color: "var(--c-leu)" },
 ];
 
 export function Features() {
   return (
-    <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
-      <Reveal>
-        <p className="kicker">Și încă ceva</p>
-        <h2 className="mt-4 max-w-3xl text-[30px] font-bold leading-[1.1] sm:text-[46px]">Mai mult decât un tabel cu cheltuieli.</h2>
-      </Reveal>
-      <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {FEATURES.map((f, i) => (
-          <Reveal key={f.tag} delay={(i % 3) * 90} className="panel flex flex-col px-6 pb-6 pt-6">
-            <p className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
-              <span className="h-2.5 w-2.5 rounded-[2px]" style={{ background: f.color }} />
-              {f.tag}
-            </p>
-            <div className="rule-dashed my-4" />
-            <h3 className="text-[18px] font-bold leading-snug">{f.title}</h3>
-            <p className="mt-2 text-[14px] text-ink-soft">{f.text}</p>
-          </Reveal>
-        ))}
+    <section id="functii" className="border-t border-line">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-24">
+        <Reveal className="grid items-end gap-6 md:grid-cols-2 md:gap-12">
+          <h2 className="max-w-[18ch] text-[32px] font-semibold leading-[1.04] sm:text-[48px]">Mai mult decât un tabel cu cheltuieli.</h2>
+          <p className="max-w-136 text-ink-soft">Instrumentele pe care le folosești o dată pe lună, nu în fiecare zi. Sunt acolo când ai nevoie de ele.</p>
+        </Reveal>
+        <div className="mt-10 grid border-l border-t border-line sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((f, i) => (
+            <Reveal key={f.title} delay={(i % 3) * 80} className="border-b border-r border-line p-6">
+              <TileIcon icon={f.icon} color={f.color} />
+              <h3 className="mt-4 text-[17px] font-semibold tracking-[-0.02em]">{f.title}</h3>
+              <p className="mt-1.5 text-[14px] text-ink-soft">{f.text}</p>
+            </Reveal>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -45,31 +45,27 @@ const SECURITY: [string, string][] = [
 
 export function Security() {
   return (
-    <section id="siguranta" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 md:py-28">
-      <div className="grid gap-10 md:grid-cols-[0.9fr_1.1fr]">
-        <Reveal>
-          <p className="kicker">Siguranță</p>
-          <h2 className="mt-4 text-[30px] font-bold leading-[1.1] sm:text-[46px]">Banii tăi sunt treaba ta.</h2>
-          <p className="mt-5 max-w-md text-[15.5px] text-ink-soft sm:text-[17px]">
+    <section id="siguranta" className="relative overflow-hidden border-y border-deep-line bg-deep text-deep-ink">
+      <Guilloche fine rings={6} className="absolute -right-48 top-1/2 h-[560px] w-[560px] max-w-none -translate-y-1/2 text-deep-leu opacity-35" />
+      <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-24">
+        <Reveal className="grid items-end gap-6 md:grid-cols-2 md:gap-12">
+          <h2 className="max-w-[18ch] text-[32px] font-semibold leading-[1.04] sm:text-[48px]">Banii tăi sunt treaba ta.</h2>
+          <p className="max-w-136 text-deep-soft">
             Datele financiare sunt cele mai personale date. Leuța le păstrează puține, în Uniunea Europeană, și doar pentru tine.
           </p>
-          <span className="stamp mt-8">Fără reclame · Date în UE</span>
         </Reveal>
-        <Reveal delay={100} className="panel px-6 pb-4 pt-6 sm:px-8">
-          <p className="receipt-title">Ce primești</p>
-          <div className="rule-dashed mt-4" />
-          <ul>
-            {SECURITY.map(([t, d]) => (
-              <li key={t} className="border-b border-dashed border-line py-4 last:border-0">
-                <p className="flex items-baseline gap-2 font-semibold">
-                  <span className="text-leu">✓</span>
-                  {t}
-                </p>
-                <p className="mt-1 pl-5 text-[14px] text-ink-soft">{d}</p>
-              </li>
-            ))}
-          </ul>
-        </Reveal>
+        <ul className="mt-10 grid border-t border-deep-line md:grid-cols-3">
+          {SECURITY.map(([t, d], i) => (
+            <Reveal as="li" key={t} delay={(i % 3) * 80} className="border-b border-deep-line py-5 md:pr-6">
+              <p className="flex items-baseline gap-2.5 text-[15.5px] font-semibold">
+                <span className="h-1.5 w-1.5 shrink-0 -translate-y-0.5 rounded-full bg-deep-leu" aria-hidden />
+                {t}
+              </p>
+              <p className="mt-1.5 pl-4 text-[14px] text-deep-soft">{d}</p>
+            </Reveal>
+          ))}
+        </ul>
+        <span className="mt-7 inline-flex rounded-full border border-deep-leu px-3 py-1 font-mono text-[12px] text-deep-leu">Fără reclame · Date în UE</span>
       </div>
     </section>
   );
@@ -93,24 +89,26 @@ const FAQ: [string, React.ReactNode][] = [
 
 export function Faq() {
   return (
-    <section id="intrebari" className="mx-auto max-w-3xl px-4 py-20 sm:px-6 md:py-28">
-      <Reveal>
-        <p className="kicker text-center">Întrebări frecvente</p>
-        <h2 className="mt-4 text-center text-[30px] font-bold leading-[1.1] sm:text-[44px]">Pe scurt.</h2>
-      </Reveal>
-      <Reveal delay={80} className="panel mt-10 px-5 py-2 sm:px-8">
-        {FAQ.map(([q, a]) => (
-          <details key={q} className="group border-b border-dashed border-line-strong/70 last:border-0">
-            <summary className="flex cursor-pointer items-center justify-between gap-4 py-5 text-[15.5px] font-semibold">
-              {q}
-              <span className="faq-plus text-[22px] font-normal leading-none text-ink-faint transition-transform duration-200" aria-hidden>
-                +
-              </span>
-            </summary>
-            <p className="-mt-1 pb-5 text-[14.5px] text-ink-soft">{a}</p>
-          </details>
-        ))}
-      </Reveal>
+    <section id="intrebari" className="border-t border-line">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-24">
+        <Reveal className="grid items-end gap-6 md:grid-cols-2 md:gap-12">
+          <h2 className="text-[32px] font-semibold leading-[1.04] sm:text-[48px]">Pe scurt.</h2>
+          <p className="max-w-136 text-ink-soft">Ce vor să știe oamenii înainte să ceară o invitație.</p>
+        </Reveal>
+        <Reveal delay={80} className="mt-8 max-w-3xl border-t border-line">
+          {FAQ.map(([q, a]) => (
+            <details key={q} className="group border-b border-line">
+              <summary className="flex cursor-pointer items-center justify-between gap-4 py-5 text-[16px] font-medium">
+                {q}
+                <span className="faq-plus text-[22px] font-normal leading-none text-ink-faint transition-transform duration-200" aria-hidden>
+                  +
+                </span>
+              </summary>
+              <p className="-mt-1 max-w-[60ch] pb-5 text-[15px] text-ink-soft">{a}</p>
+            </details>
+          ))}
+        </Reveal>
+      </div>
     </section>
   );
 }

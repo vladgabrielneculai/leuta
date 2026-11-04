@@ -6,10 +6,11 @@ import Logo from "@/components/Logo";
 import { GoalsRiskFields, PersonalFields, WorkFields, fromDraft, toDraft, type ProfileDraft } from "@/components/ProfileFields";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { enableTour } from "@/components/Tour";
-import { api, Field, Modal, Skeleton, useApi } from "@/components/ui";
+import StartingBalances from "@/components/StartingBalances";
+import { api, Field, Modal, Skeleton, useApi, useApp } from "@/components/ui";
 import type { Loan } from "@/lib/loan";
 import type { Profile } from "@/lib/profile";
-import { currentMonth, lei } from "@/lib/util";
+import { lei } from "@/lib/util";
 
 type ProfileResponse = { profile: Profile; age: number | null; emergency: { months: number; reasons: string[] } };
 type Category = { id: number; name: string; kind: string };
@@ -26,6 +27,7 @@ const STEPS = [
 /** Ghidul de început pentru un cont nou: 4 pași scurți + rezumat, fiecare poate fi amânat. */
 export default function OnboardingPage() {
   const { data, setData } = useApi<ProfileResponse>("/api/profile");
+  const { nowMonth } = useApp();
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -40,6 +42,9 @@ export default function OnboardingPage() {
   // Pasul „obiective”
   const [fundSaved, setFundSaved] = useState("");
   const [trackInvestments, setTrackInvestments] = useState(false);
+  // Rezumat (beta): soldurile de azi ale conturilor, ca punct de pornire.
+  const { beta } = useApp();
+  const [balancesSaved, setBalancesSaved] = useState(false);
 
   useEffect(() => {
     if (data && !draft) setDraft(toDraft(data.profile));
@@ -67,13 +72,13 @@ export default function OnboardingPage() {
     if (current.key === "work" && addSalary && !salaryAdded && Number(draft.net_income) > 0) {
       const [cats, entries] = await Promise.all([
         api<Category[]>("/api/crud/categories"),
-        api<{ category_id: number | null; kind: string }[]>(`/api/crud/entries?month=${currentMonth()}`),
+        api<{ category_id: number | null; kind: string }[]>(`/api/crud/entries?month=${nowMonth}`),
       ]);
       const salary = cats.find((c) => c.kind === "income" && c.name.toLowerCase().startsWith("salariu"));
       const exists = entries.some((e) => e.kind === "income" && e.category_id === salary?.id);
       if (salary && !exists) {
         await api("/api/crud/entries", "POST", {
-          month: currentMonth(),
+          month: nowMonth,
           kind: "income",
           category_id: salary.id,
           goal_id: null,
@@ -231,14 +236,24 @@ export default function OnboardingPage() {
                 </p>
                 <ul className="mt-3 flex flex-col gap-2 text-[14px] text-ink-soft">
                   <li>
-                    🛟 Fondul tău de urgență recomandat: <strong className="text-ink">{data.emergency.months} luni</strong> de cheltuieli
+                    Fondul tău de urgență recomandat: <strong className="text-ink">{data.emergency.months} luni</strong> de cheltuieli
                     esențiale ({data.emergency.reasons.join(", ")}).
                   </li>
-                  {loans.length > 0 && <li>🏦 {loans.length === 1 ? "Creditul tău e" : `Cele ${loans.length} credite sunt`} incluse automat în bugetul lunar.</li>}
-                  {salaryAdded && <li>💼 Salariul e trecut în luna curentă.</li>}
-                  <li>📊 Bugetul „Recomandat pentru tine” ține cont de obiectivele tale.</li>
+                  {loans.length > 0 && <li>{loans.length === 1 ? "Creditul tău e" : `Cele ${loans.length} credite sunt`} incluse automat în bugetul lunar.</li>}
+                  {salaryAdded && <li>Salariul e trecut în luna curentă.</li>}
+                  <li>Bugetul „Recomandat pentru tine” ține cont de obiectivele tale.</li>
                 </ul>
               </div>
+              {beta && (
+                <div className="rounded-md border border-line bg-sheet p-4 sm:p-5">
+                  <p className="text-[15px] font-semibold">Cât ai azi în conturi? <span className="font-normal text-ink-soft">(opțional)</span></p>
+                  {balancesSaved ? (
+                    <p className="mt-2 text-[14px] text-leu">✓ Soldurile sunt salvate. Le vezi și le modifici în Conturi.</p>
+                  ) : (
+                    <div className="mt-3"><StartingBalances intro={false} onSaved={() => setBalancesSaved(true)} /></div>
+                  )}
+                </div>
+              )}
               <p className="text-[14px] text-ink-soft">
                 Pasul următor: trece cheltuielile lunii în <strong className="text-ink">Luna curentă</strong>. Profilul îl poți modifica oricând din
                 <strong className="text-ink"> Profilul meu</strong>.

@@ -6,6 +6,7 @@ import {
   ageFrom, daysUntilPayday, hasFinancialProfile, profileSavingsAdjustment, recommendedEmergencyMonths, type Profile,
 } from "./profile";
 import { loadProfile } from "./profileServer";
+import { currentBudgetMonth, payCycleFrom } from "./payCycle";
 
 type EntryRow = {
   id: number;
@@ -84,6 +85,8 @@ export type InvestmentView = {
   value: number;
   gain: number;
   valueMonth: string | null;
+  /** contribuțiile din anul calendaristic al lunii (până la ea), pentru plafonul de deducere la Pilonul III */
+  contributedYear: number;
 };
 
 export type MethodView = {
@@ -159,6 +162,50 @@ export async function loadLoans() {
   });
 }
 
+/** Totalurile unei luni din intrările ei și din credite (aceleași calcule pentru panou și pentru raportul anual). */
+function monthTotals(
+  m: string,
+  list: EntryRow[],
+  loans: Awaited<ReturnType<typeof loadLoans>>,
+  inRon: (e: EntryRow) => number,
+): MonthTotals {
+  const t: MonthTotals = {
+    month: m, income: 0, fixed: 0, variable: 0, loanPayments: 0, loanInterest: 0, loanInsurance: 0,
+    prepayments: 0, prepayFees: 0, savings: 0, investments: 0, needs: 0, wants: 0,
+    savedTotal: 0, spent: 0, unallocated: 0, savingsRate: 0, dti: 0, hasData: list.length > 0,
+  };
+  for (const e of list) {
+    const v = inRon(e);
+    if (e.kind === "income") t.income += v;
+    else if (e.kind === "saving") {
+      if (e.investment_id) t.investments += v;
+      else t.savings += v;
+    } else {
+      if (e.kind === "fixed") t.fixed += v;
+      else t.variable += v;
+      if (e.bucket === "wants") t.wants += v;
+      else t.needs += v;
+    }
+  }
+  let annualInsurance = 0; // PAD / facultativă: în cheltuieli, dar nu și în gradul lunar de îndatorare
+  for (const { loan, sim } of loans) {
+    const cf = monthCashflow(loan, sim, m);
+    annualInsurance += cf.annualInsurance;
+    t.loanPayments += cf.payment;
+    t.loanInterest += cf.interest;
+    t.loanInsurance += cf.insurance;
+    t.prepayments += cf.prepayment;
+    t.prepayFees += cf.fee;
+  }
+  t.needs += t.loanPayments + t.loanInsurance + t.prepayFees;
+  t.savedTotal = t.savings + t.investments + t.prepayments;
+  t.spent = t.fixed + t.variable + t.loanPayments + t.loanInsurance + t.prepayFees;
+  t.unallocated = t.income - t.spent - t.savedTotal;
+  t.savingsRate = t.income > 0 ? (t.savedTotal / t.income) * 100 : 0;
+  t.dti = t.income > 0 ? ((t.loanPayments + t.loanInsurance - annualInsurance) / t.income) * 100 : 0;
+  return t;
+}
+
 export async function buildSummary(month: string): Promise<Summary> {
   const db = await getDb();
   const trendMonths = lastMonths(month, 12);
@@ -196,44 +243,7 @@ export async function buildSummary(month: string): Promise<Summary> {
     byMonth.get(e.month)!.push(e);
   }
 
-  const totalsFor = (m: string): MonthTotals => {
-    const list = byMonth.get(m) ?? [];
-    const t: MonthTotals = {
-      month: m, income: 0, fixed: 0, variable: 0, loanPayments: 0, loanInterest: 0, loanInsurance: 0,
-      prepayments: 0, prepayFees: 0, savings: 0, investments: 0, needs: 0, wants: 0,
-      savedTotal: 0, spent: 0, unallocated: 0, savingsRate: 0, dti: 0, hasData: list.length > 0,
-    };
-    for (const e of list) {
-      const v = inRon(e);
-      if (e.kind === "income") t.income += v;
-      else if (e.kind === "saving") {
-        if (e.investment_id) t.investments += v;
-        else t.savings += v;
-      } else {
-        if (e.kind === "fixed") t.fixed += v;
-        else t.variable += v;
-        if (e.bucket === "wants") t.wants += v;
-        else t.needs += v;
-      }
-    }
-    let annualInsurance = 0; // PAD / facultativă: în cheltuieli, dar nu și în gradul lunar de îndatorare
-    for (const { loan, sim } of loans) {
-      const cf = monthCashflow(loan, sim, m);
-      annualInsurance += cf.annualInsurance;
-      t.loanPayments += cf.payment;
-      t.loanInterest += cf.interest;
-      t.loanInsurance += cf.insurance;
-      t.prepayments += cf.prepayment;
-      t.prepayFees += cf.fee;
-    }
-    t.needs += t.loanPayments + t.loanInsurance + t.prepayFees;
-    t.savedTotal = t.savings + t.investments + t.prepayments;
-    t.spent = t.fixed + t.variable + t.loanPayments + t.loanInsurance + t.prepayFees;
-    t.unallocated = t.income - t.spent - t.savedTotal;
-    t.savingsRate = t.income > 0 ? (t.savedTotal / t.income) * 100 : 0;
-    t.dti = t.income > 0 ? ((t.loanPayments + t.loanInsurance - annualInsurance) / t.income) * 100 : 0;
-    return t;
-  };
+  const totalsFor = (m: string) => monthTotals(m, byMonth.get(m) ?? [], loans, inRon);
 
   const trend = trendMonths.map(totalsFor);
   const totals = trend[trend.length - 1];
@@ -338,7 +348,10 @@ export async function buildSummary(month: string): Promise<Summary> {
   };
   const investments: InvestmentView[] = invRaw.map((i) => {
     const v = investmentValueAt(i.id, month);
-    return { ...i, ...v, gain: v.value - v.contributed };
+    const contributedYear = entries
+      .filter((e) => e.investment_id === i.id && e.month.startsWith(month.slice(0, 4)) && e.month <= month)
+      .reduce((s, e) => s + inRon(e), 0);
+    return { ...i, ...v, gain: v.value - v.contributed, contributedYear };
   });
 
   // ---------- Avere netă ----------
@@ -377,8 +390,9 @@ export async function buildSummary(month: string): Promise<Summary> {
     };
   }
 
-  // „Zile până la salariu” are sens doar pentru luna în curs.
-  const daysToPayday = profile?.payday && month === currentMonth() ? daysUntilPayday(profile.payday) : null;
+  // „Zile până la salariu” are sens doar pentru luna în curs (luna de buget, dacă începe la salariu).
+  const cycle = payCycleFrom(settings, profile?.payday);
+  const daysToPayday = profile?.payday && month === currentBudgetMonth(cycle) ? daysUntilPayday(profile.payday, cycle.weekend) : null;
   const suggestions = buildSuggestions({
     month, totals, prev, categories, emergency, goals, loanViews, investments, prepay, prior, settings, profile, age, daysToPayday,
   });
@@ -751,4 +765,127 @@ function buildSuggestions(ctx: {
 
   const order = { critic: 0, atentie: 1, idee: 2, bine: 3 };
   return out.sort((a, b) => order[a.level] - order[b.level]);
+}
+
+// ---------- Raportul anual (beta) ----------
+
+export type YearTotals = {
+  income: number;
+  fixed: number;
+  variable: number;
+  loanPayments: number;
+  loanInterest: number;
+  spent: number;
+  savedTotal: number;
+  unallocated: number;
+  savingsRate: number;
+  monthsWithData: number;
+};
+
+export type YearCategory = { id: number; name: string; kind: Kind; color: string; amount: number; compare: number; parent_id: number | null };
+
+export type YearReport = {
+  year: string;
+  compareYear: string | null;
+  /** cele 12 luni ale anului, în ordine */
+  months: MonthTotals[];
+  compareMonths: MonthTotals[] | null;
+  total: YearTotals;
+  compareTotal: YearTotals | null;
+  /** cheltuielile (costuri fixe și variabile) pe categorii, cu suma din anul comparat */
+  categories: YearCategory[];
+  /** veniturile pe categorii */
+  incomeCategories: YearCategory[];
+  /** anii în care există intrări, cel mai recent primul */
+  years: string[];
+};
+
+const yearMonths = (year: string) => Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
+
+function sumYear(months: MonthTotals[]): YearTotals {
+  const t: YearTotals = {
+    income: 0, fixed: 0, variable: 0, loanPayments: 0, loanInterest: 0, spent: 0, savedTotal: 0, unallocated: 0, savingsRate: 0, monthsWithData: 0,
+  };
+  for (const m of months) {
+    t.income += m.income;
+    t.fixed += m.fixed;
+    t.variable += m.variable;
+    t.loanPayments += m.loanPayments + m.loanInsurance + m.prepayFees;
+    t.loanInterest += m.loanInterest;
+    t.spent += m.spent;
+    t.savedTotal += m.savedTotal;
+    t.unallocated += m.unallocated;
+    if (m.hasData) t.monthsWithData += 1;
+  }
+  t.savingsRate = t.income > 0 ? (t.savedTotal / t.income) * 100 : 0;
+  return t;
+}
+
+/** Anul `year` lună de lună, pe categorii, și (opțional) comparat cu `compareYear`. Ani în formatul AAAA. */
+export async function buildYear(year: string, compareYear: string | null): Promise<YearReport> {
+  const db = await getDb();
+  const [entries, rates, loans, cats] = await Promise.all([
+    db
+      .prepare(
+        `SELECT e.id, e.month, e.kind, e.category_id, e.goal_id, e.investment_id, e.amount, e.currency, c.bucket
+         FROM entries e LEFT JOIN categories c ON c.id = e.category_id`,
+      )
+      .all<EntryRow>(),
+    loadRates(),
+    loadLoans(),
+    db.prepare("SELECT id, name, kind, color, parent_id FROM categories ORDER BY kind, name").all<{ id: number; name: string; kind: Kind; color: string; parent_id: number | null }>(),
+  ]);
+
+  const fxCache = new Map<string, number>();
+  const inRon = (e: EntryRow) => {
+    if (e.currency !== "EUR") return e.amount;
+    if (!fxCache.has(e.month)) fxCache.set(e.month, rateForMonthFrom(rates, e.month).rate);
+    return e.amount * fxCache.get(e.month)!;
+  };
+  const byMonth = new Map<string, EntryRow[]>();
+  for (const e of entries) {
+    if (!byMonth.has(e.month)) byMonth.set(e.month, []);
+    byMonth.get(e.month)!.push(e);
+  }
+  const monthsOf = (y: string) => yearMonths(y).map((m) => monthTotals(m, byMonth.get(m) ?? [], loans, inRon));
+
+  const months = monthsOf(year);
+  const compareMonths = compareYear ? monthsOf(compareYear) : null;
+
+  const byCat = (y: string | null) => {
+    const out = new Map<number, number>();
+    if (!y) return out;
+    for (const e of entries) {
+      if (e.category_id === null || !e.month.startsWith(`${y}-`)) continue;
+      out.set(e.category_id, (out.get(e.category_id) ?? 0) + inRon(e));
+    }
+    return out;
+  };
+  const now = byCat(year);
+  const before = byCat(compareYear);
+  const view = (kinds: Kind[]) => {
+    const list = cats
+      .filter((c) => kinds.includes(c.kind))
+      .map((c) => ({ ...c, parent_id: c.parent_id ?? null, amount: now.get(c.id) ?? 0, compare: before.get(c.id) ?? 0 }));
+    const used = (c: { amount: number; compare: number }) => Math.abs(c.amount) > 0.005 || Math.abs(c.compare) > 0.005;
+    // O categorie-părinte rămâne în listă dacă vreo subcategorie a ei are sume (pagina le adună sub ea).
+    return list.filter((c) => used(c) || list.some((k) => k.parent_id === c.id && used(k))).sort((a, b) => b.amount - a.amount);
+  };
+
+  const loanYears = loans.flatMap(({ sim }) => sim.rows.map((r) => r.month.slice(0, 4)));
+  const years = [...new Set([...entries.map((e) => e.month.slice(0, 4)), ...loanYears.filter((y) => y <= currentMonth().slice(0, 4))])]
+    .sort()
+    .reverse();
+
+  return {
+    year,
+    compareYear,
+    months,
+    compareMonths,
+    total: sumYear(months),
+    compareTotal: compareMonths ? sumYear(compareMonths) : null,
+    categories: view(["fixed", "variable"]),
+    incomeCategories: view(["income"]),
+    years,
+  };
 }

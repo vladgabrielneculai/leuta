@@ -8,6 +8,8 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { api, Bar, chartTooltipStyle, CollapsiblePanels, downloadFile, PageHeader, Panel, PencilIcon, Toast, useApi, useApp, useTab } from "@/components/ui";
 import { Leader } from "@/components/receipt";
 import { useQuickAdd } from "@/components/QuickAdd";
+import ForecastCard from "@/components/ForecastCard";
+import { EntryFeed } from "@/components/EntryFeed";
 
 type Category = { id: number; name: string; kind: Kind; bucket: string; color: string };
 type Goal = { id: number; name: string; type: string };
@@ -42,7 +44,7 @@ const KIND_INFO: Record<Kind, { color: string; help: string }> = {
   income: { color: "var(--c-leu)", help: "Salariu, bonusuri, chirii încasate, orice intră în cont." },
   fixed: { color: "var(--c-albastru)", help: "Plăți care se repetă cu aceeași sumă. Ratele creditelor se adaugă automat, nu le introduce aici." },
   variable: { color: "var(--c-rosu)", help: "Tot ce variază de la o lună la alta: mâncare, benzină, ieșiri, neprevăzute. Utilitățile (apă, curent, gaze, întreținere) se trec aici, conform facturilor." },
-  saving: { color: "var(--c-galben)", help: "Bani mutați spre un obiectiv, fondul de urgență sau o investiție. Plățile anticipate se înregistrează la credit." },
+  saving: { color: "var(--c-galben)", help: "Bani mutați spre un obiectiv, fondul de urgență sau o investiție, sau retrași de acolo când ai nevoie. Plățile anticipate se înregistrează la credit." },
 };
 
 /**
@@ -80,7 +82,10 @@ function KindSection({
       {entries.length > 0 && (
         <ul className="-mt-1 mb-2 divide-y divide-dashed divide-line">
           {entries.map((e) => {
-            const name = kind === "saving" ? nameOfDest(e) : catMap.get(e.category_id ?? 0)?.name ?? "Fără categorie";
+            // La economii, o sumă negativă e o retragere; la cheltuieli, un retur.
+            const out = kind === "saving" && e.amount < 0;
+            const refund = kind !== "saving" && e.amount < 0;
+            const name = kind === "saving" ? (out ? `Retragere din ${nameOfDest(e)}` : nameOfDest(e)) : catMap.get(e.category_id ?? 0)?.name ?? "Fără categorie";
             const open = openId === e.id;
             const date = entryDate(e);
             return (
@@ -107,7 +112,10 @@ function KindSection({
                   {e.recurring ? (
                     <span className="shrink-0 text-[13px] text-albastru" title="Se repetă lunar" aria-label="lunar">↻</span>
                   ) : null}
-                  <span className="num shrink-0 text-right text-[14px] font-medium">
+                  {refund && (
+                    <span className="shrink-0 text-[13px] text-leu" title="Retur: bani înapoi, scăzuți din categorie" aria-label="retur">↩</span>
+                  )}
+                  <span className={`num shrink-0 text-right text-[14px] font-medium ${refund ? "text-leu" : out ? "text-rosu" : ""}`}>
                     {e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
                   </span>
                   <span className={`shrink-0 text-ink-faint transition-transform ${open ? "rotate-90" : ""}`} aria-hidden>›</span>
@@ -117,7 +125,7 @@ function KindSection({
                     <div className="min-w-0 flex-1 text-ink-soft">
                       <p className="whitespace-pre-wrap wrap-break-word text-ink">{e.description || <span className="text-ink-faint">Fără descriere</span>}</p>
                       <p className="mt-0.5 text-[12px] text-ink-faint">
-                        {[date ? date.long : "", e.recurring ? "Se repetă lunar" : "O singură dată", e.currency === "EUR" ? `= ${lei(e.amount * rate)}` : ""].filter(Boolean).join(" · ")}
+                        {[date ? date.long : "", refund ? "Retur (bani înapoi)" : out ? "Retragere din economii" : "", e.recurring ? "Se repetă lunar" : "O singură dată", e.currency === "EUR" ? `= ${lei(e.amount * rate)}` : ""].filter(Boolean).join(" · ")}
                       </p>
                     </div>
                     <button type="button" className="btn-ghost shrink-0 gap-1.5 border border-line px-3 py-1.5 text-[13px]" onClick={() => quickAdd({ entry: e })}>
@@ -207,9 +215,12 @@ function CategoryPie({ entries, catMap, rate, total }: { entries: Entry[]; catMa
 }
 
 export default function MonthPage() {
-  const { month, bump, eurRate } = useApp();
+  const { month, bump, eurRate, beta, nowMonth } = useApp();
   const [kind, setKind] = useTab<Kind>("luna", "variable", KIND_ORDER);
   const [toast, setToast] = useState<string | null>(null);
+  // Pe telefon: o singură listă pe zile, filtrată cu cipurile de sus (implicit toate intrările).
+  const [filter, setFilter] = useState<Kind | "all">("all");
+  const quickAdd = useQuickAdd();
   const { data: entries, reload } = useApi<Entry[]>(`/api/crud/entries?month=${month}`);
   const { data: cats } = useApi<Category[]>("/api/crud/categories");
   const { data: goals } = useApi<Goal[]>("/api/crud/goals");
@@ -289,7 +300,7 @@ export default function MonthPage() {
               <span className="hidden sm:inline">Copiază intrările lunare din {monthLabel(addMonths(month, -1))}</span>
             </button>
             <button className="btn-ghost border border-line bg-field/60" onClick={downloadReceipt} disabled={downloading}>
-              {downloading ? "Se generează…" : "🧾 Bonul lunii (PDF)"}
+              {downloading ? "Se generează…" : "Bonul lunii (PDF)"}
             </button>
           </>
         }
@@ -319,7 +330,70 @@ export default function MonthPage() {
             <p className="text-ink-soft">Se încarcă…</p>
           ) : (
             <>
-              {/* Câte o secțiune odată: dalele arată totalul fiecăreia, iar lista de dedesubt e scurtă. */}
+              {/* Telefon: cipuri de filtrare (cu totalul fiecărui tip) și lista intrărilor pe zile. */}
+              <div className="flex flex-col gap-3 lg:hidden">
+                <div role="radiogroup" aria-label="Ce intrări arăt" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5 scrollbar-none" data-tour="luna-tabs">
+                  {(["all", ...KIND_ORDER] as const).map((k) => {
+                    const on = filter === k;
+                    const sum = k === "all" ? null : entries.filter((e) => e.kind === k).reduce((a, e) => a + (e.currency === "EUR" ? e.amount * rate : e.amount), 0);
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setFilter(k)}
+                        className={`flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] transition-colors ${
+                          on ? "border-ink bg-ink text-sheet" : "border-line bg-sheet text-ink-soft"
+                        }`}
+                      >
+                        {k !== "all" && <span className="h-2 w-2 rounded-full" style={{ background: KIND_INFO[k].color }} aria-hidden />}
+                        {k === "all" ? "Toate" : KIND_SHORT[k]}
+                        {sum !== null && sum !== 0 && <span className={`num ${on ? "text-sheet/75" : "text-ink-faint"}`}>{Math.round(sum).toLocaleString("ro-RO")}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {filter === "variable" && entries.some((e) => e.kind === "variable") && (
+                  <div className="panel p-3">
+                    <CategoryPie
+                      entries={entries.filter((e) => e.kind === "variable")}
+                      catMap={new Map(cats.map((c) => [c.id, c]))}
+                      rate={rate}
+                      total={entries.filter((e) => e.kind === "variable").reduce((a, e) => a + (e.currency === "EUR" ? e.amount * rate : e.amount), 0)}
+                    />
+                  </div>
+                )}
+                <div data-tour="luna-section">
+                  <EntryFeed
+                    entries={filter === "all" ? entries : entries.filter((e) => e.kind === filter)}
+                    cats={cats}
+                    goals={goals}
+                    invs={investmentsEnabled ? invs : []}
+                    rate={rate}
+                    onChanged={() => {
+                      reload();
+                      reloadSummary();
+                    }}
+                    empty={
+                      <p className="rounded-md border border-dashed border-line-strong px-4 py-5 text-center text-[13.5px] text-ink-soft">
+                        {filter === "all" ? "Nicio intrare în această lună." : KIND_INFO[filter].help}
+                      </p>
+                    }
+                  />
+                </div>
+                {filter !== "all" && (
+                  <button
+                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-md border border-dashed border-line-strong text-[14px] font-medium text-ink-soft active:bg-paper"
+                    onClick={() => quickAdd({ kind: filter })}
+                  >
+                    <span className="text-[18px] leading-none" aria-hidden>+</span> Adaugă la {KIND_LABEL[filter].toLowerCase()}
+                  </button>
+                )}
+              </div>
+
+              {/* Ecran mare: câte o secțiune odată; dalele arată totalul fiecăreia, iar lista de dedesubt e scurtă. */}
+              <div className="hidden flex-col gap-3 lg:flex">
               <div role="tablist" aria-label="Secțiunile lunii" className="grid grid-cols-4 gap-1.5 sm:gap-2" data-tour="luna-tabs">
                 {KIND_ORDER.map((k) => {
                   const on = k === kind;
@@ -361,6 +435,7 @@ export default function MonthPage() {
                 goals={goals}
                 invs={investmentsEnabled ? invs : []}
               />
+              </div>
             </>
           )}
         </div>
@@ -368,6 +443,7 @@ export default function MonthPage() {
         {/* Pe telefon, rezumatul de sus ține locul bilanțului; graficul și tichetele se deschid la atingere. */}
         <CollapsiblePanels>
         <aside className="xl:sticky xl:top-8 xl:self-start flex flex-col gap-3 lg:gap-5">
+          {beta && month === nowMonth && <ForecastCard />}
           <Panel title="Bilanțul lunii" tour="luna-balance" summary={t ? `Grafic: unde s-au dus ${money(t.income)} lei` : undefined}>
             {t ? (
               <MonthBalance

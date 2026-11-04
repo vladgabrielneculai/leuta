@@ -5,6 +5,7 @@ import { celebrateOnce } from "@/lib/confetti";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { GoalView, InvestmentView, Summary } from "@/lib/analytics";
 import { lei, monthLabel, pct, r2 } from "@/lib/util";
+import { useQuickAdd } from "@/components/QuickAdd";
 import { api, Bar, chartTooltipStyle, Empty, Field, Modal, Money, PageHeader, Panel, Skeleton, Stat, Toast, useApi, useApp } from "@/components/ui";
 
 const GOAL_COLORS = ["#C99A1E", "#3D7A4E", "#2E5C8A", "#B5456A", "#6A4E99"];
@@ -67,8 +68,64 @@ function projection(start: number, monthly: number, annual: number, years: numbe
   return out;
 }
 
+/** Plafonul anual de deducere pentru contribuțiile la Pilonul III (pensie facultativă), în euro. */
+const PILON3_DEDUCTIBLE_EUR = 400;
+
+/** La Pilonul II contribuția se reține din salariul brut: nu trece prin buget, deci „contribuit” și „câștig” n-au sens. */
+const isPilon2 = (i: InvestmentView) => i.type === "Pilon II" && i.contributed === 0;
+
+/**
+ * Pensiile (beta): cât din plafonul de deducere al Pilonului III ai folosit anul acesta și ce înseamnă Pilonul II.
+ * Apare doar dacă ai o investiție de tip „Pilon III” sau „Pilon II”.
+ */
+function PensionCard({ investments, month, eurRate }: { investments: InvestmentView[]; month: string; eurRate: number }) {
+  const p3 = investments.filter((i) => i.type === "Pilon III");
+  const p2 = investments.filter((i) => i.type === "Pilon II");
+  if (!p3.length && !p2.length) return null;
+  const year = month.slice(0, 4);
+  const cap = PILON3_DEDUCTIBLE_EUR * eurRate;
+  const paid = p3.reduce((a, i) => a + i.contributedYear, 0);
+  const left = Math.max(0, cap - paid);
+  return (
+    <div className="mt-6 grid gap-4 md:grid-cols-2">
+      {p3.length > 0 && (
+        <div className="rounded-md border border-line p-4">
+          <h3 className="text-[15px] font-semibold">Pilonul III în {year}</h3>
+          <p className="mt-1 text-[13px] text-ink-soft">
+            Contribuțiile la pensia facultativă se deduc din venitul impozabil până la {PILON3_DEDUCTIBLE_EUR} € pe an (≈ {lei(cap)}).
+          </p>
+          <div className="mt-3"><Bar value={cap > 0 ? Math.min(100, (paid / cap) * 100) : 0} color="var(--c-galben)" /></div>
+          <dl className="num mt-3 grid grid-cols-2 gap-2 text-[13px]">
+            <div><dt className="text-ink-soft">Contribuit anul acesta</dt><dd className="font-medium">{lei(paid)}</dd></div>
+            <div>
+              <dt className="text-ink-soft">{left > 0 ? "Mai poți deduce" : "Plafon atins"}</dt>
+              <dd className={`font-medium ${left > 0 ? "" : "text-leu"}`}>{left > 0 ? lei(left) : `peste plafon: ${lei(paid - cap)}`}</dd>
+            </div>
+          </dl>
+          <p className="mt-2 text-[12px] text-ink-faint">Contribuțiile le treci în Luna curentă, la Economii, cu destinația „{p3[0].name}”. Deducerea o aplică angajatorul; întreabă-l dacă o face.</p>
+        </div>
+      )}
+      {p2.length > 0 && (
+        <div className="rounded-md border border-line p-4">
+          <h3 className="text-[15px] font-semibold">Pilonul II</h3>
+          <p className="mt-1 text-[13px] text-ink-soft">
+            Pensia privată obligatorie se plătește din contribuția la pensie reținută din salariul brut, deci nu apare în buget.
+            Actualizează doar valoarea, din extrasul anual primit de la fond sau din contul online.
+          </p>
+          <p className="num mt-3 text-[13px]">
+            Valoare: <span className="font-medium">{lei(p2.reduce((a, i) => a + i.value, 0))}</span>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SavingsPage() {
   const { month, bump } = useApp();
+  const quickAdd = useQuickAdd();
+  // Retragerea se trece ca intrare negativă la Economii, în luna analizată; soldul obiectivului scade.
+  const withdrawFrom = (g: GoalView) => quickAdd({ kind: "saving", withdraw: true, dest: `g:${g.id}`, available: Math.max(0, g.saved) });
   const { data: s, reload } = useApi<Summary>(`/api/summary?month=${month}`);
   const [goal, setGoal] = useState<GoalDraft | null>(null);
 
@@ -87,7 +144,7 @@ export default function SavingsPage() {
     setToast(msg);
   };
 
-  const { inflationRate, confirm } = useApp();
+  const { inflationRate, confirm, beta, eurRate } = useApp();
   const invested = s?.investments.reduce((a, i) => a + i.value, 0) ?? 0;
   const contributed = s?.investments.reduce((a, i) => a + i.contributed, 0) ?? 0;
   const avgInvest = s ? s.trend.slice(-3).reduce((a, t) => a + t.investments, 0) / 3 : 0;
@@ -213,7 +270,14 @@ export default function SavingsPage() {
       <Panel tour="econ-fund"
         className="mb-6"
         title="Fondul de urgență"
-        aside={emergency && <button className="btn-ghost" onClick={() => openGoalEditor(emergency)}>Editează</button>}
+        aside={
+          emergency && (
+            <div className="flex gap-1">
+              {emergency.saved > 0 && <button className="btn-ghost" onClick={() => withdrawFrom(emergency)}>Retrage</button>}
+              <button className="btn-ghost" onClick={() => openGoalEditor(emergency)}>Editează</button>
+            </div>
+          )
+        }
       >
         {emergency ? (
           <EmergencyGauge s={s} />
@@ -247,7 +311,10 @@ export default function SavingsPage() {
                       <span className="h-4 w-1.5 rounded-xs" style={{ background: g.color }} />
                       <h3 className="text-[17px] font-semibold">{g.name}</h3>
                     </div>
-                    <button className="btn-ghost -mr-2 -mt-1 px-2" onClick={() => openGoalEditor(g)}>Editează</button>
+                    <div className="-mr-2 -mt-1 flex">
+                      {g.saved > 0 && <button className="btn-ghost px-2" onClick={() => withdrawFrom(g)}>Retrage</button>}
+                      <button className="btn-ghost px-2" onClick={() => openGoalEditor(g)}>Editează</button>
+                    </div>
                   </div>
                   <div className="num mt-3 flex flex-wrap items-baseline justify-between gap-x-3">
                     <span className="num font-display text-[20px] font-semibold sm:text-[22px]">{lei(g.saved)}</span>
@@ -302,9 +369,9 @@ export default function SavingsPage() {
                           {i.name}
                           <span className="block text-[12px] text-ink-soft">{i.type} · randament așteptat {pct(i.expected_return)}</span>
                         </td>
-                        <td className="py-2 pr-3 text-right">{lei(i.contributed)}</td>
+                        <td className="py-2 pr-3 text-right">{isPilon2(i) ? "din salariu" : lei(i.contributed)}</td>
                         <td className="py-2 pr-3 text-right">{lei(i.value)}</td>
-                        <td className={`py-2 pr-3 text-right ${i.gain >= 0 ? "text-leu" : "text-rosu"}`}>{lei(i.gain)}</td>
+                        <td className={`py-2 pr-3 text-right ${i.gain >= 0 ? "text-leu" : "text-rosu"}`}>{isPilon2(i) ? "–" : lei(i.gain)}</td>
                         <td className="py-2 pr-3 text-[13px] text-ink-soft">{i.valueMonth ? monthLabel(i.valueMonth, true) : "după contribuții"}</td>
                         <td className="py-2 text-right whitespace-nowrap">
                           <button className="btn-ghost px-2" onClick={() => setValueFor({ inv: i, value: String(r2(i.value)) })}>Actualizează valoarea</button>
@@ -317,6 +384,8 @@ export default function SavingsPage() {
               </div>
             </>
           )}
+
+          {beta && <PensionCard investments={s.investments} month={month} eurRate={s.fx.rate || eurRate} />}
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[260px_1fr]">
             <div className="flex flex-col gap-3">
@@ -429,7 +498,7 @@ export default function SavingsPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Tip">
                 <select className="field" value={inv.type} onChange={(e) => setInv({ ...inv, type: e.target.value })}>
-                  {["ETF", "Acțiuni", "Fond mutual", "Depozit", "Titluri de stat", "Pilon III", "Crypto", "Altele"].map((t) => <option key={t}>{t}</option>)}
+                  {["ETF", "Acțiuni", "Fond mutual", "Depozit", "Titluri de stat", "Pilon III", ...(beta || inv.type === "Pilon II" ? ["Pilon II"] : []), "Crypto", "Altele"].map((t) => <option key={t}>{t}</option>)}
                 </select>
               </Field>
               <Field label="Randament anual așteptat (%)">
@@ -453,7 +522,7 @@ export default function SavingsPage() {
             <Field label={`${valueFor.inv.name}: valoarea totală a poziției (lei)`} hint="Din contul brokerului sau al băncii, la sfârșitul lunii">
               <input className="field num" type="number" min={0} step="0.01" value={valueFor.value} onChange={(e) => setValueFor({ ...valueFor, value: e.target.value })} autoFocus />
             </Field>
-            <div className="flex justify-end gap-2">
+            <div className="form-actions">
               <button type="button" className="btn-ghost" onClick={() => setValueFor(null)}>Renunță</button>
               <button type="submit" className="btn-primary">Salvează valoarea</button>
             </div>

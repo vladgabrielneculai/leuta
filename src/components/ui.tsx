@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { currentMonth, eur, lei, monthLabel, money } from "@/lib/util";
-import { ReceiptMeta } from "./receipt";
+import { CALENDAR_CYCLE, currentBudgetMonth, type PayCycle } from "@/lib/payCycle";
 import ReauthDialog from "./ReauthDialog";
 import { watchSystemTheme } from "@/lib/theme";
 
@@ -20,6 +20,11 @@ export type ConfirmOptions = {
 type AppCtx = {
   month: string;
   setMonth: (m: string) => void;
+  /** Luna în care suntem acum: cea calendaristică sau, cu luna de la salariu, luna salariului primit ultima dată. */
+  nowMonth: string;
+  /** Cum se împart intrările pe luni (calendaristic sau de la salariu la salariu). */
+  cycle: PayCycle;
+  reloadCycle: () => Promise<PayCycle | null>;
   eurRate: number;
   fxDate: string | null;
   fxError: string | null;
@@ -32,6 +37,9 @@ type AppCtx = {
   confirm: (opts: string | ConfirmOptions) => Promise<boolean>;
   version: number;
   bump: () => void;
+  /** Versiunea beta: funcționalitățile noi apar doar aici (vezi lib/beta.ts). Shell o află din /api/auth/status. */
+  beta: boolean;
+  setBeta: (b: boolean) => void;
 };
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -53,13 +61,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
   } | null>(null);
 
   const [version, setVersion] = useState(0);
+  const [beta, setBeta] = useState(false);
 
   useEffect(() => watchSystemTheme(), []);
+
+  const [cycle, setCycle] = useState<PayCycle>(CALENDAR_CYCLE);
+  const nowMonth = currentBudgetMonth(cycle);
+
+  // Luna aleasă în sesiune rămâne; altfel pornim din luna de buget curentă (după ce aflăm ziua salariului).
+  const reloadCycle = useCallback(async () => {
+    try {
+      const r = await fetch("/api/pay-cycle");
+      if (!r.ok) return null;
+      const d = (await r.json()) as { cycle: PayCycle };
+      setCycle(d.cycle);
+      if (!sessionStorage.getItem("luna")) setMonthState(currentBudgetMonth(d.cycle));
+      return d.cycle;
+    } catch {
+      return null; // fără rețea: rămânem pe luna calendaristică
+    }
+  }, []);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("luna");
     if (saved && /^\d{4}-\d{2}$/.test(saved)) setMonthState(saved);
-  }, []);
+    if (!["/login", "/setup"].includes(window.location.pathname)) reloadCycle();
+  }, [reloadCycle]);
 
   const setMonth = (m: string) => {
     setMonthState(m);
@@ -130,6 +157,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       value={{
         month,
         setMonth,
+        nowMonth,
+        cycle,
+        reloadCycle,
         eurRate,
         fxDate,
         fxError,
@@ -142,6 +172,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         confirm,
         version,
         bump: () => setVersion((v) => v + 1),
+        beta,
+        setBeta,
       }}
     >
       {children}
@@ -370,8 +402,8 @@ export function Money({
   const sizes = {
     sm: "text-[14px]",
     md: "text-[17px] font-medium",
-    lg: "font-display text-[18px] sm:text-[22px] font-semibold leading-tight tracking-[-0.03em]",
-    xl: "font-display text-[32px] sm:text-[40px] font-bold leading-none tracking-[-0.04em]",
+    lg: "font-display text-[20px] sm:text-[24px] font-semibold leading-tight tracking-[-0.04em]",
+    xl: "font-display text-[46px] sm:text-[52px] font-semibold leading-none tracking-[-0.055em]",
   };
   const tones: Record<string, string> = {
     leu: "text-leu", rosu: "text-rosu", galben: "text-galben", albastru: "text-albastru", mov: "text-mov", soft: "text-ink-soft",
@@ -379,10 +411,11 @@ export function Money({
   return (
     <span className="num inline-flex flex-col">
       {size === "lg" || size === "xl" ? (
-        // Cifrele mari: „lei” mai mic, lângă sumă, ca să încapă pe un rând chiar și cu zecimale.
+        // Cifrele mari: partea întreagă apăsat, zecimalele estompate, „lei” mic și verde (accentul) lângă sumă.
         <span className={`whitespace-nowrap ${sizes[size]} ${tone ? tones[tone] : ""}`}>
-          {money(v)}
-          <span className="ml-1 inline-block text-[0.55em] font-semibold opacity-70">lei</span>
+          {money(v).replace(/,\d+$/, "")}
+          <span className="opacity-35">{money(v).match(/,\d+$/)?.[0]}</span>
+          <span className={`ml-1.5 inline-block text-[0.4em] font-semibold tracking-[-0.01em] ${tone ? "opacity-80" : "text-leu"}`}>lei</span>
         </span>
       ) : (
         <span className={`${sizes[size]} ${tone ? tones[tone] : ""}`}>{lei(v, decimals)}</span>
@@ -396,20 +429,19 @@ export function Money({
 
 // ---------- Structură ----------
 
-/** Antetul paginii, ca începutul unui bon: numărul bonului și ora, titlul, apoi o linie dublă. */
+/** Antetul paginii: titlul (cu explicația, pe ecran mare) și acțiunile, apoi o linie fină. */
 export function PageHeader({ title, intro, actions }: { title: string; intro?: ReactNode; actions?: ReactNode }) {
-  const { month } = useApp();
   return (
-    <header className="mb-6 sm:mb-8" data-tour="title">
-      <ReceiptMeta month={month} label={monthLabel(month, true)} />
+    <header className="mb-4 sm:mb-8" data-tour="title">
+      {/* Pe telefon, antetul e doar titlul; explicația apare pe ecranul mare. */}
       <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
         <div className="max-w-2xl">
-          <h1 className="text-[24px] font-bold leading-tight sm:text-[31px]">{title}</h1>
-          {intro && <p className="mt-1.5 text-[14px] text-ink-soft sm:text-[15px]">{intro}</p>}
+          <h1 className="text-[26px] font-semibold leading-[1.1] tracking-[-0.04em] sm:text-[34px]">{title}</h1>
+          {intro && <p className="mt-1.5 hidden text-[14px] text-ink-soft sm:text-[15px] lg:block">{intro}</p>}
         </div>
         {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto *:min-w-[40%] *:flex-1 sm:*:min-w-0 sm:*:flex-none [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}
       </div>
-      <div className="rule-double mt-4" aria-hidden />
+      <div className="rule-double mt-3 sm:mt-4" aria-hidden />
     </header>
   );
 }
@@ -644,23 +676,51 @@ export function Skeleton({ variant = "page" }: { variant?: "page" | "block" }) {
   );
 }
 
-export function Toast({ message, onDone }: { message: string | null; onDone: () => void }) {
+/**
+ * Mesaj scurt, care dispare singur. Cu `action` (ex. „Anulează”), mesajul are un buton și stă mai mult pe ecran;
+ * `onDone` se cheamă când mesajul dispare fără ca butonul să fi fost atins.
+ */
+export function Toast({ message, onDone, action }: { message: string | null; onDone: () => void; action?: { label: string; onClick: () => void } }) {
   useEffect(() => {
     if (!message) return;
-    const t = setTimeout(onDone, 3200);
+    const t = setTimeout(onDone, action ? 4500 : 3200);
     return () => clearTimeout(t);
-  }, [message, onDone]);
+  }, [message, onDone, action]);
   if (!message || typeof document === "undefined") return null;
   // Pe telefon, centrat deasupra barei de navigare de jos; pe ecrane mari, în colțul din dreapta.
   return createPortal(
     <div
       role="status"
-      className="sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-90 rounded-md bg-ink px-4 py-3 text-center text-[14px] text-sheet shadow-lg sm:inset-x-auto sm:right-5 sm:rounded-md sm:py-2.5 sm:text-left lg:bottom-5"
+      className={`sheet-up fixed inset-x-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-90 rounded-md bg-ink text-[14px] text-sheet shadow-lg sm:inset-x-auto sm:right-5 sm:rounded-md sm:text-left lg:bottom-5 ${
+        action ? "flex items-center gap-3 py-1.5 pl-4 pr-1.5" : "px-4 py-3 text-center sm:py-2.5"
+      }`}
     >
-      {message}
+      {action ? (
+        <>
+          <span className="min-w-0 flex-1">{message}</span>
+          <button type="button" className="min-h-[40px] shrink-0 rounded-[4px] px-3 font-semibold text-galben active:bg-sheet/10" onClick={action.onClick}>
+            {action.label}
+          </button>
+        </>
+      ) : (
+        message
+      )}
     </div>,
     document.body,
   );
+}
+
+/** Ecran de telefon (sub pragul `lg` al Tailwind, unde apare meniul lateral). Pe server și la prima randare: false. */
+export function useIsMobile() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023.98px)");
+    const update = () => setMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return mobile;
 }
 
 // ---------- Iconițe mici pentru acțiuni (pe telefon înlocuiesc textul butoanelor) ----------
@@ -689,7 +749,7 @@ export const LEVEL_STYLE = {
 } as const;
 
 export const chartTooltipStyle = {
-  contentStyle: { background: "var(--c-sheet)", border: "1px dashed var(--c-ink-faint)", borderRadius: 2, fontSize: 12.5, fontFamily: '"IBM Plex Mono", ui-monospace, monospace' },
+  contentStyle: { background: "var(--c-sheet)", border: "1px solid var(--c-line)", borderRadius: 10, fontSize: 12.5, fontFamily: '"Geist Variable", ui-sans-serif, system-ui, sans-serif' },
   labelStyle: { color: "var(--c-ink)", fontWeight: 600 },
 };
 
@@ -780,6 +840,96 @@ export function Tabs<T extends string>({
 }
 
 /** Inel de progres (0–100%), cu procentul în mijloc. */
+/**
+ * Pentru paginile cu multe secțiuni (ex. Setări). Pe ecran mare: tab-urile obișnuite. Pe telefon: o listă de rânduri
+ * (nume + o frază); atingi unul și se deschide secțiunea, cu „‹ Toate” deasupra. Butonul „înapoi” al telefonului
+ * revine la listă (secțiunea deschisă e trecută în adresă, ca #securitate).
+ */
+export function SectionsNav<T extends string>({
+  tabs,
+  value,
+  onChange,
+  label,
+  backLabel,
+  children,
+  ...rest
+}: {
+  tabs: readonly { key: T; label: string; short?: string; hint?: string }[];
+  value: T;
+  onChange: (t: T) => void;
+  label: string;
+  /** textul de deasupra secțiunii deschise, pe telefon (ex. „Toate setările”) */
+  backLabel: string;
+  children: ReactNode;
+  "data-tour"?: string;
+}) {
+  const mobile = useIsMobile();
+  const [picked, setPicked] = useState(false);
+  useEffect(() => {
+    const sync = () => {
+      const h = window.location.hash.slice(1);
+      const found = tabs.some((t) => t.key === h);
+      setPicked(found);
+      if (found) onChange(h as T);
+    };
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!mobile) {
+    return (
+      <>
+        <Tabs tabs={tabs} value={value} onChange={onChange} className="mb-5" label={label} data-tour={rest["data-tour"]} />
+        {children}
+      </>
+    );
+  }
+  if (!picked) {
+    return (
+      <ul className="overflow-hidden rounded-md border border-line bg-sheet" aria-label={label} data-tour={rest["data-tour"]}>
+        {tabs.map((t) => (
+          <li key={t.key} className="border-b border-line last:border-b-0">
+            <button
+              type="button"
+              className="flex min-h-[60px] w-full items-center gap-3 px-3.5 py-2.5 text-left active:bg-paper"
+              onClick={() => {
+                onChange(t.key);
+                setPicked(true);
+                history.pushState(null, "", `#${t.key}`);
+                window.scrollTo(0, 0);
+              }}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-medium text-ink">{t.label}</span>
+                {t.hint && <span className="block truncate text-[12.5px] text-ink-soft">{t.hint}</span>}
+              </span>
+              <span className="shrink-0 text-[18px] text-ink-faint" aria-hidden>›</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return (
+    <>
+      <button
+        type="button"
+        className="mb-3 flex min-h-[40px] items-center gap-1 text-[14px] font-medium text-albastru"
+        onClick={() => {
+          if (window.location.hash) history.back();
+          else setPicked(false);
+        }}
+      >
+        <span className="text-[20px] leading-none" aria-hidden>‹</span> {backLabel}
+      </button>
+      <h2 className="mb-3 text-[18px] font-semibold">{tabs.find((t) => t.key === value)?.label}</h2>
+      {children}
+    </>
+  );
+}
+
 export function Ring({ value, color = "var(--c-leu)", size = 76, stroke = 8, children }: { value: number; color?: string; size?: number; stroke?: number; children?: ReactNode }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;

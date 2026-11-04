@@ -161,5 +161,5 @@ export async function proxy(req: NextRequest) {
 export const config = {
   // Totul, mai puțin fișierele statice ale Next.js, iconițele/manifestul PWA, imaginile din emailuri
   // (sigla din /email/ e încărcată de clientul de email, fără sesiune) și imaginile/clipul site-ului de prezentare.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|icon-.*\\.png|apple-icon.png|manifest.webmanifest|email/|ecrane/|media/|og.png).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|icon-.*\\.png|apple-icon.png|manifest.webmanifest|email/|media/|og.png).*)"],
 };

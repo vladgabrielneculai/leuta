@@ -198,7 +198,7 @@ export default function AffordabilityPage() {
         intro="Alege ce vrei să cumperi și cum plătești: vezi imediat dacă ți-o permiți și cum îți schimbă bugetul lunar."
         actions={
           <button className="btn-primary hidden sm:inline-flex" onClick={handleSavePlan} disabled={savingPlan}>
-            {savingPlan ? "Se salvează…" : "💾 Salvează în lista de dorințe"}
+            {savingPlan ? "Se salvează…" : "Salvează în lista de dorințe"}
           </button>
         }
       />
@@ -306,7 +306,6 @@ export default function AffordabilityPage() {
                       : "border-line bg-paper text-ink-soft hover:bg-sheet"
                   }`}
                 >
-                  <span className="text-[18px]">💵</span>
                   <div className="text-left">
                     <div className="text-[14px]">Plată integrală</div>
                     <div className="text-[11px] opacity-80">din economii pe loc</div>
@@ -322,7 +321,6 @@ export default function AffordabilityPage() {
                       : "border-line bg-paper text-ink-soft hover:bg-sheet"
                   }`}
                 >
-                  <span className="text-[18px]">💳</span>
                   <div className="text-left">
                     <div className="text-[14px]">Credit / În rate</div>
                     <div className="text-[11px] opacity-80">împrumut bancar</div>
@@ -406,7 +404,7 @@ export default function AffordabilityPage() {
 
             <div className="mt-4 pt-3 border-t border-line flex justify-end">
               <button className="btn-ghost text-[13px]" onClick={handleSavePlan} disabled={savingPlan}>
-                ➕ Salvează ca opțiune în lista de dorințe
+                Salvează ca opțiune în lista de dorințe
               </button>
             </div>
           </Panel>
@@ -632,8 +630,8 @@ export default function AffordabilityPage() {
               {/* Costul total în cele două variante, pe aceeași scară: diferența e dobânda. */}
               <div className="mb-5 flex flex-col gap-2.5" role="img" aria-label="Costul total: cash față de credit">
                 {[
-                  { label: "💵 Cash", total: totalPrice, extra: 0, color: "var(--c-leu)" },
-                  { label: "💳 Credit", total: loan.totalCost, extra: loan.totalInterest, color: "var(--c-mov)" },
+                  { label: "Cash", total: totalPrice, extra: 0, color: "var(--c-leu)" },
+                  { label: "Credit", total: loan.totalCost, extra: loan.totalInterest, color: "var(--c-mov)" },
                 ].map((r) => (
                   <div key={r.label} className="grid grid-cols-[78px_1fr_auto] items-center gap-2 text-[13px]">
                     <span className="text-ink-soft">{r.label}</span>
@@ -659,7 +657,7 @@ export default function AffordabilityPage() {
                   }`}
                 >
                   <div className="flex items-center gap-1.5 font-bold text-[14px] text-ink">
-                    <span>💵</span> Plată Cash
+                    Plată Cash
                   </div>
                   <div className="mt-3 space-y-2 text-[12.5px]">
                     <div className="flex items-baseline justify-between gap-3">
@@ -688,7 +686,7 @@ export default function AffordabilityPage() {
                   }`}
                 >
                   <div className="flex items-center gap-1.5 font-bold text-[14px] text-ink">
-                    <span>💳</span> Prin Credit
+                    Prin Credit
                   </div>
                   <div className="mt-3 space-y-2 text-[12.5px]">
                     <div className="flex items-baseline justify-between gap-3">
@@ -713,7 +711,7 @@ export default function AffordabilityPage() {
             </div>
 
             <div className="mt-4 rounded-lg bg-sheet p-3 text-[12.5px] text-ink-soft border border-line">
-              💡 <strong>Concluzie comparativă:</strong>{" "}
+              <strong>Concluzie comparativă:</strong>{" "}
               {loan.totalInterest > 0 ? (
                 <span>
                   Plata pe loc te scutește de <strong>{lei(loan.totalInterest)}</strong> plătiți băncii pe dobânzi.
@@ -784,7 +782,7 @@ export default function AffordabilityPage() {
                         {evalSaved.overallVerdict === "safe"
                           ? "✓ Accesibil"
                           : evalSaved.overallVerdict === "caution"
-                          ? "⚠️ La limită"
+                          ? "La limită"
                           : "✕ Nerecomandat"}
                       </span>
                     </div>
@@ -810,7 +808,7 @@ export default function AffordabilityPage() {
                       className="btn-ghost text-[12px] py-1 px-2 text-albastru"
                       onClick={() => loadPlanIntoSimulator(p)}
                     >
-                      🚀 Testează
+                      Testează
                     </button>
 
                     {p.financing_type === "loan" && (
@@ -818,7 +816,7 @@ export default function AffordabilityPage() {
                         className="btn-ghost text-[12px] py-1 px-2 text-mov"
                         onClick={() => handleConvertToLoan(p)}
                       >
-                        🏦 Creează credit
+                        Creează credit
                       </button>
                     )}
 

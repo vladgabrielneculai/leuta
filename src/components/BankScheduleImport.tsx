@@ -125,7 +125,6 @@ export default function BankScheduleImport({
             e.target.value = "";
           }}
         />
-        <div className="mb-1 text-[26px]">📄</div>
         <div className="text-[14px] font-semibold text-ink">
           {uploading ? "Se citește graficul…" : parsed ? `„${parsed.filename}” — alege alt fișier` : "Apasă aici sau trage PDF-ul de la bancă"}
         </div>
@@ -164,7 +163,7 @@ export default function BankScheduleImport({
             )}
             {jumps.map(({ row, from, to, interestOnly }) => (
               <p key={row.month} className="mt-2 rounded-md bg-galben-tint p-2 text-[12.5px]">
-                ⚠️ Din {monthLabel(row.month)} rata totală se schimbă de la {lei(from, true)} la <strong>{lei(to, true)}</strong>
+                Din {monthLabel(row.month)} rata totală se schimbă de la {lei(from, true)} la <strong>{lei(to, true)}</strong>
                 {interestOnly ? ` (în ${monthLabel(interestOnly.month)} se plătește doar dobânda: ${lei(interestOnly.payment, true)})` : ""}.
               </p>
             ))}

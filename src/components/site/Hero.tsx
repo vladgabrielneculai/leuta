@@ -1,52 +1,33 @@
-"use client";
-
-import { useRef } from "react";
 import { SITE } from "@/lib/site/config";
 import { money } from "@/lib/site/format";
-import { useScrollEffect } from "@/lib/site/scroll";
-import Barcode from "./Barcode";
+import { Guilloche } from "@/components/Guilloche";
+import { DEMO, NoteBands, TileIcon, type IconName } from "./demo";
 
-/** Rândurile bonului lunii, cu aceleași cifre ca în contul demonstrativ din aplicație. */
-const LINES: { label: string; value: number; color: string; sign?: string }[] = [
-  { label: "Costuri fixe", value: 300, color: "var(--c-albastru)", sign: "−" },
-  { label: "Rate credite", value: 2760.72, color: "var(--c-mov)", sign: "−" },
-  { label: "Cheltuieli variabile", value: 4900, color: "var(--c-rosu)", sign: "−" },
-  { label: "Economii", value: 1600, color: "var(--c-galben)", sign: "−" },
-];
-
+/** Prima secțiune: titlul, cele două butoane și, alături, ecranul Acasă din aplicație pe o rozetă de ghioș. */
 export default function Hero() {
-  const section = useRef<HTMLElement>(null);
-  const receipt = useRef<HTMLDivElement>(null);
-  const copy = useRef<HTMLDivElement>(null);
-
-  // La derulare bonul urcă mai încet decât pagina și se înclină ușor, iar textul se estompează.
-  useScrollEffect(section, "through", (p) => {
-    const t = Math.max(0, p - 0.5) * 2; // 0 cât timp secțiunea e încă sus, apoi 0 → 1
-    if (receipt.current) receipt.current.style.transform = `translateY(${t * -60}px) rotate(${-1.5 + t * -3}deg)`;
-    if (copy.current) copy.current.style.opacity = String(1 - t * 0.9);
-  });
-
   return (
-    <section ref={section} className="relative overflow-hidden pt-24 sm:pt-28">
-      <div className="mx-auto grid max-w-6xl items-start gap-10 px-4 pb-16 sm:px-6 md:grid-cols-[1.3fr_0.7fr] lg:grid-cols-[1.4fr_0.8fr] md:gap-8 md:pb-24 lg:pt-6">
-        <div ref={copy} className="md:pt-14">
-          <p className="kicker rise">Bon nr. 0001 · Bugetul personal</p>
-          <h1 className="rise mt-5 text-[42px] font-bold leading-[1.03] sm:text-[56px] lg:text-[66px]" style={{ animationDelay: "80ms" }}>
-            Bugetul tău, clar ca un bon.
+    <section className="relative overflow-hidden pt-16">
+      <div className="mx-auto grid max-w-6xl items-center gap-6 px-4 pb-14 pt-8 sm:px-6 md:grid-cols-[1.15fr_0.85fr] md:gap-10 md:pb-20 md:pt-14">
+        <div>
+          <p className="kicker rise">Bugetul personal, pe telefon și pe calculator</p>
+          <h1 className="rise mt-4 text-[44px] font-semibold leading-[0.98] tracking-[-0.055em] sm:text-[64px] lg:text-[76px]" style={{ animationDelay: "60ms" }}>
+            Bugetul tău,
+            <br />
+            <span className="text-leu">ban cu ban.</span>
           </h1>
-          <p className="rise mt-6 max-w-136 text-[16px] leading-relaxed text-ink-soft sm:text-[17px]" style={{ animationDelay: "160ms" }}>
-            Leuța îți arată în fiecare lună unde au mers banii: venituri, cheltuieli, rate și economii, pe telefon și pe calculator. Fără foi de calcul și
-            fără acces la contul tău bancar.
+          <NoteBands className="rise mt-6" style={{ animationDelay: "120ms" }} />
+          <p className="rise mt-6 max-w-136 text-[17px] leading-relaxed text-ink-soft sm:text-[18px]" style={{ animationDelay: "160ms" }}>
+            Leuța îți arată unde merg banii în fiecare lună: venituri, cheltuieli, rate și economii. Fără foi de calcul și fără acces la contul tău bancar.
           </p>
-          <div className="rise mt-8 flex flex-wrap items-center gap-3" style={{ animationDelay: "240ms" }}>
+          <div className="rise mt-8 flex flex-wrap items-center gap-2.5" style={{ animationDelay: "220ms" }}>
             <a href="#invitatie" className="btn-primary">
-              Cere o invitație <span aria-hidden>›</span>
+              Cere o invitație
             </a>
-            <a href="#functii" className="btn-ghost">
+            <a href="#luna" className="btn-ghost">
               Vezi cum funcționează
             </a>
           </div>
-          <p className="rise mt-5 text-[13px] text-ink-faint" style={{ animationDelay: "320ms" }}>
+          <p className="rise mt-5 text-[13px] text-ink-faint" style={{ animationDelay: "280ms" }}>
             Gratuit · Acces pe bază de invitație · Ai deja cont?{" "}
             <a href={`${SITE.appUrl}/login`} className="text-ink-soft underline underline-offset-2 hover:text-ink">
               Intră aici
@@ -54,62 +35,95 @@ export default function Hero() {
           </p>
         </div>
 
-        {/* Casa de marcat: fanta și bonul care iese din ea. */}
-        <div className="relative mx-auto w-full max-w-[380px] md:mt-2">
-          <div className="printer-slot relative z-10 mx-[-14px]" aria-hidden />
-          <div className="relative mt-[-9px] overflow-hidden px-1 pb-8">
-            <div ref={receipt} style={{ transformOrigin: "50% 0" }}>
-              <div className="printing">
-                <div className="panel mt-0! px-6 pb-6 pt-7 text-[13.5px]">
-                  <div className="text-center">
-                    <p className="text-[17px] font-bold tracking-tight">LEUȚA</p>
-                    <p className="mt-0.5 text-[11.5px] uppercase tracking-[0.14em] text-ink-faint">Bonul lunii · octombrie 2026</p>
-                  </div>
-                  <div className="rule-dashed my-4" />
-                  <Row label="Venit" value={10080} strong color="var(--c-leu)" />
-                  <div className="mt-2 space-y-1.5">
-                    {LINES.map((l) => (
-                      <Row key={l.label} {...l} />
-                    ))}
-                  </div>
-                  <div className="rule-double my-4" />
-                  <div className="flex items-baseline justify-between">
-                    <span className="font-semibold">REST NEALOCAT</span>
-                    <span className="num text-[22px] font-bold text-leu">
-                      {money(519.28)} <span className="text-[13px] font-medium">lei</span>
-                    </span>
-                  </div>
-                  <div className="mt-4 flex h-2.5 overflow-hidden rounded-[3px]" aria-hidden>
-                    <span style={{ width: "3%", background: "var(--c-albastru)" }} />
-                    <span style={{ width: "27%", background: "var(--c-mov)" }} />
-                    <span style={{ width: "49%", background: "var(--c-rosu)" }} />
-                    <span style={{ width: "16%", background: "var(--c-galben)" }} />
-                    <span className="striped" style={{ width: "5%" }} />
-                  </div>
-                  <div className="rule-dashed my-4" />
-                  <p className="text-center text-[11.5px] uppercase tracking-[0.2em] text-ink-faint">*** Vă mulțumim! ***</p>
-                  <Barcode value="leuta-2026-10" className="mx-auto mt-3 h-9 w-48 text-ink" />
-                  <p className="mt-1 text-center text-[10.5px] tracking-[0.3em] text-ink-faint">100 2026 1007</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="relative grid min-h-[580px] place-items-center">
+          <Guilloche fine rings={5} className="absolute left-1/2 top-1/2 h-[min(130vw,620px)] w-[min(130vw,620px)] max-w-none -translate-x-1/2 -translate-y-1/2 text-leu opacity-50" />
+          <PhoneHome />
         </div>
       </div>
     </section>
   );
 }
 
-function Row({ label, value, color, sign, strong }: { label: string; value: number; color: string; sign?: string; strong?: boolean }) {
+const FEED: { icon: IconName; name: string; sub: string; value: number; color: string }[] = [
+  { icon: "cart", name: "Kaufland", sub: "Mâncare · azi", value: -312.4, color: "var(--c-rosu)" },
+  { icon: "car", name: "Benzină", sub: "Transport · azi", value: -250, color: "var(--c-albastru)" },
+  { icon: "coffee", name: "Cafenea", sub: "Ieșiri · ieri", value: -18.5, color: "var(--c-mov)" },
+  { icon: "wallet", name: "Salariu", sub: "Venit · 1 noiembrie", value: DEMO.income, color: "var(--c-leu)" },
+];
+
+/** Ecranul Acasă din aplicație (stilul B+), desenat în HTML, cu cifrele din contul demonstrativ. */
+function PhoneHome() {
+  const left = DEMO.budget - DEMO.spent;
+  const [int, dec] = money(left).split(",");
   return (
-    <div className="flex items-baseline gap-2">
-      <span className="h-2 w-2 shrink-0 -translate-y-px rounded-[2px]" style={{ background: color }} aria-hidden />
-      <span className={strong ? "font-semibold" : "text-ink-soft"}>{label}</span>
-      <span className="leader-dots min-w-4 flex-1" aria-hidden />
-      <span className={`num ${strong ? "font-bold" : ""}`}>
-        {sign ? `${sign} ` : ""}
-        {money(value)}
-      </span>
+    <div
+      className="relative flex aspect-276/560 w-[276px] flex-col overflow-hidden rounded-[42px] border border-line bg-paper shadow-[0_40px_80px_-30px_rgb(0_0_0/0.4),0_0_0_9px_#0b0c0b,0_0_0_10px_#262826]"
+      role="img"
+      aria-label={`Ecranul Acasă din aplicație: mai poți cheltui ${money(left)} lei luna aceasta.`}
+    >
+      <div className="flex h-9 items-center justify-between px-6 pt-1.5 text-[11px] font-semibold" aria-hidden>
+        <span className="num w-8">9:41</span>
+        <span className="h-[20px] w-[76px] rounded-full bg-[#0b0c0b]" />
+        <span className="w-8" />
+      </div>
+      <div className="flex items-center justify-between px-[18px] pt-1.5">
+        <div className="flex flex-col gap-[3px] text-[15px] font-semibold tracking-[-0.03em]">
+          Leuța
+          <NoteBands size="xs" />
+        </div>
+        <span className="rounded-full border border-line bg-sheet px-2.5 py-[3px] text-[11px] text-ink-soft">Noiembrie</span>
+      </div>
+      <div className="flex-1 px-[18px] pt-[18px]">
+        <p className="text-[11px] text-ink-faint">Mai poți cheltui</p>
+        <p className="num mt-0.5 text-[38px] font-semibold leading-none tracking-[-0.055em]">
+          {int}
+          <span className="opacity-35">,{dec}</span>
+          <span className="ml-1 text-[16px] tracking-[-0.02em] text-leu">lei</span>
+        </p>
+        <p className="mt-1.5 text-[11px] text-ink-faint">
+          ≈ {money(left / DEMO.daysLeft, 0)} lei pe zi, {DEMO.daysLeft} de zile rămase
+        </p>
+        <div className="mt-3.5 flex gap-[3px]">
+          <i className="h-1 rounded-full bg-rosu" style={{ flex: DEMO.spent }} />
+          <i className="h-1 rounded-full bg-line" style={{ flex: left }} />
+        </div>
+        <div className="num mt-3.5 grid grid-cols-3">
+          {(
+            [
+              ["Venit", DEMO.income],
+              ["Cheltuit", DEMO.spent],
+              ["Economii", DEMO.saving],
+            ] as const
+          ).map(([l, v], i) => (
+            <div key={l} className={i ? "border-l border-line pl-2.5" : ""}>
+              <small className="block text-[10px] text-ink-faint">{l}</small>
+              <strong className="text-[13px] font-semibold">{money(v, 0)}</strong>
+            </div>
+          ))}
+        </div>
+        <ul className="mt-[18px] overflow-hidden rounded-2xl border border-line bg-sheet">
+          {FEED.map((e) => (
+            <li key={e.name} className="flex items-center gap-2.5 border-b border-line px-[11px] py-[9px] text-[12.5px] last:border-b-0">
+              <TileIcon icon={e.icon} color={e.color} size="sm" />
+              <span className="min-w-0 flex-1 truncate">
+                {e.name}
+                <small className="block text-[10.5px] text-ink-faint">{e.sub}</small>
+              </span>
+              <span className={`num font-semibold ${e.value > 0 ? "text-leu" : ""}`}>
+                {e.value > 0 ? "+" : "−"}
+                {money(Math.abs(e.value), e.value > 0 ? 0 : 2)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="grid grid-cols-5 items-center border-t border-line bg-sheet px-1.5 pb-3.5 pt-2 text-center text-[9.5px] text-ink-faint" aria-hidden>
+        <span className="font-semibold text-ink">Acasă</span>
+        <span>Luna</span>
+        <span className="mx-auto grid h-[38px] w-[38px] place-items-center rounded-xl bg-leu text-[22px] leading-none text-on-accent">+</span>
+        <span>Planuri</span>
+        <span>Eu</span>
+      </div>
     </div>
   );
 }

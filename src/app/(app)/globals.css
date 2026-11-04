@@ -1,7 +1,6 @@
-@import '@fontsource/ibm-plex-mono/400.css' layer(base);
-@import '@fontsource/ibm-plex-mono/500.css' layer(base);
-@import '@fontsource/ibm-plex-mono/600.css' layer(base);
-@import '@fontsource/ibm-plex-mono/700.css' layer(base);
+/* Stilul „elvețian, cu lei”: un singur font fără serife (Geist) pentru tot, Geist Mono pentru etichete mici. */
+@import '@fontsource-variable/geist/index.css' layer(base);
+@import '@fontsource-variable/geist-mono/index.css' layer(base);
 
 @import 'tailwindcss';
 
@@ -44,9 +43,9 @@
   --color-violet: rgb(var(--mov));
   --color-rosu-soft: rgb(var(--rosu));
 
-  --font-display: 'IBM Plex Mono', ui-monospace, monospace;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --font-sans: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-display: 'Geist Variable', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+  --font-sans: 'Geist Variable', 'Helvetica Neue', Arial, sans-serif;
 }
 
 /*
@@ -75,51 +74,11 @@
 
 @utility panel {
   /*
-   * Panoul = un bon: hârtie fără chenar, cu marginea de sus și de jos ruptă în zigzag (dinții sunt
-   * pseudo-elemente desenate în afara cutiei, deci conținutul nu e tăiat). Umbra e un `drop-shadow`,
-   * ca să urmeze și dinții.
+   * Panoul: o foaie albă pe fundalul paginii, cu o linie fină de contur și o umbră abia vizibilă
+   * (noaptea, fără umbră: foaia e doar puțin mai deschisă decât fundalul).
    */
-  @apply relative bg-sheet transition-[background-color,transform,filter] duration-200;
-  margin-block: var(--tooth);
-  filter: drop-shadow(0 1px 1.5px rgb(var(--shadow) / 0.14))
-    drop-shadow(0 6px 14px rgb(var(--shadow) / 0.06));
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: var(--tooth);
-    pointer-events: none;
-    background-repeat: repeat-x;
-    background-size: calc(var(--tooth) * 2) var(--tooth);
-  }
-  &::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: var(--tooth);
-    pointer-events: none;
-    background-repeat: repeat-x;
-    background-size: calc(var(--tooth) * 2) var(--tooth);
-  }
-  &::before {
-    bottom: 100%;
-    background-image: conic-gradient(
-      from 135deg at 50% 0,
-      rgb(var(--sheet)) 90deg,
-      transparent 0
-    );
-    background-position: 0 100%;
-  }
-  &::after {
-    top: 100%;
-    background-image: conic-gradient(
-      from -45deg at 50% 100%,
-      rgb(var(--sheet)) 90deg,
-      transparent 0
-    );
-  }
+  @apply relative rounded-2xl border border-line bg-sheet transition-[background-color,transform,box-shadow] duration-200;
+  box-shadow: 0 1px 2px rgb(var(--shadow) / 0.04), 0 8px 24px -16px rgb(var(--shadow) / 0.12);
 }
 
 @utility panel-interactive {
@@ -127,20 +86,14 @@
 }
 
 @utility receipt-title {
-  /* Titlul unei secțiuni de bon: majuscule mono, rărite. */
-  @apply font-display text-[13px] font-semibold uppercase tracking-[0.08em] sm:text-[13.5px];
+  /* Titlul unei secțiuni: scurt, apăsat, fără majuscule (numele vine de la vechiul stil „bon”). */
+  @apply font-display text-[15px] font-semibold tracking-[-0.02em] sm:text-[15.5px];
 }
 
 @utility rule-dashed {
-  /* Linie punctată de separare, ca între secțiunile bonului. */
+  /* Linie fină de separare. */
   height: 1px;
-  background-image: linear-gradient(
-    to right,
-    rgb(var(--line-strong)) 55%,
-    transparent 0
-  );
-  background-size: 7px 1px;
-  background-repeat: repeat-x;
+  background: rgb(var(--line));
 }
 
 @utility num {
@@ -159,8 +112,8 @@
 
 @utility stamp {
   /* Ștampilă, ca pe un bon vizat. */
-  @apply inline-block -rotate-3 rounded-[3px] border-2 border-leu px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-widest text-leu;
-  box-shadow: inset 0 0 0 1px rgb(var(--leu) / 0.25);
+  /* Eticheta „cea mai potrivită”: o pastilă verde, ca accentul aplicației. */
+  @apply inline-flex items-center gap-1 rounded-full bg-leu-tint px-2.5 py-0.5 text-[12px] font-semibold text-leu;
 }
 
 @utility leader-dots {
@@ -179,26 +132,25 @@
 }
 
 @utility rule-double {
-  height: 4px;
-  border-top: 1px solid rgb(var(--ink) / 0.55);
-  border-bottom: 1px solid rgb(var(--ink) / 0.55);
+  height: 1px;
+  background: rgb(var(--line));
 }
 
 @utility field {
-  @apply block w-full min-w-0 rounded-md border border-line-strong/70 bg-field px-3 py-2.5 text-[16px] sm:py-1.5 sm:text-[14px] text-ink placeholder:text-ink-faint transition-all duration-150 focus:border-albastru focus:ring-1 focus:ring-albastru focus:outline-hidden;
+  @apply block w-full min-w-0 rounded-[10px] border border-line-strong/80 bg-field px-3 py-2.5 text-[16px] sm:py-2 sm:text-[14px] text-ink placeholder:text-ink-faint transition-all duration-150 focus:border-leu focus:ring-2 focus:ring-leu/20 focus:outline-hidden;
 }
 
 @utility btn {
   /* Pe telefon butoanele au minimum 40px înălțime: ușor de atins cu degetul. */
-  @apply inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-md px-3.5 py-1.5 text-[14px] sm:min-h-0 font-medium transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  @apply inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-[10px] px-4 py-1.5 text-[14px] sm:min-h-[36px] font-medium tracking-[-0.01em] transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
 }
 
 @utility btn-primary {
-  @apply btn bg-ink text-sheet shadow-xs hover:bg-ink/85 hover:shadow-md;
+  @apply btn bg-ink text-sheet hover:bg-ink/85;
 }
 
 @utility btn-ghost {
-  @apply btn text-ink-soft hover:bg-line/60 hover:text-ink;
+  @apply btn text-ink-soft hover:bg-line/70 hover:text-ink;
 }
 
 @utility btn-danger {
@@ -221,59 +173,59 @@
 @layer utilities {
   /*
  * Tokenurile de culoare ale temei (canale RGB, ca Tailwind să poată aplica opacitate: bg-leu/20).
- * Stilul „bon de casă”: panourile sunt hârtie termică (--sheet) așezată pe o masă (--paper), scrise
- * cu cerneală aproape neagră. Culorile bancnotelor (1, 5, 10, 50, 100 lei) rămân pentru sume,
- * grafice și etichete. Noaptea: bonuri de hârtie gri-închis pe o masă întunecată.
+ * Stilul „elvețian, cu lei”: interfața e alb-negru (foi albe pe un fundal aproape alb, text aproape negru);
+ * verdele bancnotei de 1 leu e singurul accent. Culorile bancnotelor (1, 5, 10, 50, 100 lei) rămân
+ * pentru date: categorii, grafice, banda venitului. Noaptea: negru, foi gri foarte închis.
  */
   :root {
     color-scheme: light;
-    --paper: 234 229 219; /* #EAE5DB  masa */
-    --sheet: 253 251 246; /* #FDFBF6  hârtia bonului */
-    --field: 255 255 252;
+    --paper: 250 250 249; /* #FAFAF9  fundalul paginii */
+    --sheet: 255 255 255; /* #FFFFFF  foile (panourile) */
+    --field: 255 255 255;
     --on-accent: 255 255 255;
-    --ink: 31 29 26; /* #1F1D1A  cerneala */
-    --ink-soft: 92 86 77; /* #5C564D */
-    --ink-faint: 140 133 122; /* #8C857A */
-    --line: 224 217 204; /* #E0D9CC */
-    --line-strong: 196 187 171;
-    --leu: 61 122 78; /* #3D7A4E  1 leu */
-    --leu-tint: 223 236 222;
-    --leu-soft: 78 140 96;
+    --ink: 11 12 11; /* #0B0C0B */
+    --ink-soft: 84 86 84; /* #545654 */
+    --ink-faint: 136 138 135; /* #888A87 */
+    --line: 232 233 230; /* #E8E9E6 */
+    --line-strong: 212 214 210;
+    --leu: 47 122 76; /* #2F7A4C  1 leu, accentul */
+    --leu-tint: 228 241 232;
+    --leu-soft: 74 150 100;
     --mov: 106 78 153; /* #6A4E99  5 lei */
-    --mov-tint: 233 225 240;
+    --mov-tint: 237 232 245;
     --rosu: 181 69 106; /* #B5456A  10 lei */
-    --rosu-tint: 246 223 228;
-    --galben: 168 124 16; /* #A87C10  50 lei (puțin mai închis, pentru contrast pe fundal deschis) */
-    --galben-tint: 247 236 201;
+    --rosu-tint: 248 231 236;
+    --galben: 176 133 22; /* #B08516  50 lei */
+    --galben-tint: 249 240 214;
     --albastru: 46 92 138; /* #2E5C8A  100 lei */
-    --albastru-tint: 223 230 238;
+    --albastru-tint: 228 236 244;
     --albastru-deep: 36 74 112;
-    --shadow: 74 60 38;
+    --shadow: 20 24 20;
     --guilloche-opacity: 0.5;
   }
 
   :root[data-theme='dark'] {
     color-scheme: dark;
-    --paper: 16 15 13; /* #100F0D  masa întunecată */
-    --sheet: 30 28 25; /* #1E1C19  bonul */
-    --field: 23 22 19;
-    --on-accent: 16 15 13;
-    --ink: 237 231 219;
-    --ink-soft: 176 168 154;
-    --ink-faint: 128 121 109;
-    --line: 54 50 44;
-    --line-strong: 77 72 63;
-    --leu: 98 186 128;
-    --leu-tint: 26 46 31;
-    --leu-soft: 74 150 100;
+    --paper: 5 5 5; /* #050505 */
+    --sheet: 18 19 18; /* #121312 */
+    --field: 14 15 14;
+    --on-accent: 5 5 5;
+    --ink: 243 244 241;
+    --ink-soft: 167 169 165;
+    --ink-faint: 111 114 110;
+    --line: 34 35 34;
+    --line-strong: 52 54 52;
+    --leu: 108 203 143; /* #6CCB8F */
+    --leu-tint: 18 42 27;
+    --leu-soft: 80 170 115;
     --mov: 163 141 222;
-    --mov-tint: 40 33 56;
+    --mov-tint: 36 30 52;
     --rosu: 232 124 160;
-    --rosu-tint: 58 28 38;
+    --rosu-tint: 54 25 35;
     --galben: 228 183 76;
-    --galben-tint: 56 44 15;
+    --galben-tint: 50 40 14;
     --albastru: 110 164 220;
-    --albastru-tint: 27 37 50;
+    --albastru-tint: 24 34 46;
     --albastru-deep: 140 186 232;
     --shadow: 0 0 0;
     --guilloche-opacity: 0.35;
@@ -281,7 +233,7 @@
 
   /* Aceleași culori ca valori CSS complete, pentru stiluri inline și grafice (fill="var(--c-leu)"). */
   :root {
-    --tooth: 6px;
+    --tooth: 0px;
     --c-paper: rgb(var(--paper));
     --c-sheet: rgb(var(--sheet));
     --c-ink: rgb(var(--ink));
@@ -310,9 +262,10 @@
     text-rendering: optimizeLegibility;
   }
   body {
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
-    font-size: 14px;
-    letter-spacing: -0.01em;
+    font-family: "Geist Variable", "Helvetica Neue", Arial, sans-serif;
+    font-size: 14.5px;
+    letter-spacing: -0.006em;
+    font-feature-settings: "ss01", "cv11";
     line-height: 1.5;
     overflow-x: hidden;
     background: rgb(var(--paper));
@@ -320,13 +273,13 @@
   /* Nimic nu poate împinge pagina mai lată decât ecranul (ex. tooltip-urile graficelor pe telefon).
      `clip` (spre deosebire de `hidden`) nu creează un container de scroll, deci `sticky` merge în continuare. */
   html, body { overflow-x: clip; }
-  /* Toată aplicația e „tipărită” cu un singur font, IBM Plex Mono, ca bonul lunar în PDF. */
+  /* Titlurile: același font, mai apăsat și mai strâns. Sumele: cifre de aceeași lățime (se aliniază pe coloane). */
   h1, h2, h3 {
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
-    letter-spacing: -0.02em;
+    font-family: "Geist Variable", "Helvetica Neue", Arial, sans-serif;
+    letter-spacing: -0.03em;
   }
-  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-  :focus-visible { outline: 2px solid rgb(var(--albastru)); outline-offset: 2px; border-radius: 4px; }
+  .num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  :focus-visible { outline: 2px solid rgb(var(--leu)); outline-offset: 2px; border-radius: 6px; }
   input, select, textarea { font: inherit; }
   /* iOS dă câmpurilor de dată/lună o lățime minimă proprie, care le scoate din grid pe ecrane înguste. */
   input[type="date"], input[type="month"] { min-width: 0; min-height: 2.75rem; }
@@ -518,42 +471,30 @@
 }
 
 /*
- * Animația de început (ecranul de autentificare, IntroSplash.tsx). Durează ~2,8 s:
- * moneda cade rotindu-se pe casa de marcat (0–0,9 s), luciul o traversează, moneda intră în fantă
- * (1,15–1,5 s), apoi bonul iese din fantă rând cu rând (1,4–2,25 s), după care totul se estompează.
- * Perspectiva e în `transform` (perspective()), ca rotirea 3D să meargă și sub clip-path.
+ * Animația de început (ecranul de autentificare, IntroSplash.tsx). Durează ~2,5 s:
+ * rozetele de ghioș se desenează (0–1,4 s), sigla apare (0,15–0,75 s), literele numelui urcă pe rând
+ * (0,6–1,1 s), benzile bancnotelor se trag una după alta (1–1,5 s), apoi apare deviza și totul se estompează.
  */
-@keyframes introCoinDrop {
-  0% { transform: perspective(700px) translateY(-46vh) rotateY(0deg) scale(0.6); opacity: 0; }
-  12% { opacity: 1; }
-  62% { transform: perspective(700px) translateY(0) rotateY(900deg) scale(1); }
-  76% { transform: perspective(700px) translateY(-14px) rotateY(1035deg) scale(1); }
-  90% { transform: perspective(700px) translateY(0) rotateY(1080deg) scale(1); }
-  95% { transform: perspective(700px) translateY(-3px) rotateY(1080deg) scale(1); }
-  100% { transform: perspective(700px) translateY(0) rotateY(1080deg) scale(1); opacity: 1; }
+@keyframes introDraw {
+  0% { stroke-dashoffset: 1; }
+  100% { stroke-dashoffset: 0; }
 }
-@keyframes introShine {
-  0% { transform: translateX(-130%) rotate(20deg); opacity: 0; }
-  20% { opacity: 1; }
-  100% { transform: translateX(130%) rotate(20deg); opacity: 0; }
+@keyframes introRings {
+  0% { transform: translate(-50%, -58%) rotate(-24deg) scale(0.94); }
+  100% { transform: translate(-50%, -58%) rotate(0deg) scale(1); }
 }
-/* Coboară în fantă: pe măsură ce alunecă în jos, partea de sub fantă e tăiată. */
-@keyframes introInsert {
-  0% { transform: none; clip-path: inset(-40% -40% 0 -40%); }
-  100% { transform: translateY(100%); clip-path: inset(-40% -40% 100% -40%); }
+@keyframes introMark {
+  0% { opacity: 0; transform: translateY(10px) scale(0.86); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
 }
-@keyframes introSlot {
-  0%, 100% { box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.5); }
-  50% { box-shadow: inset 0 2px 3px rgb(0 0 0 / 0.5), 0 0 14px rgb(var(--galben) / 0.55); }
+@keyframes introLetter {
+  0% { opacity: 0; transform: translateY(0.45em); }
+  100% { opacity: 1; transform: none; }
 }
-/* Hârtia iese în trepte, ca la o imprimantă termică. */
-@keyframes introPrint {
-  0% { transform: translateY(-101%); }
-  28% { transform: translateY(-72%); }
-  34% { transform: translateY(-70%); }
-  60% { transform: translateY(-38%); }
-  66% { transform: translateY(-36%); }
-  100% { transform: none; }
+@keyframes introBand {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
 }
 @keyframes introFade {
   0% { opacity: 0; transform: translateY(6px); }
@@ -561,22 +502,16 @@
 }
 @keyframes introExit {
   0% { opacity: 1; transform: none; }
-  100% { opacity: 0; transform: scale(1.04); }
+  100% { opacity: 0; transform: scale(1.03); }
 }
 
 .intro-splash.intro-exit { animation: introExit 450ms cubic-bezier(0.4, 0, 0.2, 1) forwards; pointer-events: none; }
-.intro-backdrop { animation: introFade 600ms ease-out both; }
-.intro-coin { animation: introCoinDrop 950ms cubic-bezier(0.22, 0.8, 0.3, 1) both; }
-.intro-coin-insert { animation: introInsert 360ms cubic-bezier(0.5, 0, 0.75, 0.4) 1150ms both; }
-.intro-slot { animation: introSlot 600ms ease-in-out 1300ms both; }
-.intro-shine {
-  position: absolute;
-  inset: -20%;
-  background: linear-gradient(90deg, rgb(255 255 255 / 0) 35%, rgb(255 255 255 / 0.55) 50%, rgb(255 255 255 / 0) 65%);
-  animation: introShine 550ms ease-in-out 850ms both;
-  pointer-events: none;
-}
-.intro-paper { animation: introPrint 850ms cubic-bezier(0.3, 0.5, 0.4, 1) 1420ms both; }
+.intro-rings { animation: introRings 2400ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.intro-ring { stroke-dasharray: 1; animation: introDraw 1400ms cubic-bezier(0.45, 0.05, 0.25, 1) both; }
+.intro-mark { animation: introMark 600ms cubic-bezier(0.2, 0.8, 0.25, 1) 150ms both; }
+.intro-letter { animation: introLetter 520ms cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+.intro-band { transform-origin: left; animation: introBand 360ms cubic-bezier(0.3, 0.7, 0.3, 1) both; }
+.intro-tag { animation: introFade 500ms ease-out 1450ms both; }
 .intro-hint { animation: introFade 500ms ease-out 1300ms both; }
 
 @media (prefers-reduced-motion: reduce) {

@@ -251,7 +251,7 @@ export default function LoanDetail() {
 
   return (
     <>
-      <Link href="/credite" className="mb-3 inline-block text-[14px] text-albastru hover:underline">‹ Toate creditele</Link>
+      <Link href="/credite" className="mb-3 hidden text-[14px] lg:inline-block text-albastru hover:underline">‹ Toate creditele</Link>
       <PageHeader
         title={loan.name}
         intro={`${loan.bank || "Bancă nespecificată"} · ${lei(loan.principal)} pe ${termLabel(loan.term_months)} · ${
@@ -299,7 +299,7 @@ export default function LoanDetail() {
           )}
           {rateJump && (
             <p className="mb-4 rounded-md bg-galben-tint p-3 text-[13px]">
-              ⚠️ Din <strong>{monthLabel(rateJump.month)}</strong> rata crește de la {lei(rateJump.from, true)} la{" "}
+              Din <strong>{monthLabel(rateJump.month)}</strong> rata crește de la {lei(rateJump.from, true)} la{" "}
               <strong>{lei(rateJump.payment, true)}</strong> (+{lei(rateJump.payment - rateJump.from)} pe lună), la trecerea pe dobânda de {pct(rateJump.rate, 2)}.
             </p>
           )}
@@ -342,10 +342,10 @@ export default function LoanDetail() {
         aside={
           <div className="flex flex-wrap items-center gap-2">
             <button className="btn-ghost py-1 text-[13px]" onClick={openAdjustModal}>
-              ⚡ Ajustează după extras
+              Ajustează după extras
             </button>
             <button className="btn-ghost py-1 text-[13px]" onClick={() => setEditing(true)}>
-              ✏️ Editează contractul
+              Editează contractul
             </button>
           </div>
         }

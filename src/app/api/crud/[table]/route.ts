@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { errorResponse, jsonError } from "@/lib/http";
 import { getDb } from "@/lib/db";
 import { insertRow, TABLES, updateRow, VALIDATE } from "@/lib/crud";
+import { materializeQuietly } from "@/lib/scheduledServer";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ table: 
   try {
     const { table } = await context.params;
     const c = cfg(table);
+    if (table === "entries") await materializeQuietly(); // programările scadente (beta)
     const filters = c.filters.filter((f) => req.nextUrl.searchParams.has(f));
     const where = filters.length ? `WHERE ${filters.map((f) => `${f} = ?`).join(" AND ")}` : "";
     const vals = filters.map((f) => req.nextUrl.searchParams.get(f));

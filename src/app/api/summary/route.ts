@@ -1,14 +1,18 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { jsonError } from "@/lib/http";
 import { buildSummary } from "@/lib/analytics";
+import { isBetaDeployment } from "@/lib/beta";
 import { refreshRates } from "@/lib/fx";
-import { currentMonth, isMonth, lastMonths } from "@/lib/util";
+import { materializeQuietly } from "@/lib/scheduledServer";
+import { isMonth, lastMonths } from "@/lib/util";
+import { currentBudgetMonthForUser } from "@/lib/profileServer";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const month = req.nextUrl.searchParams.get("month") ?? currentMonth();
+  const month = req.nextUrl.searchParams.get("month") ?? (await currentBudgetMonthForUser());
   if (!isMonth(month)) return jsonError("Luna trebuie să fie în formatul AAAA-LL.");
+  await materializeQuietly(); // programările scadente (beta) intră în buget înainte de calcul
   const summary = await buildSummary(month);
 
   // Cursul BNR se actualizează DUPĂ ce răspunsul a plecat (Vercel păstrează funcția vie pentru
@@ -16,5 +20,5 @@ export async function GET(req: NextRequest) {
   // următoarea încărcare. Înainte, pagina aștepta serverul BNR (inclusiv fișierul pe un an întreg).
   after(() => refreshRates(lastMonths(month, 12)).catch(() => undefined));
 
-  return NextResponse.json({ ...summary, fxError: summary.settings.fx_last_error || null });
+  return NextResponse.json({ ...summary, fxError: summary.settings.fx_last_error || null, beta: isBetaDeployment() });
 }

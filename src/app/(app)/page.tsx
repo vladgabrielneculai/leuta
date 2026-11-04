@@ -8,12 +8,15 @@ import {
 import { useEffect, useState } from "react";
 import type { Summary } from "@/lib/analytics";
 import { celebrateOnce } from "@/lib/confetti";
-import { currentMonth, eur, lei, monthLabel, pct, r2 } from "@/lib/util";
-import { ReceiptMeta } from "@/components/receipt";
+import { eur, lei, monthLabel, pct, r2 } from "@/lib/util";
 import ActiveTripCard from "@/components/ActiveTripCard";
+import { ScheduledAlerts } from "@/components/ScheduledAlerts";
+import { EntryFeed } from "@/components/EntryFeed";
+import { Guilloche, MicroText } from "@/components/Guilloche";
+import type { QuickEntry } from "@/components/QuickAdd";
 import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Ring, Skeleton, Stat, STAT_STRIP, Tabs, useApi, useApp, useTab } from "@/components/ui";
 
-type S = Summary & { fxError: string | null };
+type S = Summary & { fxError: string | null; beta?: boolean };
 
 const kLei = (v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `${Math.round(v)}`);
 
@@ -32,7 +35,6 @@ function LeuBand({ s }: { s: S }) {
 
   return (
     <section className="mb-6 sm:mb-10" data-tour="band">
-      <ReceiptMeta month={s.month} label={monthLabel(s.month, true)} />
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
           {s.profile.firstName && <p className="mb-1 font-display text-[17px] font-semibold text-ink">Bună, {s.profile.firstName}!</p>}
@@ -100,15 +102,107 @@ function LeuBand({ s }: { s: S }) {
   );
 }
 
-export default function Dashboard() {
+/**
+ * Pe telefon, Acasă începe cu o singură cifră: cât ți-a rămas luna aceasta. Sub ea, banda venitului
+ * și trei cifre mici; legenda benzii se deschide la atingere. Pe ecran mare rămân banda și cifrele obișnuite.
+ */
+function MobileHero({ s }: { s: S }) {
+  const t = s.totals;
+  const [open, setOpen] = useState(false);
+  const over = t.unallocated < 0;
+  const segments = [
+    { key: "fixed", label: "Costuri fixe", value: t.fixed, color: "var(--c-albastru)" },
+    { key: "loans", label: "Rate credite", value: t.loanPayments + t.loanInsurance + t.prepayFees, color: "var(--c-mov)" },
+    { key: "variable", label: "Cheltuieli", value: t.variable, color: "var(--c-rosu)" },
+    { key: "saved", label: "Pus deoparte", value: t.savedTotal, color: "var(--c-galben)" },
+    { key: "free", label: "Rămas", value: Math.max(0, t.unallocated), color: "var(--c-leu)" },
+  ].filter((x) => x.value > 0);
+  const base = Math.max(t.income, t.spent + t.savedTotal) || 1;
+  return (
+    <section className="mb-5 lg:hidden" data-tour="band">
+      {s.profile.firstName && <p className="mb-2 text-[14px] text-ink-soft">Bună, {s.profile.firstName}!</p>}
+      {/* Fără card: cifra stă direct pe pagină. În colț, o rozetă de ghioș abia vizibilă, ca pe bancnote. */}
+      <button type="button" className="relative block w-full overflow-hidden py-1 text-left" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <Guilloche className="absolute -right-6 -top-4 h-36 w-36 text-ink-faint opacity-60" />
+        <div className="relative text-[13px] text-ink-soft">{t.income > 0 ? (over ? "Ai depășit venitul lunii cu" : "Ți-au rămas luna aceasta") : "Venitul lunii"}</div>
+        <Money value={t.income > 0 ? Math.abs(t.unallocated) : 0} rate={s.fx.rate} size="xl" tone={over ? "rosu" : undefined} />
+        <div className="mt-0.5 text-[12.5px] text-ink-faint">
+          {t.income > 0 ? <>din {lei(t.income)} venit în {monthLabel(s.month)}</> : "Adaugă veniturile ca să vezi cât îți rămâne."}
+        </div>
+        {t.income > 0 && (
+          <div className="relative mt-4 flex h-1 w-full gap-[3px]" role="img" aria-label="Distribuția venitului">
+            {segments.map((seg) => (
+              <div key={seg.key} className="h-full" style={{ width: `${(seg.value / base) * 100}%`, background: seg.color }} />
+            ))}
+          </div>
+        )}
+        {open && (
+          <ul className="mt-3 flex flex-col gap-1">
+            {segments.map((seg) => (
+              <li key={seg.key} className="flex items-center gap-2 text-[13px]">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: seg.color }} />
+                <span className="min-w-0 flex-1 truncate text-ink-soft">{seg.label}</span>
+                <span className="num font-medium">{lei(seg.value)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="relative mt-4 grid grid-cols-3" data-tour="stats">
+          {[
+            { label: "Cheltuit", value: lei(t.spent), hint: <Delta now={t.spent} before={s.prev?.spent} invert /> },
+            { label: "Pus deoparte", value: lei(t.savedTotal), hint: `${pct(t.savingsRate)} din venit` },
+            { label: "Rate / venit", value: pct(t.dti), hint: t.dti > 40 ? "peste 40%" : "prag 40%", bad: t.dti > 40 },
+          ].map((x, i) => (
+            <div key={x.label} className={`min-w-0 pr-2.5 ${i > 0 ? "border-l border-line pl-2.5" : ""}`}>
+              <div className="truncate text-[11.5px] text-ink-faint">{x.label}</div>
+              <div className={`num truncate text-[16px] font-semibold tracking-[-0.03em] ${x.bad ? "text-rosu" : "text-ink"}`}>{x.value}</div>
+              <div className="truncate text-[11px] text-ink-faint">{x.hint}</div>
+            </div>
+          ))}
+        </div>
+        <MicroText className="relative mt-3" />
+      </button>
+    </section>
+  );
+}
+
+/** Pe telefon, pe Acasă: ultimele intrări din lună, cu legătură spre toată luna. */
+function RecentEntries({ rate }: { rate: number }) {
   const { month } = useApp();
+  const { data: entries, reload } = useApi<QuickEntry[]>(`/api/crud/entries?month=${month}`);
+  const { data: cats } = useApi<{ id: number; name: string; color: string }[]>("/api/crud/categories");
+  const { data: goals } = useApi<{ id: number; name: string }[]>("/api/crud/goals");
+  const { data: invs } = useApi<{ id: number; name: string }[]>("/api/crud/investments");
+  if (!entries || !cats || !goals || !invs) return null;
+  return (
+    <section className="mb-6 lg:hidden">
+      <div className="mb-2 flex items-baseline justify-between px-1">
+        <h2 className="text-[13px] font-medium text-ink-soft">Ultimele intrări</h2>
+        {entries.length > 0 && <Link href="/luna" className="text-[13px] font-medium text-ink underline underline-offset-[3px]">Toată luna</Link>}
+      </div>
+      <EntryFeed
+        entries={entries}
+        cats={cats}
+        goals={goals}
+        invs={invs}
+        rate={rate}
+        limit={5}
+        onChanged={reload}
+        empty={<p className="rounded-md border border-dashed border-line-strong px-4 py-5 text-center text-[13.5px] text-ink-soft">Nimic trecut luna aceasta. Apasă <strong>+</strong> jos ca să adaugi prima intrare.</p>}
+      />
+    </section>
+  );
+}
+
+export default function Dashboard() {
+  const { month, nowMonth } = useApp();
   const { data: s, error } = useApi<S>(`/api/summary?month=${month}`);
   const [tab, setTab] = useTab<DashTab>("panou", "luna", ["luna", "evolutie", "obiective"]);
   const [trendView, setTrendView] = useState<"sume" | "rata">("sume");
 
   // Luna trecută s-a încheiat pe plus → confetti, o singură dată pe lună.
   useEffect(() => {
-    if (s && month === currentMonth() && s.prev?.hasData && s.prev.unallocated > 0) celebrateOnce(`luna-plus:${s.prev.month}`);
+    if (s && month === nowMonth && s.prev?.hasData && s.prev.unallocated > 0) celebrateOnce(`luna-plus:${s.prev.month}`);
   }, [s, month]);
 
   if (error) return <Empty title="Panoul nu s-a putut încărca">{error}</Empty>;
@@ -161,19 +255,25 @@ export default function Dashboard() {
 
   return (
     <>
+      {s.beta && month === nowMonth && <ScheduledAlerts />}
       {s.fxError && (
         <p className="mb-4 rounded-md bg-galben-tint px-3 py-2 text-[13px]">
           Cursul BNR nu a putut fi actualizat ({s.fxError}). Sumele în euro folosesc ultimul curs salvat.
         </p>
       )}
 
-      <LeuBand s={s} />
+      <MobileHero s={s} />
+      <div className="hidden lg:block">
+        <LeuBand s={s} />
+      </div>
 
       <ActiveTripCard />
 
+      <RecentEntries rate={s.fx.rate} />
+
       {/* Pe telefon cifrele cheie stau pe un singur rând care se derulează lateral, nu pe trei rânduri. */}
       <div
-        className={`panel mb-6 xl:grid-cols-5 ${STAT_STRIP}`}
+        className={`panel mb-6 max-lg:hidden! xl:grid-cols-5 ${STAT_STRIP}`}
         data-tour="stats"
       >
         <Stat label="Cheltuit" accent="var(--c-rosu)" hint={<Delta now={t.spent} before={s.prev?.spent} invert />}>
@@ -221,7 +321,6 @@ export default function Dashboard() {
               href="/achizitii"
               className="group flex items-center gap-3 rounded-[4px] border-2 border-dashed border-line-strong bg-sheet/50 px-4 py-3 transition-colors hover:border-ink-faint"
             >
-              <span className="text-[24px]" aria-hidden>🎯</span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[14px] font-semibold text-ink">Îți dorești ceva mai scump?</span>
                 <span className="block text-[12.5px] text-ink-soft">Află dacă îți permiți: plată integrală sau credit.</span>
@@ -306,7 +405,7 @@ export default function Dashboard() {
                       <div className="font-medium leading-snug">{g.name}</div>
                       <div className="num text-[12.5px] text-ink-soft">{lei(g.saved)} din {lei(g.target)}</div>
                       <div className="text-[12px] text-ink-faint">
-                        {g.pct >= 100 ? "Atins 🎉" : g.eta ? <>Estimat: {monthLabel(g.eta)}</> : "Fără contribuții recente"}
+                        {g.pct >= 100 ? "Atins" : g.eta ? <>Estimat: {monthLabel(g.eta)}</> : "Fără contribuții recente"}
                       </div>
                     </div>
                   </li>

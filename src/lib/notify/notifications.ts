@@ -10,6 +10,9 @@ import { sendTelegram, sendTelegramDocument, sendTelegramPhoto, telegramConfigur
 import { buildReceipt } from "../receipt/model";
 import { receiptFilename, renderReceiptPdf } from "../receipt/pdf";
 import { addDays, daysBetween, isoWeek, localNow, longDate, shortDate, type LocalNow } from "./time";
+import { budgetMonthOf, budgetMonthRange } from "../payCycle";
+import { loadPayCycle } from "../profileServer";
+import { remindersDue, type Schedule } from "../scheduled";
 
 /**
  * Notificările unui utilizator: ce se trimite, pe ce canal, o singură dată.
@@ -89,6 +92,17 @@ function loanRows(dues: LoanDue[], s: Summary): Row[] {
       tone: "mov",
     };
   });
+}
+
+/**
+ * „Acum” pentru utilizatorul curent: ziua din România, cu luna de buget în loc de cea calendaristică
+ * (aceeași, dacă luna nu începe la salariu). `monthStart` = ziua în care a început luna de buget.
+ */
+export async function budgetNow(at: Date = new Date()): Promise<LocalNow & { monthStart: string }> {
+  const now = localNow(at);
+  const cycle = await loadPayCycle();
+  const month = budgetMonthOf(now.date, cycle);
+  return { ...now, month, monthStart: budgetMonthRange(month, cycle).start };
 }
 
 // ---------- Mesajele ----------
@@ -178,6 +192,28 @@ export async function dueAlerts(now: LocalNow, ignoreWindow = false): Promise<Al
     }
   }
   return out;
+}
+
+/**
+ * Facturile și plățile programate cu memento (beta, `scheduled_entries.remind_days`): un mesaj în ziua aleasă
+ * dinaintea scadenței. Merg pe canalele „Scadențe” (loan_due), ca ratele.
+ */
+export async function billReminders(now: LocalNow): Promise<Alert[]> {
+  const rows = await (await getDb())
+    .prepare("SELECT * FROM scheduled_entries WHERE active = 1 AND remind_days IS NOT NULL")
+    .all<Schedule>()
+    .catch(() => [] as Schedule[]); // tabelul sau coloana lipsesc pe o bază veche: fără mementouri
+  const t = { date: now.date, month: now.month, day: now.day };
+  return remindersDue(rows, t).map(({ schedule: s, date, days }) => ({
+    key: `bill${s.id}:${date}`,
+    message: {
+      emoji: "🧾",
+      title: days === 0 ? `Azi: ${s.name}` : `${s.name} în ${days === 1 ? "o zi" : `${days} zile`}`,
+      subtitle: longDate(date),
+      intro: "Plata programată intră singură în buget în ziua scadenței. Verifică să ai banii în cont.",
+      kpis: [{ label: "De plată", value: s.currency === "EUR" ? `${s.amount.toFixed(2).replace(".", ",")} €` : lei(s.amount, true), tone: "mov" }],
+    },
+  }));
 }
 
 /** Categorii peste 80% / 100% din media obișnuită și luna pe minus. Câte o alertă pe prag, pe lună. */
@@ -389,7 +425,7 @@ export async function deliver(m: Message, channels: Channel[], target: Target, a
 /** Notificările zilnice ale unui utilizator (apelat de cron la 21:00, ora României). */
 export async function runForUser(userId: number, appUrl: string, at: Date = new Date()) {
   return runAsUser(userId, async () => {
-    const now = localNow(at);
+    const now = await budgetNow(at);
     const prefs = parsePrefs(await getSetting("notif_prefs"));
     const target = await targetFor(userId);
     const report: Record<string, string> = {};
@@ -412,10 +448,12 @@ export async function runForUser(userId: number, appUrl: string, at: Date = new 
 
     await send("daily", [now.date], () => dailyMessage(now));
     for (const a of await dueAlerts(now)) await send("loan_due", [a.key], async () => a.message);
+    for (const a of await billReminders(now)) await send("loan_due", [a.key], async () => a.message);
     const budget = await budgetAlerts(now);
     if (budget) await send("budget", budget.keys, async () => budget.message);
     if (now.weekday === 0) await send("weekly", [isoWeek(now.date)], () => weeklyMessage(now, appUrl));
-    if (now.day === 1) {
+    // Raportul lunii încheiate: în prima zi a lunii noi (1 sau ziua salariului, dacă luna începe la salariu).
+    if (now.date === now.monthStart) {
       const prev = addMonths(now.month, -1);
       await send("monthly", [prev], () => monthlyMessage(prev, appUrl));
     }
@@ -426,7 +464,7 @@ export async function runForUser(userId: number, appUrl: string, at: Date = new 
 /** Mesaj de test (fără jurnal), din Setări. */
 export async function testMessage(userId: number, kind: NotifyKind, channel: Channel, appUrl: string) {
   return runAsUser(userId, async () => {
-    const now = localNow();
+    const now = await budgetNow();
     const target = await targetFor(userId);
     if (channel === "telegram" && !target.chatId) throw new Error("Conectează întâi Telegram.");
     if (channel === "email" && !target.email) throw new Error("Completează și salvează întâi adresa de email.");
