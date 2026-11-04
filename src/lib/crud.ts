@@ -3,10 +3,11 @@ import type { DbInterface } from "./db";
 export const TABLES: Record<string, { columns: string[]; filters: string[]; order: string }> = {
   categories: { columns: ["name", "kind", "bucket", "color"], filters: ["kind"], order: "kind, name" },
   entries: {
-    columns: ["month", "kind", "category_id", "goal_id", "investment_id", "description", "amount", "currency", "recurring", "created_at"],
+    columns: ["month", "kind", "category_id", "goal_id", "investment_id", "card_id", "description", "amount", "currency", "recurring", "created_at"],
     filters: ["month", "kind", "goal_id", "investment_id"],
     order: "id",
   },
+  cards: { columns: ["name", "kind", "color"], filters: ["kind"], order: "kind, lower(name), id" },
   goals: { columns: ["name", "type", "target", "initial", "deadline", "color"], filters: ["type"], order: "type DESC, id" },
   investments: { columns: ["name", "type", "expected_return"], filters: [], order: "id" },
   loans: {
@@ -90,6 +91,18 @@ export const VALIDATE: Record<string, (data: Record<string, unknown>, isNew: boo
     if (!isIsoDay(d.created_at)) throw new Error("Alege data tranzacției.");
     d.created_at = `${d.created_at} 12:00 Europe/Bucharest`;
   },
+  cards(d, isNew) {
+    if (isNew || "name" in d) {
+      d.name = String(d.name ?? "").trim();
+      if (!d.name) throw new Error("Dă un nume cardului.");
+      if (String(d.name).length > 60) throw new Error("Numele cardului e prea lung.");
+    }
+    if (isNew || "kind" in d) {
+      d.kind = d.kind ?? "bank";
+      if (d.kind !== "bank" && d.kind !== "meal") throw new Error("Tip de card necunoscut.");
+    }
+    if ("color" in d && !/^#[0-9a-fA-F]{6}$/.test(String(d.color))) throw new Error("Culoare invalidă.");
+  },
   trips(d, isNew, current) {
     if (isNew || "name" in d) {
       d.name = String(d.name ?? "").trim();
@@ -136,13 +149,13 @@ export function updateRow(db: DbInterface, table: string, id: unknown, data: Rec
 
 /** Tabelele cu datele financiare ale unui cont, în ordinea cheilor străine (părinții înaintea copiilor). */
 export const FINANCIAL_TABLES = [
-  "categories", "goals", "investments", "loans", "scheduled_entries", "entries",
+  "categories", "cards", "goals", "investments", "loans", "scheduled_entries", "entries",
   "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases", "import_rules",
   "trips", "trip_funds", "trip_expenses",
 ] as const;
 
 /** Tabelele vizibile în exploratorul bazei de date (Setări, doar administrator). */
 export const DB_TABLES = [
-  "entries", "loans", "loan_prepayments", "loan_schedules", "categories", "goals",
+  "entries", "loans", "loan_prepayments", "loan_schedules", "categories", "cards", "goals",
   "investments", "investment_values", "planned_purchases", "trips", "trip_funds", "trip_expenses", "user_settings", "fx_rates", "fx_rates_currency", "inflation_rates",
 ];

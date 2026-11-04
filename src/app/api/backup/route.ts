@@ -20,7 +20,7 @@ const ORDER = FINANCIAL_TABLES;
 
 // coloană → tabelul părinte al cărui id îl referă
 const FKS: Record<string, Record<string, string>> = {
-  entries: { category_id: "categories", goal_id: "goals", investment_id: "investments" },
+  entries: { category_id: "categories", goal_id: "goals", investment_id: "investments", card_id: "cards" },
   scheduled_entries: { category_id: "categories" },
   investment_values: { investment_id: "investments" },
   loan_prepayments: { loan_id: "loans" },
@@ -30,7 +30,7 @@ const FKS: Record<string, Record<string, string>> = {
   trip_expenses: { trip_id: "trips" },
 };
 
-const HAS_ID = new Set(["categories", "goals", "investments", "loans", "scheduled_entries", "entries", "loan_prepayments", "loan_schedules", "planned_purchases", "trips"]);
+const HAS_ID = new Set(["categories", "cards", "goals", "investments", "loans", "scheduled_entries", "entries", "loan_prepayments", "loan_schedules", "planned_purchases", "trips"]);
 
 // Exportul (toate datele financiare) și restaurarea (le înlocuiește) cer identitatea confirmată recent.
 export async function GET() {

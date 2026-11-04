@@ -9,6 +9,7 @@ import NotificationSettings from "@/components/NotificationSettings";
 import { ThemeChooser } from "@/components/ThemeToggle";
 import DatabaseManager from "@/components/DatabaseManager";
 import { useTourReplay } from "@/components/Tour";
+import { CardsPanel } from "@/components/Cards";
 
 type Category = { id: number; name: string; kind: Kind; bucket: Bucket; color: string };
 const PALETTE = ["#3D7A4E", "#5E9A6C", "#2E5C8A", "#4A7BA8", "#27496D", "#6A4E99", "#8A6BB8", "#B5456A", "#C9657F", "#DB8BA4", "#C99A1E", "#8A989C"];
@@ -115,6 +116,7 @@ export default function SettingsPage() {
     inflationError,
     refreshInflation,
     confirm,
+    beta,
   } = useApp();
   const { data: cats, reload } = useApi<Category[]>("/api/crud/categories");
   const { data: settings } = useApi<Record<string, string>>("/api/settings");
@@ -271,6 +273,8 @@ export default function SettingsPage() {
         </Panel>
 
           <div className="flex flex-col gap-4 lg:gap-6">
+          {beta && <CardsPanel onToast={setToast} />}
+
           <Panel title="Aspect" summary="Temă de zi, de noapte sau automată">
             <p className="mb-3 text-[13px] text-ink-soft">
               Tema de zi sau de noapte. „Auto” o schimbă singură după setarea telefonului sau a calculatorului. Alegerea se
