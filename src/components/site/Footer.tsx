@@ -8,7 +8,7 @@ export default function Footer() {
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 text-[13.5px] text-ink-soft sm:px-6 md:grid-cols-[1.3fr_1fr_1fr]">
         <div>
           <div className="flex items-center gap-2.5">
-            <img src="/icon-192.png" alt="" width={30} height={30} className="rounded-full" />
+            <img src="/icon-192.png" alt="" width={30} height={30} className="rounded-[8px]" />
             <span className="text-[17px] font-bold text-ink">Leuța</span>
           </div>
           <p className="mt-3 max-w-xs">{SITE.tagline} Bugetul lunar, creditele și economiile tale, ban cu ban.</p>

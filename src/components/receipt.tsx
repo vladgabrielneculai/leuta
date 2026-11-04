@@ -1,24 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { barcodeBars } from "@/lib/barcode";
 
 /**
  * Piesele „de bon” folosite în toată aplicația (același stil ca bonul lunar în PDF):
- * rândul cu puncte între etichetă și sumă, codul de bare decorativ și antetul cu numărul bonului.
+ * rândul cu puncte între etichetă și sumă.
  */
-
-/** Cod de bare decorativ (nu codifică nimic), desenat în culoarea textului. */
-export function Barcode({ seed, className = "h-9 w-52" }: { seed: string; className?: string }) {
-  const W = 200;
-  return (
-    <svg viewBox={`0 0 ${W} 40`} preserveAspectRatio="none" className={className} aria-hidden>
-      {barcodeBars(seed, W).map((b, i) => (
-        <rect key={i} x={b.x} y={0} width={b.w} height={40} fill="currentColor" />
-      ))}
-    </svg>
-  );
-}
 
 /**
  * Rând de bon: eticheta în stânga, valoarea în dreapta, legate prin puncte.
