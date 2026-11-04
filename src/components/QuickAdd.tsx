@@ -73,7 +73,18 @@ export async function restoreEntry(e: QuickEntry) {
   });
 }
 
-type OpenArgs = { kind?: Kind; entry?: QuickEntry; /** deschide direct varianta pentru vacanța în curs */ trip?: boolean };
+type OpenArgs = {
+  kind?: Kind;
+  entry?: QuickEntry;
+  /** deschide direct varianta pentru vacanța în curs */
+  trip?: boolean;
+  /** destinația economiei, preselectată: „g:<id>” (obiectiv) sau „i:<id>” (investiție) */
+  dest?: string;
+  /** deschide direct ca retragere din economii */
+  withdraw?: boolean;
+  /** cât e disponibil în destinație (lei), ca retragerea să nu depășească soldul */
+  available?: number;
+};
 const QuickAddCtx = createContext<(args?: OpenArgs) => void>(() => undefined);
 
 /** Deschide fereastra de adăugare (opțional cu tipul ales) sau de editare a unei intrări. */
@@ -159,9 +170,11 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const startAmount = editing ? Math.abs(editing.amount) : 0;
   const [amount, setAmount] = useState(editing ? (Number.isInteger(startAmount) ? String(startAmount) : startAmount.toFixed(2).replace(".", ",")) : "");
   const [refund, setRefund] = useState(!!editing && editing.amount < 0);
+  // Retragerea din economii: tot o sumă negativă, dar la tipul „saving” (soldul obiectivului scade).
+  const [withdraw, setWithdraw] = useState(editing ? editing.kind === "saving" && editing.amount < 0 : !!args.withdraw);
   const [currency, setCurrency] = useState<Currency>(editing?.currency ?? "RON");
   const [categoryId, setCategoryId] = useState<number | null>(editing?.category_id ?? null);
-  const [dest, setDest] = useState(editing?.goal_id ? `g:${editing.goal_id}` : editing?.investment_id ? `i:${editing.investment_id}` : "");
+  const [dest, setDest] = useState(editing?.goal_id ? `g:${editing.goal_id}` : editing?.investment_id ? `i:${editing.investment_id}` : args.dest ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
   const [recurring, setRecurring] = useState(!!editing?.recurring);
   // Ziua tranzacției: o folosește importul extrasului ca să recunoască intrările trecute deja de mână.
@@ -175,7 +188,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   // Vacanța în curs (doar la adăugare): implicit cheltuiala merge acolo, cu comutator înapoi la luna curentă.
   const { data: trips, error: tripsError } = useApi<TripListItem[]>(editing ? null : "/api/trips");
   const trip = trips ? activeTrip(trips) : null;
-  const [forTrip, setForTrip] = useState(args.trip ?? !args.kind);
+  const [forTrip, setForTrip] = useState(args.trip ?? (!args.kind && !args.withdraw));
   const tripMode = !!trip && forTrip;
   // Deschisă explicit pentru vacanță: până se încarcă vacanțele nu arătăm formularul lunar.
   const waitingTrip = !!args.trip && !editing && !trips && !tripsError;
@@ -253,6 +266,17 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       setErr("Alege o categorie.");
       return;
     }
+    const isWithdraw = kind === "saving" && withdraw;
+    // Soldul e cunoscut doar când fereastra e deschisă din Economii, pentru destinația preselectată.
+    if (isWithdraw && args.available !== undefined && dest_ === (args.dest ?? "")) {
+      const inRon = currency === "EUR" ? value * eurRate : value;
+      const alreadyOut = editing && editing.amount < 0 ? (editing.currency === "EUR" ? -editing.amount * eurRate : -editing.amount) : 0;
+      if (inRon > args.available + alreadyOut + 0.005) {
+        setErr(`Poți retrage cel mult ${lei(Math.max(0, args.available + alreadyOut))}.`);
+        amountRef.current?.focus();
+        return;
+      }
+    }
     const catName = kind === "saving" ? null : kindCats.find((c) => c.id === categoryId_)?.name;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       setErr("Alege data.");
@@ -268,11 +292,11 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       goal_id: kind === "saving" && dest_.startsWith("g:") ? Number(dest_.slice(2)) : null,
       investment_id: kind === "saving" && dest_.startsWith("i:") ? Number(dest_.slice(2)) : null,
       description: description.trim(),
-      amount: canRefund && refund ? -value : value,
+      amount: (canRefund && refund) || isWithdraw ? -value : value,
       // Doar pe beta trimitem cardul; la venituri și economii nu are sens.
       ...(beta && cards ? { card_id: isExpense ? cardId : null } : {}),
       currency,
-      recurring: recurring ? 1 : 0,
+      recurring: recurring && !isWithdraw ? 1 : 0,
     };
     setBusy(true);
     try {
@@ -286,7 +310,13 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
         const what = catName ?? (kind === "saving" ? "Economii" : "Intrare");
         const sum = currency === "EUR" ? eur(value) : lei(value);
         if (mobile) tick();
-        onDone(canRefund && refund ? `Retur ${what}: ${sum} scăzut din ${monthLabel(targetMonth)}` : `${what}: ${sum} trecut în ${monthLabel(targetMonth)}`);
+        onDone(
+          isWithdraw
+            ? `Retragere din ${dest_ ? [...(goals ?? []).map((g) => [`g:${g.id}`, g.name]), ...investments.map((i) => [`i:${i.id}`, i.name])].find(([v]) => v === dest_)?.[1] ?? "economii" : "economii generale"}: ${sum} în ${monthLabel(targetMonth)}`
+            : canRefund && refund
+              ? `Retur ${what}: ${sum} scăzut din ${monthLabel(targetMonth)}`
+              : `${what}: ${sum} trecut în ${monthLabel(targetMonth)}`,
+        );
       }
       bump();
       onClose();
@@ -301,7 +331,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     if (!editing) return;
     const name = editing.description || kindCats.find((c) => c.id === editing.category_id)?.name || "această intrare";
     // Pe telefon nu mai cerem confirmarea: ștergem imediat și oferim „Anulează” în mesajul de jos.
-    if (!mobile && !(await confirm({ title: "Ștergere intrare", message: `Sigur dorești să ștergi „${name}” (${lei(editing.amount)})?`, confirmText: "Șterge", danger: true }))) return;
+    if (!mobile && !(await confirm({ title: "Ștergere intrare", message: `Sigur dorești să ștergi „${name}” (${editing.currency === "EUR" ? eur(editing.amount) : lei(editing.amount)})?`, confirmText: "Șterge", danger: true }))) return;
     try {
       await api(`/api/crud/entries?id=${editing.id}`, "DELETE");
       bump();
@@ -389,6 +419,32 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
             ))}
           </div>
 
+          {kind === "saving" && (
+            <div className="grid grid-cols-2 gap-1 rounded-md border border-line bg-paper p-1" role="radiogroup" aria-label="Direcția banilor">
+              {[
+                { on: false, label: "Depun", hint: "pun bani deoparte" },
+                { on: true, label: "Retrag", hint: "scot bani din economii" },
+              ].map((o) => (
+                <button
+                  key={o.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={withdraw === o.on}
+                  onClick={() => {
+                    setWithdraw(o.on);
+                    setErr(null);
+                  }}
+                  className={`flex min-h-[40px] flex-col items-center justify-center rounded-[4px] px-2 text-[13px] font-medium leading-tight transition-colors ${
+                    withdraw === o.on ? "bg-sheet text-ink shadow-[0_1px_2px_rgb(var(--shadow)/0.15)]" : "text-ink-soft"
+                  }`}
+                >
+                  {o.label}
+                  <span className="mt-0.5 text-[11px] font-normal text-ink-faint">{o.hint}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <div>
             <div className="flex items-stretch gap-2">
               <input
@@ -452,7 +508,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
 
           <div>
             <span className="label">
-              {kind === "saving" ? "Unde merg banii" : "Categoria"}
+              {kind === "saving" ? (withdraw ? "De unde retragi" : "Unde merg banii") : "Categoria"}
               {compact && !editing && <span className="ml-1.5 font-normal text-ink-faint">· atinge ca să salvezi</span>}
             </span>
             {kind === "saving" ? (
@@ -521,7 +577,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
                 {[
                   date === dayOf(new Date()) ? "azi" : date.split("-").reverse().join("."),
                   description.trim() || "fără descriere",
-                  recurring ? "lunar" : null,
+                  recurring && !(kind === "saving" && withdraw) ? "lunar" : null,
                   refund && canRefund ? "retur" : null,
                 ]
                   .filter(Boolean)
@@ -564,10 +620,16 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
               </label>
             )}
   
-            <label className="flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Se poate copia în luna următoare">
-              <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
-              <span>Se repetă lunar</span>
-            </label>
+            {kind === "saving" && withdraw ? (
+              <p className="-mt-1 text-[12px] text-ink-faint">
+                Suma iese din economii și devine disponibilă în bugetul lunii. Istoricul depunerilor rămâne neschimbat.
+              </p>
+            ) : (
+              <label className="flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Se poate copia în luna următoare">
+                <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
+                <span>Se repetă lunar</span>
+              </label>
+            )}
             </>
           )}
 
@@ -581,7 +643,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
               </button>
             )}
             <button type="submit" className="btn-primary flex-1 py-3 text-[15px]" disabled={busy}>
-              {busy ? "Se salvează…" : editing ? "Salvează" : "Adaugă"}
+              {busy ? "Se salvează…" : editing ? "Salvează" : kind === "saving" && withdraw ? "Retrage" : "Adaugă"}
             </button>
           </div>
         </form>

@@ -175,10 +175,10 @@ export default function SearchPage() {
                               {e.description && <span className="ml-2 text-[12.5px] text-ink-faint">{e.description}</span>}
                             </span>
                             <span className="block text-[12px] text-ink-faint">
-                              {[e.day ? fmtDay(e.day) : monthLabel(e.month), KIND_LABEL[e.kind], e.amount < 0 ? "retur" : ""].filter(Boolean).join(" · ")}
+                              {[e.day ? fmtDay(e.day) : monthLabel(e.month), KIND_LABEL[e.kind], e.amount < 0 ? (e.kind === "saving" ? "retragere" : "retur") : ""].filter(Boolean).join(" · ")}
                             </span>
                           </span>
-                          <span className={`num shrink-0 text-right text-[14px] font-medium ${e.amount < 0 ? "text-leu" : ""}`}>
+                          <span className={`num shrink-0 text-right text-[14px] font-medium ${e.amount < 0 ? (e.kind === "saving" ? "text-rosu" : "text-leu") : ""}`}>
                             {e.currency === "EUR" ? eur(e.amount) : lei(e.amount)}
                           </span>
                         </button>
