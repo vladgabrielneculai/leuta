@@ -4,12 +4,13 @@ import { buildSummary } from "@/lib/analytics";
 import { isBetaDeployment } from "@/lib/beta";
 import { refreshRates } from "@/lib/fx";
 import { materializeQuietly } from "@/lib/scheduledServer";
-import { currentMonth, isMonth, lastMonths } from "@/lib/util";
+import { isMonth, lastMonths } from "@/lib/util";
+import { currentBudgetMonthForUser } from "@/lib/profileServer";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const month = req.nextUrl.searchParams.get("month") ?? currentMonth();
+  const month = req.nextUrl.searchParams.get("month") ?? (await currentBudgetMonthForUser());
   if (!isMonth(month)) return jsonError("Luna trebuie să fie în formatul AAAA-LL.");
   await materializeQuietly(); // programările scadente (beta) intră în buget înainte de calcul
   const summary = await buildSummary(month);

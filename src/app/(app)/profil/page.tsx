@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { GoalsRiskFields, PersonalFields, WorkFields, fromDraft, toDraft, type ProfileDraft } from "@/components/ProfileFields";
 import { api, CollapsiblePanels, downloadFile, Modal, PageHeader, Panel, Skeleton, Tabs, Toast, useApi, useApp, useTab } from "@/components/ui";
 import { daysUntilPayday, displayName, OCCUPATIONS, type Profile } from "@/lib/profile";
+import { nextPayday } from "@/lib/payCycle";
+import { longDate } from "@/lib/notify/time";
 
 type ProfileResponse = { profile: Profile; age: number | null; emergency: { months: number; reasons: string[] } };
 
@@ -16,7 +18,7 @@ const PROFILE_TABS = [
 type ProfileTab = (typeof PROFILE_TABS)[number]["key"];
 
 export default function ProfilePage() {
-  const { bump } = useApp();
+  const { bump, cycle } = useApp();
   const { data, setData } = useApi<ProfileResponse>("/api/profile");
   const { data: me } = useApi<{ user: { username: string } | null }>("/api/auth/status");
   const { data: settings } = useApi<Record<string, string>>("/api/settings");
@@ -130,7 +132,7 @@ export default function ProfilePage() {
                 <div className="border-t border-line pt-3">
                   <div className="text-[13px] text-ink-soft">Următorul salariu</div>
                   <div className="font-medium">
-                    {daysUntilPayday(p.payday) === 0 ? "azi" : `peste ${daysUntilPayday(p.payday)} zile`} (pe {p.payday} ale lunii)
+                    {daysUntilPayday(p.payday, cycle.weekend) === 0 ? "azi" : `peste ${daysUntilPayday(p.payday, cycle.weekend)} zile`} ({longDate(nextPayday(p.payday, cycle.weekend))})
                   </div>
                   <p className="text-[12.5px] text-ink-soft">Panoul îți arată cât poți cheltui pe zi până atunci.</p>
                 </div>

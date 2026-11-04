@@ -135,7 +135,7 @@ export function EntryFeed({
   empty?: ReactNode;
 }) {
   const quickAdd = useQuickAdd();
-  const { bump } = useApp();
+  const { bump, cycle } = useApp();
   const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null);
   const catMap = new Map(cats.map((c) => [c.id, c]));
   const { data: cards } = useCards();
@@ -148,7 +148,7 @@ export function EntryFeed({
 
   // Cele mai noi sus: după zi, apoi după ordinea adăugării.
   const sorted = entries
-    .map((e) => ({ e, day: entryDay(e) }))
+    .map((e) => ({ e, day: entryDay(e, cycle) }))
     .sort((a, b) => (a.day === b.day ? b.e.id - a.e.id : a.day < b.day ? 1 : -1))
     .slice(0, limit ?? Infinity);
   const days: { day: string; items: QuickEntry[] }[] = [];
@@ -167,7 +167,7 @@ export function EntryFeed({
         text: `Șters: ${e.description || nameOf(e)}`,
         undo: async () => {
           try {
-            await restoreEntry(e);
+            await restoreEntry(e, cycle);
             bump();
             onChanged?.();
           } catch (err) {

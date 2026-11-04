@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Summary } from "@/lib/analytics";
-import { addMonths, currentMonth, eur, KIND_LABEL, lei, money, monthLabel, type Currency, type Kind } from "@/lib/util";
+import { addMonths, eur, KIND_LABEL, lei, money, monthLabel, type Currency, type Kind } from "@/lib/util";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { api, Bar, chartTooltipStyle, CollapsiblePanels, downloadFile, PageHeader, Panel, PencilIcon, Toast, useApi, useApp, useTab } from "@/components/ui";
 import { Leader } from "@/components/receipt";
@@ -196,7 +196,7 @@ function CategoryPie({ entries, catMap, rate, total }: { entries: Entry[]; catMa
 }
 
 export default function MonthPage() {
-  const { month, bump, eurRate, beta } = useApp();
+  const { month, bump, eurRate, beta, nowMonth } = useApp();
   const [kind, setKind] = useTab<Kind>("luna", "variable", KIND_ORDER);
   const [toast, setToast] = useState<string | null>(null);
   // Pe telefon: o singură listă pe zile, filtrată cu cipurile de sus (implicit toate intrările).
@@ -424,7 +424,7 @@ export default function MonthPage() {
         {/* Pe telefon, rezumatul de sus ține locul bilanțului; graficul și tichetele se deschid la atingere. */}
         <CollapsiblePanels>
         <aside className="xl:sticky xl:top-8 xl:self-start flex flex-col gap-3 lg:gap-5">
-          {beta && month === currentMonth() && <ForecastCard />}
+          {beta && month === nowMonth && <ForecastCard />}
           <Panel title="Bilanțul lunii" tour="luna-balance" summary={t ? `Grafic: unde s-au dus ${money(t.income)} lei` : undefined}>
             {t ? (
               <MonthBalance

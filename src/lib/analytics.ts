@@ -6,6 +6,7 @@ import {
   ageFrom, daysUntilPayday, hasFinancialProfile, profileSavingsAdjustment, recommendedEmergencyMonths, type Profile,
 } from "./profile";
 import { loadProfile } from "./profileServer";
+import { currentBudgetMonth, payCycleFrom } from "./payCycle";
 
 type EntryRow = {
   id: number;
@@ -389,8 +390,9 @@ export async function buildSummary(month: string): Promise<Summary> {
     };
   }
 
-  // „Zile până la salariu” are sens doar pentru luna în curs.
-  const daysToPayday = profile?.payday && month === currentMonth() ? daysUntilPayday(profile.payday) : null;
+  // „Zile până la salariu” are sens doar pentru luna în curs (luna de buget, dacă începe la salariu).
+  const cycle = payCycleFrom(settings, profile?.payday);
+  const daysToPayday = profile?.payday && month === currentBudgetMonth(cycle) ? daysUntilPayday(profile.payday, cycle.weekend) : null;
   const suggestions = buildSuggestions({
     month, totals, prev, categories, emergency, goals, loanViews, investments, prepay, prior, settings, profile, age, daysToPayday,
   });

@@ -3,6 +3,7 @@
  * influențează calculele (fondul de urgență, bugetul recomandat, sfaturile lunii).
  * Fără importuri de server — modulul e folosit și în browser (formulare), și pe server (analiză).
  */
+import { daysBetween, nextPayday, todayRo, type WeekendRule } from "./payCycle";
 
 export type Occupation = "employee" | "self_employed" | "business" | "freelancer" | "retired" | "student" | "unemployed" | "other";
 export type IncomeStability = "stable" | "variable";
@@ -209,16 +210,9 @@ export function profileSavingsAdjustment(p: Profile, age: number | null): { delt
   return { delta: 0, note: null };
 }
 
-/** Câte zile mai sunt până la următoarea zi de salariu (0 = azi). */
-export function daysUntilPayday(payday: number, today = new Date()): number {
-  const y = today.getFullYear();
-  const m = today.getMonth();
-  const clampDay = (yy: number, mm: number) => Math.min(payday, new Date(yy, mm + 1, 0).getDate());
-  const thisMonth = new Date(y, m, clampDay(y, m));
-  const start = new Date(y, m, today.getDate());
-  if (thisMonth >= start) return Math.round((thisMonth.getTime() - start.getTime()) / 86_400_000);
-  const next = new Date(y, m + 1, clampDay(y, m + 1));
-  return Math.round((next.getTime() - start.getTime()) / 86_400_000);
+/** Câte zile mai sunt până la următorul salariu (0 = azi); în weekend, salariul vine în ziua lucrătoare apropiată. */
+export function daysUntilPayday(payday: number, weekend: WeekendRule = "split", today = todayRo()): number {
+  return daysBetween(today, nextPayday(payday, weekend, today));
 }
 
 export function displayName(p: Profile, fallback: string) {

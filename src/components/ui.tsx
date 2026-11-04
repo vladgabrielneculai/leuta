@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { currentMonth, eur, lei, monthLabel, money } from "@/lib/util";
+import { CALENDAR_CYCLE, currentBudgetMonth, type PayCycle } from "@/lib/payCycle";
 import ReauthDialog from "./ReauthDialog";
 import { watchSystemTheme } from "@/lib/theme";
 
@@ -19,6 +20,11 @@ export type ConfirmOptions = {
 type AppCtx = {
   month: string;
   setMonth: (m: string) => void;
+  /** Luna în care suntem acum: cea calendaristică sau, cu luna de la salariu, luna salariului primit ultima dată. */
+  nowMonth: string;
+  /** Cum se împart intrările pe luni (calendaristic sau de la salariu la salariu). */
+  cycle: PayCycle;
+  reloadCycle: () => Promise<PayCycle | null>;
   eurRate: number;
   fxDate: string | null;
   fxError: string | null;
@@ -59,10 +65,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => watchSystemTheme(), []);
 
+  const [cycle, setCycle] = useState<PayCycle>(CALENDAR_CYCLE);
+  const nowMonth = currentBudgetMonth(cycle);
+
+  // Luna aleasă în sesiune rămâne; altfel pornim din luna de buget curentă (după ce aflăm ziua salariului).
+  const reloadCycle = useCallback(async () => {
+    try {
+      const r = await fetch("/api/pay-cycle");
+      if (!r.ok) return null;
+      const d = (await r.json()) as { cycle: PayCycle };
+      setCycle(d.cycle);
+      if (!sessionStorage.getItem("luna")) setMonthState(currentBudgetMonth(d.cycle));
+      return d.cycle;
+    } catch {
+      return null; // fără rețea: rămânem pe luna calendaristică
+    }
+  }, []);
+
   useEffect(() => {
     const saved = sessionStorage.getItem("luna");
     if (saved && /^\d{4}-\d{2}$/.test(saved)) setMonthState(saved);
-  }, []);
+    if (!["/login", "/setup"].includes(window.location.pathname)) reloadCycle();
+  }, [reloadCycle]);
 
   const setMonth = (m: string) => {
     setMonthState(m);
@@ -133,6 +157,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       value={{
         month,
         setMonth,
+        nowMonth,
+        cycle,
+        reloadCycle,
         eurRate,
         fxDate,
         fxError,

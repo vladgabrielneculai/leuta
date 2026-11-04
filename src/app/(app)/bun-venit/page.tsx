@@ -10,7 +10,7 @@ import StartingBalances from "@/components/StartingBalances";
 import { api, Field, Modal, Skeleton, useApi, useApp } from "@/components/ui";
 import type { Loan } from "@/lib/loan";
 import type { Profile } from "@/lib/profile";
-import { currentMonth, lei } from "@/lib/util";
+import { lei } from "@/lib/util";
 
 type ProfileResponse = { profile: Profile; age: number | null; emergency: { months: number; reasons: string[] } };
 type Category = { id: number; name: string; kind: string };
@@ -27,6 +27,7 @@ const STEPS = [
 /** Ghidul de început pentru un cont nou: 4 pași scurți + rezumat, fiecare poate fi amânat. */
 export default function OnboardingPage() {
   const { data, setData } = useApi<ProfileResponse>("/api/profile");
+  const { nowMonth } = useApp();
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,13 +72,13 @@ export default function OnboardingPage() {
     if (current.key === "work" && addSalary && !salaryAdded && Number(draft.net_income) > 0) {
       const [cats, entries] = await Promise.all([
         api<Category[]>("/api/crud/categories"),
-        api<{ category_id: number | null; kind: string }[]>(`/api/crud/entries?month=${currentMonth()}`),
+        api<{ category_id: number | null; kind: string }[]>(`/api/crud/entries?month=${nowMonth}`),
       ]);
       const salary = cats.find((c) => c.kind === "income" && c.name.toLowerCase().startsWith("salariu"));
       const exists = entries.some((e) => e.kind === "income" && e.category_id === salary?.id);
       if (salary && !exists) {
         await api("/api/crud/entries", "POST", {
-          month: currentMonth(),
+          month: nowMonth,
           kind: "income",
           category_id: salary.id,
           goal_id: null,

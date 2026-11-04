@@ -8,6 +8,7 @@ import SecurityCenter from "@/components/SecurityCenter";
 import NotificationSettings from "@/components/NotificationSettings";
 import { ThemeChooser } from "@/components/ThemeToggle";
 import DatabaseManager from "@/components/DatabaseManager";
+import PayCycleSettings from "@/components/PayCycleSettings";
 import { useTourReplay } from "@/components/Tour";
 import { CardsPanel } from "@/components/Cards";
 
@@ -122,7 +123,7 @@ function orderByParent(list: Category[]) {
 
 const SETTINGS_TABS = [
   { key: "general", label: "General", hint: "Categorii, temă și tutorial" },
-  { key: "calcule", label: "Calcule", hint: "Fondul de urgență, randament, inflație" },
+  { key: "calcule", label: "Calcule", hint: "Luna de buget, fondul de urgență, randament, inflație" },
   { key: "notificari", label: "Notificări", short: "Alerte", hint: "Telegram și e-mail" },
   { key: "securitate", label: "Securitate", hint: "Parolă, Face ID, 2FA și dispozitive" },
   { key: "date", label: "Date", hint: "Copie de siguranță și restaurare" },
@@ -330,6 +331,8 @@ export default function SettingsPage() {
       {tab === "calcule" && (
         <div className="grid gap-4 lg:gap-6 xl:grid-cols-2 xl:items-start">
           <div className="flex flex-col gap-4 lg:gap-6">
+          <PayCycleSettings />
+
           <Panel title="Modul Investiții" summary={params.enable_investments === "1" ? "Pornit" : "Oprit"}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>

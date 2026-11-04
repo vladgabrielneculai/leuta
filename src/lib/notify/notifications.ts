@@ -10,6 +10,8 @@ import { sendTelegram, sendTelegramDocument, sendTelegramPhoto, telegramConfigur
 import { buildReceipt } from "../receipt/model";
 import { receiptFilename, renderReceiptPdf } from "../receipt/pdf";
 import { addDays, daysBetween, isoWeek, localNow, longDate, shortDate, type LocalNow } from "./time";
+import { budgetMonthOf, budgetMonthRange } from "../payCycle";
+import { loadPayCycle } from "../profileServer";
 import { remindersDue, type Schedule } from "../scheduled";
 
 /**
@@ -90,6 +92,17 @@ function loanRows(dues: LoanDue[], s: Summary): Row[] {
       tone: "mov",
     };
   });
+}
+
+/**
+ * „Acum” pentru utilizatorul curent: ziua din România, cu luna de buget în loc de cea calendaristică
+ * (aceeași, dacă luna nu începe la salariu). `monthStart` = ziua în care a început luna de buget.
+ */
+export async function budgetNow(at: Date = new Date()): Promise<LocalNow & { monthStart: string }> {
+  const now = localNow(at);
+  const cycle = await loadPayCycle();
+  const month = budgetMonthOf(now.date, cycle);
+  return { ...now, month, monthStart: budgetMonthRange(month, cycle).start };
 }
 
 // ---------- Mesajele ----------
@@ -412,7 +425,7 @@ export async function deliver(m: Message, channels: Channel[], target: Target, a
 /** Notificările zilnice ale unui utilizator (apelat de cron la 21:00, ora României). */
 export async function runForUser(userId: number, appUrl: string, at: Date = new Date()) {
   return runAsUser(userId, async () => {
-    const now = localNow(at);
+    const now = await budgetNow(at);
     const prefs = parsePrefs(await getSetting("notif_prefs"));
     const target = await targetFor(userId);
     const report: Record<string, string> = {};
@@ -439,7 +452,8 @@ export async function runForUser(userId: number, appUrl: string, at: Date = new 
     const budget = await budgetAlerts(now);
     if (budget) await send("budget", budget.keys, async () => budget.message);
     if (now.weekday === 0) await send("weekly", [isoWeek(now.date)], () => weeklyMessage(now, appUrl));
-    if (now.day === 1) {
+    // Raportul lunii încheiate: în prima zi a lunii noi (1 sau ziua salariului, dacă luna începe la salariu).
+    if (now.date === now.monthStart) {
       const prev = addMonths(now.month, -1);
       await send("monthly", [prev], () => monthlyMessage(prev, appUrl));
     }
@@ -450,7 +464,7 @@ export async function runForUser(userId: number, appUrl: string, at: Date = new 
 /** Mesaj de test (fără jurnal), din Setări. */
 export async function testMessage(userId: number, kind: NotifyKind, channel: Channel, appUrl: string) {
   return runAsUser(userId, async () => {
-    const now = localNow();
+    const now = await budgetNow();
     const target = await targetFor(userId);
     if (channel === "telegram" && !target.chatId) throw new Error("Conectează întâi Telegram.");
     if (channel === "email" && !target.email) throw new Error("Completează și salvează întâi adresa de email.");

@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { FoundEntry, SearchTotals } from "@/lib/entrySearch";
-import { addMonths, currentMonth, eur, KIND_LABEL, lei, monthLabel, type Kind } from "@/lib/util";
+import { addMonths, eur, KIND_LABEL, lei, monthLabel, type Kind } from "@/lib/util";
 import { useQuickAdd } from "@/components/QuickAdd";
-import { Empty, Field, Money, PageHeader, Panel, Skeleton, Stat, STAT_STRIP, useApi } from "@/components/ui";
+import { Empty, Field, Money, PageHeader, Panel, Skeleton, Stat, STAT_STRIP, useApi, useApp } from "@/components/ui";
 
 type Category = { id: number; name: string; kind: Kind; color: string };
 type Result = { rows: FoundEntry[]; truncated: boolean; totals: SearchTotals };
@@ -37,6 +37,7 @@ export default function SearchPage() {
   const quickAdd = useQuickAdd();
   const [f, setF] = useState<Filters>(EMPTY);
   // Textul se caută după o scurtă pauză în tastare, nu la fiecare literă.
+  const { nowMonth } = useApp();
   const [qs, setQs] = useState("");
   useEffect(() => {
     const t = setTimeout(() => setQs(query(f)), 300);
@@ -54,7 +55,7 @@ export default function SearchPage() {
   }
 
   const set = (patch: Partial<Filters>) => setF((prev) => ({ ...prev, ...patch }));
-  const now = currentMonth();
+  const now = nowMonth;
   const presets: { label: string; from: string; to: string }[] = [
     { label: "Luna aceasta", from: now, to: now },
     { label: "Ultimele 3 luni", from: addMonths(now, -2), to: now },
