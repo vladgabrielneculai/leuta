@@ -192,3 +192,14 @@ export function sameCycle(a: PayCycle, b: PayCycle) {
   if (!cycleActive(a) || !cycleActive(b)) return cycleActive(a) === cycleActive(b);
   return a.payday === b.payday && a.weekend === b.weekend;
 }
+
+/**
+ * Unde suntem într-o lună de buget: a câta zi e azi (1 = prima zi) și câte zile are luna. Pentru estimarea
+ * la final de lună: cu luna de la salariu, „finalul” e ziua dinaintea salariului următor.
+ */
+export function budgetMonthProgress(month: string, c: PayCycle, today = todayRo()): { day: number; length: number; start: string; end: string } {
+  const { start, end } = budgetMonthRange(month, c);
+  const length = daysBetween(start, end) + 1;
+  const day = Math.min(length, Math.max(0, daysBetween(start, today) + 1));
+  return { day, length, start, end };
+}

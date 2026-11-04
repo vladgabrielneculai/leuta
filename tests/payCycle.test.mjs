@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  CALENDAR_CYCLE, budgetMonthOf, budgetMonthRange, currentBudgetMonth, defaultDayIn, nextPayday, parseSortedCycle,
+  CALENDAR_CYCLE, budgetMonthOf, budgetMonthProgress, budgetMonthRange, currentBudgetMonth, defaultDayIn, nextPayday, parseSortedCycle,
   payCycleFrom, paydayDate, rangeLabel, resortMoves, sameCycle,
 } from "../src/lib/payCycle.ts";
 
@@ -116,4 +116,13 @@ test("reorganizarea e reversibilă la oprire", () => {
 test("schimbarea zilei de salariu mută doar ce e între zile", () => {
   const after = [{ id: 1, month: "2026-10", date: "2026-11-03", recurring: 0 }, { id: 2, month: "2026-11", date: "2026-11-07", recurring: 0 }];
   assert.deepEqual(resortMoves(after, C5, { ...C5, payday: 10 }), [{ id: 2, from: "2026-11", to: "2026-10" }]);
+});
+
+test("progresul în luna de buget, pentru estimarea la final de lună", () => {
+  // octombrie de la salariu: 5 oct – 4 nov (31 de zile); pe 3 noiembrie e ziua 30
+  assert.deepEqual(budgetMonthProgress("2026-10", C5, "2026-11-03"), { day: 30, length: 31, start: "2026-10-05", end: "2026-11-04" });
+  // decembrie: 4 dec (vineri) – 4 ian (33 de zile)
+  assert.deepEqual(budgetMonthProgress("2026-12", C5, "2026-12-04"), { day: 1, length: 32, start: "2026-12-04", end: "2027-01-04" });
+  // fără ciclu: luna calendaristică
+  assert.deepEqual(budgetMonthProgress("2026-11", CALENDAR_CYCLE, "2026-11-10"), { day: 10, length: 30, start: "2026-11-01", end: "2026-11-30" });
 });

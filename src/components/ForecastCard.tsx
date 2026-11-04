@@ -5,7 +5,7 @@ import type { Forecast } from "@/lib/forecast";
 import { lei } from "@/lib/util";
 import { Panel, useApi } from "./ui";
 
-type Response = Forecast & { month: string; upcoming: { name: string; amount: number; kind: "income" | "expense"; date: string }[] };
+type Response = Forecast & { month: string; end: string; fromPayday: boolean; upcoming: { name: string; amount: number; kind: "income" | "expense"; date: string }[] };
 
 const fmtDay = (d: string) => d.slice(8, 10) + "." + d.slice(5, 7);
 
@@ -22,7 +22,11 @@ export default function ForecastCard() {
     <Panel title="Estimare la final de lună" summary={`rămân ~${lei(data.endBalance)}`}>
       <p className={`num text-[26px] font-semibold ${minus ? "text-rosu" : "text-leu"}`}>{lei(data.endBalance)}</p>
       <p className="text-[13px] text-ink-soft">
-        {minus ? "Așa cum merge, luna se termină pe minus." : "Ar trebui să-ți rămână atât pe ultima zi a lunii."}
+        {minus
+          ? "Așa cum merge, luna se termină pe minus."
+          : data.fromPayday
+            ? `Ar trebui să-ți rămână atât în ziua dinaintea salariului (${fmtDay(data.end)}).`
+            : "Ar trebui să-ți rămână atât pe ultima zi a lunii."}
         {data.daysLeft > 0 && (
           <> Mai sunt {data.daysLeft} zile; poți cheltui cam <strong className="text-ink">{lei(Math.max(0, data.safeDaily))}</strong> pe zi ca să nu intri pe minus.</>
         )}
