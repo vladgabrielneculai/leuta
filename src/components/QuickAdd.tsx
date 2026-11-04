@@ -224,6 +224,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const showCards = beta && isExpense && !!cards && cards.length > 0;
   const fallbackCard = editing ? editing.card_id ?? null : lastCardId();
   const cardId = cardPick !== undefined ? cardPick : cards?.some((c) => c.id === fallbackCard) ? fallbackCard : null;
+  const pickedCard = isExpense && cardId ? cards?.find((c) => c.id === cardId) : undefined;
 
   // Conturile (beta): pe ce cont s-a făcut plata. Ultimul cont ales se propune data viitoare.
   const { data: accountsData } = useApi<{ accounts: { id: number; name: string; archived: number }[] }>(beta ? "/api/accounts" : null);
@@ -237,6 +238,20 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     } catch {}
     setAccountId(accountsData.accounts.some((a) => a.id === last && !a.archived) ? last : null);
   }, [accountsData, accountId]);
+  // „Plătit cu” (beta): un singur rând cu cardurile (fiecare cu contul lui) și conturile fără card.
+  // Cardul ales hotărăște contul; un card nelegat de un cont nu schimbă niciun sold.
+  const effectiveAccount = pickedCard ? pickedCard.account_id ?? null : accountId;
+  const cardAccounts = new Set((cards ?? []).map((c) => c.account_id).filter(Boolean));
+  const payOptions: { key: string; name: string; sub?: string; color?: string | null; card: number | null; account: number | null }[] = [
+    ...(isExpense && cards ? cards.map((c) => ({ key: `c:${c.id}`, name: c.name, sub: accounts.find((a) => a.id === c.account_id)?.name, color: c.color, card: c.id, account: c.account_id ?? null })) : []),
+    ...accounts.filter((a) => !isExpense || !cardAccounts.has(a.id)).map((a) => ({ key: `a:${a.id}`, name: a.name, card: null, account: a.id })),
+  ];
+  const payKey = pickedCard ? `c:${pickedCard.id}` : accountId ? `a:${accountId}` : "";
+  const pay = (o: { card: number | null; account: number | null }) => {
+    setCardPick(o.card);
+    setAccountId(o.account);
+    stayMonthly();
+  };
 
   // Etichetele (beta): text liber, refolosite după nume.
   const { data: allTags } = useApi<{ id: number; name: string }[]>(beta ? "/api/crud/tags" : null);
@@ -354,9 +369,9 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       currency,
       recurring: recurring && !isWithdraw ? 1 : 0,
       // Contul se trimite doar când lista conturilor s-a încărcat, ca să nu ștergem din greșeală legătura existentă.
-      ...(accountsData && accountId !== undefined ? { account_id: accountId } : {}),
+      ...(accountsData && effectiveAccount !== undefined ? { account_id: effectiveAccount } : {}),
     };
-    if (accountsData && accountId) {
+    if (accountsData && accountId && !pickedCard) {
       try {
         localStorage.setItem(LAST_ACCOUNT, String(accountId));
       } catch {}
@@ -417,7 +432,8 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
         currency,
         amount: value,
         parts: list,
-        ...(accountsData && accountId !== undefined ? { account_id: accountId } : {}),
+        ...(accountsData && effectiveAccount !== undefined ? { account_id: effectiveAccount } : {}),
+        ...(beta && cards ? { card_id: cardId } : {}),
       });
       await saveTags(res.entries.map((e) => e.id));
       if (mobile) tick();
@@ -586,44 +602,22 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
             {currency === "EUR" && value > 0 && <p className="mt-1 text-right text-[12px] text-ink-faint num">≈ {lei(value * eurRate)}</p>}
           </div>
 
-          {showCards && (
+          {payOptions.length > 0 && (
             <div>
-              <span className="label">Cardul folosit</span>
-              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Cardul folosit">
-                {[{ id: null as number | null, name: "Fără card", color: null as string | null }, ...cards.map((c) => ({ id: c.id as number | null, name: c.name, color: c.color }))].map((c) => (
+              <span className="label">{kind === "income" ? "În contul" : kind === "saving" ? "Din contul" : "Plătit cu"}</span>
+              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={kind === "income" ? "În contul" : "Plătit cu"}>
+                {[{ key: "", name: "Nespecificat", card: null, account: null } as (typeof payOptions)[number], ...payOptions].map((o) => (
                   <button
-                    key={c.id ?? 0}
+                    key={o.key || "none"}
                     type="button"
                     role="radio"
-                    aria-checked={cardId === c.id}
-                    className={`${chip(cardId === c.id)} min-h-[36px]! py-1! text-[13px]!`}
-                    onClick={() => {
-                      setCardPick(c.id);
-                      stayMonthly();
-                    }}
+                    aria-checked={payKey === o.key}
+                    className={`${chip(payKey === o.key)} min-h-[36px]! py-1! text-[13px]!`}
+                    onClick={() => pay(o)}
                   >
-                    {c.color ? <span className="h-2 w-3.5 shrink-0 rounded-[2px]" style={{ background: c.color }} aria-hidden /> : null}
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {accounts.length > 0 && (
-            <div>
-              <span className="label">{kind === "income" ? "În contul" : "Din contul"}</span>
-              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Contul">
-                {[{ id: null as number | null, name: "Niciunul" }, ...accounts].map((a) => (
-                  <button
-                    key={a.id ?? 0}
-                    type="button"
-                    role="radio"
-                    aria-checked={accountId === a.id}
-                    className={`${chip(accountId === a.id)} min-h-[36px]! py-1! text-[13px]!`}
-                    onClick={() => setAccountId(a.id)}
-                  >
-                    {a.name}
+                    {o.color ? <span className="h-2 w-3.5 shrink-0 rounded-[2px]" style={{ background: o.color }} aria-hidden /> : null}
+                    {o.name}
+                    {o.sub ? <span className="text-[11.5px] opacity-60">· {o.sub}</span> : null}
                   </button>
                 ))}
               </div>

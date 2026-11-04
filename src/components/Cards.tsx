@@ -8,7 +8,10 @@ import { api, Field, Panel, TrashIcon, useApi, useApp } from "./ui";
  * (fereastra de adăugare rapidă ține minte ultimul ales, pe dispozitivul curent).
  */
 
-export type PayCard = { id: number; name: string; kind: "bank" | "meal"; color: string };
+/** `account_id` (beta): contul din care plătește cardul; cheltuielile cu cardul schimbă soldul lui. */
+export type PayCard = { id: number; name: string; kind: "bank" | "meal"; color: string; account_id?: number | null };
+
+type AccountOption = { id: number; name: string; archived: number };
 
 export const CARD_KIND_LABEL: Record<PayCard["kind"], string> = { bank: "Card bancar", meal: "Tichete de masă" };
 
@@ -39,17 +42,17 @@ export function useCards() {
   return useApi<PayCard[]>(beta ? "/api/crud/cards" : null);
 }
 
-function CardRow({ c, all, onChanged, onError }: { c: PayCard; all: PayCard[]; onChanged: (msg: string) => void; onError: (msg: string) => void }) {
+function CardRow({ c, all, accounts, onChanged, onError }: { c: PayCard; all: PayCard[]; accounts: AccountOption[]; onChanged: (msg: string) => void; onError: (msg: string) => void }) {
   const { confirm } = useApp();
   const [d, setD] = useState(c);
-  const dirty = d.name !== c.name || d.kind !== c.kind || d.color !== c.color;
+  const dirty = d.name !== c.name || d.kind !== c.kind || d.color !== c.color || (d.account_id ?? null) !== (c.account_id ?? null);
 
   const save = async () => {
     const name = d.name.trim();
     if (!name) return onError("Numele cardului nu poate fi gol.");
     if (all.some((o) => o.id !== c.id && o.name.trim().toLowerCase() === name.toLowerCase())) return onError(`Ai deja un card „${name}”.`);
     try {
-      await api("/api/crud/cards", "PUT", { id: c.id, name, kind: d.kind, color: d.color });
+      await api("/api/crud/cards", "PUT", { id: c.id, name, kind: d.kind, color: d.color, ...(accounts.length ? { account_id: d.account_id ?? null } : {}) });
       onChanged("Card salvat");
     } catch (e) {
       onError((e as Error).message);
@@ -89,6 +92,20 @@ function CardRow({ c, all, onChanged, onError }: { c: PayCard; all: PayCard[]; o
       >
         {d.kind === "meal" ? "Tichete" : "Bancar"}
       </button>
+      {accounts.length > 0 && (
+        <select
+          className="field w-24 shrink-0 px-1! py-1.5! text-[12.5px] sm:w-36"
+          value={d.account_id ?? ""}
+          onChange={(e) => setD({ ...d, account_id: e.target.value ? Number(e.target.value) : null })}
+          aria-label={`Contul cardului ${c.name}`}
+          title="Din ce cont plătește cardul"
+        >
+          <option value="">fără cont</option>
+          {accounts.filter((a) => !a.archived || a.id === c.account_id).map((a) => (
+            <option key={a.id} value={a.id}>din {a.name}</option>
+          ))}
+        </select>
+      )}
       {dirty ? (
         <button className="btn-primary h-9 w-9 shrink-0 px-0 sm:w-auto sm:px-3" onClick={save} aria-label="Salvează" title="Salvează">
           <span className="sm:hidden" aria-hidden>✓</span>
@@ -107,6 +124,10 @@ function CardRow({ c, all, onChanged, onError }: { c: PayCard; all: PayCard[]; o
 export function CardsPanel({ onToast }: { onToast: (msg: string) => void }) {
   const { bump } = useApp();
   const { data: cards, reload } = useCards();
+  const { beta } = useApp();
+  // Conturile (beta): fiecare card bancar poate fi legat de contul din care plătește.
+  const { data: accountsData } = useApi<{ accounts: AccountOption[] }>(beta ? "/api/accounts" : null);
+  const accounts = accountsData?.accounts ?? [];
   const [name, setName] = useState("");
   const [kind, setKind] = useState<PayCard["kind"]>("bank");
 
@@ -133,11 +154,12 @@ export function CardsPanel({ onToast }: { onToast: (msg: string) => void }) {
     <Panel title="Carduri" summary={cards ? (cards.length ? `${cards.length} ${cards.length === 1 ? "card" : "carduri"}` : "Niciun card") : undefined}>
       <p className="mb-3 text-[13px] text-ink-soft">
         Cardurile cu care plătești. Când adaugi o cheltuială, alegi cardul folosit (de ex. cardul de tichete la alimente).
+        {accounts.length > 0 && " Leagă cardul de contul lui ca cheltuielile cu el să scadă din soldul contului."}
       </p>
       {cards && cards.length > 0 && (
         <ul className="mb-3">
           {cards.map((c) => (
-            <CardRow key={`${c.id}-${c.name}-${c.kind}-${c.color}`} c={c} all={cards} onChanged={changed} onError={onToast} />
+            <CardRow key={`${c.id}-${c.name}-${c.kind}-${c.color}-${c.account_id ?? 0}`} c={c} all={cards} accounts={accounts} onChanged={changed} onError={onToast} />
           ))}
         </ul>
       )}
