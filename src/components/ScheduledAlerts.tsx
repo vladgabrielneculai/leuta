@@ -23,9 +23,9 @@ export function ScheduledAlerts() {
         {alerts.slice(0, 4).map((a, i) => (
           <li key={i}>
             {a.type === "renewal" ? (
-              <>🔁 <strong>{a.name}</strong>: {money(a.amount, a.currency)} {a.days <= 0 ? "azi" : a.days === 1 ? "mâine" : `pe ${fmtDate(a.date)}`}</>
+              <><strong>{a.name}</strong>: {money(a.amount, a.currency)} {a.days <= 0 ? "azi" : a.days === 1 ? "mâine" : `pe ${fmtDate(a.date)}`}</>
             ) : (
-              <>📈 <strong>{a.name}</strong> s-a scumpit: {money(a.previous, a.currency)} → {money(a.amount, a.currency)}</>
+              <><strong>{a.name}</strong> s-a scumpit: {money(a.previous, a.currency)} → {money(a.amount, a.currency)}</>
             )}
           </li>
         ))}

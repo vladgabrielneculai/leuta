@@ -281,7 +281,7 @@ export default function MonthPage() {
               <span className="hidden sm:inline">Copiază intrările lunare din {monthLabel(addMonths(month, -1))}</span>
             </button>
             <button className="btn-ghost border border-line bg-field/60" onClick={downloadReceipt} disabled={downloading}>
-              {downloading ? "Se generează…" : "🧾 Bonul lunii (PDF)"}
+              {downloading ? "Se generează…" : "Bonul lunii (PDF)"}
             </button>
           </>
         }

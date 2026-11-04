@@ -110,7 +110,7 @@ export default function NotificationSettings({ onToast }: { onToast: (msg: strin
       <div className="mb-4 rounded-lg border border-line p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="text-[14px] font-semibold">✈️ Telegram</div>
+            <div className="text-[14px] font-semibold">Telegram</div>
             <div className="text-[12px] text-ink-soft">
               {!s.telegram.configured
                 ? "Botul nu e configurat pe server (lipsește TELEGRAM_BOT_TOKEN în Vercel)."
@@ -139,7 +139,7 @@ export default function NotificationSettings({ onToast }: { onToast: (msg: strin
 
       {/* Email */}
       <div className="mb-4 rounded-lg border border-line p-3">
-        <div className="mb-2 text-[14px] font-semibold">✉️ Email</div>
+        <div className="mb-2 text-[14px] font-semibold">Email</div>
         {!s.emailConfigured && (
           <p className="mb-2 text-[12px] text-ink-soft">Emailul nu e configurat pe server (lipsește RESEND_API_KEY în Vercel).</p>
         )}

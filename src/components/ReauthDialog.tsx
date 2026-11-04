@@ -100,7 +100,7 @@ export default function ReauthDialog() {
       </p>
       {methods?.includes("biometric") && (
         <button className="btn-primary mb-4 w-full justify-center py-2.5" onClick={confirmBiometric} disabled={busy}>
-          {busy ? "Se verifică…" : `🔐 Confirmă cu ${biometricLabel()}`}
+          {busy ? "Se verifică…" : `Confirmă cu ${biometricLabel()}`}
         </button>
       )}
       {methods && (

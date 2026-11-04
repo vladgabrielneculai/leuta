@@ -409,7 +409,7 @@ export default function LoanScheduleManager({
               }`}
               onClick={() => setImportMode("file")}
             >
-              📄 Grafic PDF / Excel
+              Grafic PDF / Excel
             </button>
             <button
               className={`px-3 py-1.5 text-[13px] font-semibold rounded-md ${
@@ -417,7 +417,7 @@ export default function LoanScheduleManager({
               }`}
               onClick={() => setImportMode("status")}
             >
-              🏦 Situația la zi (manual)
+              Situația la zi (manual)
             </button>
             <button
               className={`px-3 py-1.5 text-[13px] font-semibold rounded-md ${
@@ -425,7 +425,7 @@ export default function LoanScheduleManager({
               }`}
               onClick={() => setImportMode("contract")}
             >
-              ⚙️ Generează din contract
+              Generează din contract
             </button>
             <button
               className={`px-3 py-1.5 text-[13px] font-semibold rounded-md ${
@@ -433,7 +433,7 @@ export default function LoanScheduleManager({
               }`}
               onClick={() => setImportMode("manual")}
             >
-              📋 Lipește text manual
+              Lipește text manual
             </button>
           </div>
 

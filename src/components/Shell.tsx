@@ -7,7 +7,6 @@ import { addMonths, currentMonth, monthLabel } from "@/lib/util";
 import { api, useApp } from "./ui";
 import Logo from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
-import { ReceiptFooter } from "./receipt";
 import { QuickAddProvider, useQuickAdd } from "./QuickAdd";
 import { TourProvider } from "./Tour";
 import { ICON, MONTH_PAGES, navGroups, parentOf, PLAN_HREFS, ACCOUNT_HREFS, sectionLabel, within } from "./nav";
@@ -103,7 +102,8 @@ function AddTab() {
         aria-label="Adaugă o intrare"
         data-tour="add"
       >
-        <span className="-mt-4 flex h-11 w-11 items-center justify-center rounded-full bg-ink text-sheet shadow-[0_3px_10px_rgb(var(--shadow)/0.3)] ring-4 ring-paper transition-transform active:scale-90">
+        {/* Butonul principal are culoarea accentului (verdele bancnotei de 1 leu). */}
+        <span className="-mt-3 flex h-10 w-11 items-center justify-center rounded-[14px] bg-leu text-on-accent shadow-[0_4px_12px_rgb(var(--leu)/0.35)] transition-transform active:scale-90">
           <Icon d="M12 5v14M5 12h14" className="h-6 w-6" strokeWidth={2.4} />
         </span>
         Adaugă
@@ -276,10 +276,12 @@ export default function Shell({ children }: { children: ReactNode }) {
         aria-current={on ? "page" : undefined}
         className={`flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] font-medium transition-colors ${on ? "text-ink" : "text-ink-faint"}`}
       >
-        <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${on ? "bg-ink/8" : ""}`}>
-          <Icon d={t.icon} strokeWidth={on ? 2.2 : 1.7} />
+        <span className="flex h-7 w-12 items-center justify-center">
+          <Icon d={t.icon} strokeWidth={on ? 2.1 : 1.6} />
         </span>
         {t.label}
+        {/* Tab-ul activ: o linie scurtă verde sub etichetă. */}
+        <span className={`h-[2px] w-3.5 rounded-full transition-colors ${on ? "bg-leu" : "bg-transparent"}`} aria-hidden />
       </Link>
     );
   };
@@ -346,8 +348,16 @@ export default function Shell({ children }: { children: ReactNode }) {
             </Link>
           ) : (
             <Link href="/" className="relative flex w-16 shrink-0 items-center" aria-label="Leuța — Acasă">
-              <Logo className="h-8 w-8" />
-              {beta && <span className="absolute -bottom-1 left-5 rounded-full bg-mov px-1 text-[8.5px] font-bold uppercase leading-[13px] tracking-wider text-sheet" title="Versiunea de test">Beta</span>}
+              <span className="flex flex-col items-start gap-[3px]">
+                <span className="font-display text-[18px] font-bold leading-none tracking-[-0.05em] text-ink">Leuța</span>
+                {/* Cele cinci liniuțe în culorile bancnotelor (1, 5, 10, 50, 100 lei), semnul Leuței. */}
+                <span className="flex gap-[2px]" aria-hidden>
+                  {["var(--c-leu)", "var(--c-mov)", "var(--c-rosu)", "var(--c-galben)", "var(--c-albastru)"].map((c) => (
+                    <span key={c} className="h-[2px] w-[6px] rounded-full" style={{ background: c }} />
+                  ))}
+                </span>
+              </span>
+              {beta && <span className="absolute left-[50px] -top-0.5 rounded-full bg-mov px-1 text-[8.5px] font-bold uppercase leading-[13px] tracking-wider text-sheet" title="Versiunea de test">Beta</span>}
             </Link>
           )}
           {showMonth ? (
@@ -377,7 +387,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <div className={`mb-4 items-center gap-1 rounded-lg border border-galben/40 bg-galben-tint text-[13px] sm:mb-5 ${path === "/" ? "flex" : "hidden lg:flex"}`}>
             <Link href="/setari#securitate" className="flex min-w-0 flex-1 items-center justify-between gap-3 py-2.5 pl-3.5 hover:underline sm:py-3 sm:pl-4">
               <span>
-                🔐 <strong>Protejează-ți contul cu autentificarea în doi pași (2FA)</strong>
+                <strong>Protejează-ți contul cu autentificarea în doi pași (2FA)</strong>
                 <span className="hidden sm:inline">
                   . După asta, o parolă furată nu mai ajunge pentru a intra în aplicație.
                 </span>
@@ -395,7 +405,6 @@ export default function Shell({ children }: { children: ReactNode }) {
           </div>
         )}
         {children}
-        <ReceiptFooter seed={path} />
       </main>
     </div>
     </TourProvider>

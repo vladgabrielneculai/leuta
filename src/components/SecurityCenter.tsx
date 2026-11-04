@@ -222,7 +222,7 @@ export default function SecurityCenter({ onToast }: { onToast: (msg: string) => 
           {passkeys?.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-[13px]">
               <div>
-                <div className="font-medium">📱 {p.name || "Dispozitiv"}</div>
+                <div className="font-medium">{p.name || "Dispozitiv"}</div>
                 <div className="text-[12px] text-ink-soft">
                   Activat {fmt(p.created_at)} · folosit ultima dată {fmt(p.last_used_at)}
                   {p.backed_up ? " · sincronizat (iCloud / Google)" : ""}

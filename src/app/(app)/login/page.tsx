@@ -154,7 +154,7 @@ function LoginScreen() {
             {supported && !step2 && (
               <>
                 <button type="button" onClick={biometricLogin} disabled={!!busy} className="btn-primary w-full justify-center py-3 text-[15px] font-semibold">
-                  {busy === "bio" ? "Se verifică…" : `🔐 Intră cu ${bioLabel}`}
+                  {busy === "bio" ? "Se verifică…" : `Intră cu ${bioLabel}`}
                 </button>
                 <div className="my-4 flex items-center gap-3 text-[12px] text-ink-faint">
                   <span className="h-px flex-1 border-t border-dashed border-line-strong" />

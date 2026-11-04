@@ -84,7 +84,7 @@ export default function LoansPage() {
         intro="Situația fiecărui credit la luna selectată, cu plățile anticipate deja făcute și istoricul achitat."
         actions={
           <>
-            <button className="btn-ghost" onClick={() => setImporting(true)}>📄 Adaugă din grafic PDF</button>
+            <button className="btn-ghost" onClick={() => setImporting(true)}>Adaugă din grafic PDF</button>
             <button className="btn-primary" data-tour="credite-add" onClick={() => setAdding(true)}>Adaugă credit</button>
           </>
         }

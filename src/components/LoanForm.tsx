@@ -114,7 +114,7 @@ export default function LoanForm({
       <fieldset className="rounded-md border border-mov/40 bg-mov-tint/20 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <legend className="px-1 text-[14px] font-semibold text-mov flex items-center gap-1.5">
-            <span>💰</span> Bani deja plătiți / Situația la zi
+            Bani deja plătiți / Situația la zi
           </legend>
           <label className="flex items-center gap-2 text-[13px] font-medium text-ink cursor-pointer">
             <input

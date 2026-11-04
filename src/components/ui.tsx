@@ -3,7 +3,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { currentMonth, eur, lei, monthLabel, money } from "@/lib/util";
-import { ReceiptMeta } from "./receipt";
 import ReauthDialog from "./ReauthDialog";
 import { watchSystemTheme } from "@/lib/theme";
 
@@ -376,8 +375,8 @@ export function Money({
   const sizes = {
     sm: "text-[14px]",
     md: "text-[17px] font-medium",
-    lg: "font-display text-[18px] sm:text-[22px] font-semibold leading-tight tracking-[-0.03em]",
-    xl: "font-display text-[32px] sm:text-[40px] font-bold leading-none tracking-[-0.04em]",
+    lg: "font-display text-[20px] sm:text-[24px] font-semibold leading-tight tracking-[-0.04em]",
+    xl: "font-display text-[46px] sm:text-[52px] font-semibold leading-none tracking-[-0.055em]",
   };
   const tones: Record<string, string> = {
     leu: "text-leu", rosu: "text-rosu", galben: "text-galben", albastru: "text-albastru", mov: "text-mov", soft: "text-ink-soft",
@@ -385,10 +384,11 @@ export function Money({
   return (
     <span className="num inline-flex flex-col">
       {size === "lg" || size === "xl" ? (
-        // Cifrele mari: „lei” mai mic, lângă sumă, ca să încapă pe un rând chiar și cu zecimale.
+        // Cifrele mari: partea întreagă apăsat, zecimalele estompate, „lei” mic și verde (accentul) lângă sumă.
         <span className={`whitespace-nowrap ${sizes[size]} ${tone ? tones[tone] : ""}`}>
-          {money(v)}
-          <span className="ml-1 inline-block text-[0.55em] font-semibold opacity-70">lei</span>
+          {money(v).replace(/,\d+$/, "")}
+          <span className="opacity-35">{money(v).match(/,\d+$/)?.[0]}</span>
+          <span className={`ml-1.5 inline-block text-[0.4em] font-semibold tracking-[-0.01em] ${tone ? "opacity-80" : "text-leu"}`}>lei</span>
         </span>
       ) : (
         <span className={`${sizes[size]} ${tone ? tones[tone] : ""}`}>{lei(v, decimals)}</span>
@@ -402,18 +402,14 @@ export function Money({
 
 // ---------- Structură ----------
 
-/** Antetul paginii, ca începutul unui bon: numărul bonului și ora, titlul, apoi o linie dublă. */
+/** Antetul paginii: titlul (cu explicația, pe ecran mare) și acțiunile, apoi o linie fină. */
 export function PageHeader({ title, intro, actions }: { title: string; intro?: ReactNode; actions?: ReactNode }) {
-  const { month } = useApp();
   return (
     <header className="mb-4 sm:mb-8" data-tour="title">
-      {/* Pe telefon, antetul e doar titlul: antetul de bon și explicația stau pe ecranul mare. */}
-      <div className="hidden lg:block">
-        <ReceiptMeta month={month} label={monthLabel(month, true)} />
-      </div>
+      {/* Pe telefon, antetul e doar titlul; explicația apare pe ecranul mare. */}
       <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
         <div className="max-w-2xl">
-          <h1 className="text-[22px] font-bold leading-tight sm:text-[31px]">{title}</h1>
+          <h1 className="text-[26px] font-semibold leading-[1.1] tracking-[-0.04em] sm:text-[34px]">{title}</h1>
           {intro && <p className="mt-1.5 hidden text-[14px] text-ink-soft sm:text-[15px] lg:block">{intro}</p>}
         </div>
         {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto *:min-w-[40%] *:flex-1 sm:*:min-w-0 sm:*:flex-none [&>.btn-danger]:border [&>.btn-danger]:border-rosu/30 [&>.btn-ghost]:border [&>.btn-ghost]:border-line-strong/70">{actions}</div>}

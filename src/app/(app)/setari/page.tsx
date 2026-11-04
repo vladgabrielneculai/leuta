@@ -309,7 +309,7 @@ export default function SettingsPage() {
           <Panel title="Aspect" summary="Temă de zi, de noapte sau automată">
             <p className="mb-3 text-[13px] text-ink-soft">
               Tema de zi sau de noapte. „Auto” o schimbă singură după setarea telefonului sau a calculatorului. Alegerea se
-              păstrează pe fiecare dispozitiv; o poți schimba rapid și din butonul ☀️/🌙 din meniu (pe telefon, din „Mai mult”).
+              păstrează pe fiecare dispozitiv; o poți schimba rapid și din meniu (pe telefon, din „Eu”).
             </p>
             <ThemeChooser />
           </Panel>
