@@ -9,12 +9,12 @@ export default function Footer() {
         <div>
           <div className="flex items-center gap-2.5">
             <img src="/icon-192.png" alt="" width={30} height={30} className="rounded-[8px]" />
-            <span className="text-[17px] font-bold text-ink">Leuța</span>
+            <span className="text-[17px] font-semibold tracking-[-0.03em] text-ink">Leuța</span>
           </div>
-          <p className="mt-3 max-w-xs">{SITE.tagline} Bugetul lunar, creditele și economiile tale, ban cu ban.</p>
+          <p className="mt-3 max-w-xs">{SITE.tagline} Bugetul lunar, creditele și economiile tale, într-un singur loc.</p>
           <div className="mt-4 flex gap-1.5" aria-hidden>
             {["leu", "mov", "rosu", "galben", "albastru"].map((c) => (
-              <span key={c} className="h-1.5 w-7 rounded-full" style={{ background: `var(--c-${c})` }} />
+              <span key={c} className="h-1 w-7 rounded-full" style={{ background: `var(--c-${c})` }} />
             ))}
           </div>
         </div>
@@ -32,7 +32,7 @@ export default function Footer() {
           <CookieSettingsLink />
         </nav>
       </div>
-      <div className="border-t border-dashed border-line-strong/60">
+      <div className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-5 text-[12px] text-ink-faint sm:flex-row sm:justify-between sm:px-6">
           <span>
             © {new Date().getFullYear()} Leuța · Operator: {SITE.operator.name} · {SITE.operator.email}

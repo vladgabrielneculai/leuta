@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     siteName: SITE.name,
     title: `${SITE.name} — ${SITE.tagline}`,
     description: SITE.description,
-    images: [{ url: "/og.png", width: 2400, height: 1260, alt: "Leuța: bugetul tău, clar ca un bon" }],
+    images: [{ url: "/og.png", width: 2400, height: 1260, alt: "Leuța: bugetul tău, ban cu ban" }],
   },
   twitter: { card: "summary_large_image", images: ["/og.png"] },
   icons: { apple: "/apple-icon.png" },
@@ -26,8 +26,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#EAE5DB" },
-    { media: "(prefers-color-scheme: dark)", color: "#100F0D" },
+    { media: "(prefers-color-scheme: light)", color: "#FAFAF9" },
+    { media: "(prefers-color-scheme: dark)", color: "#050505" },
   ],
 };
 

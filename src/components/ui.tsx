@@ -722,7 +722,7 @@ export const LEVEL_STYLE = {
 } as const;
 
 export const chartTooltipStyle = {
-  contentStyle: { background: "var(--c-sheet)", border: "1px dashed var(--c-ink-faint)", borderRadius: 2, fontSize: 12.5, fontFamily: '"IBM Plex Mono", ui-monospace, monospace' },
+  contentStyle: { background: "var(--c-sheet)", border: "1px solid var(--c-line)", borderRadius: 10, fontSize: 12.5, fontFamily: '"Geist Variable", ui-sans-serif, system-ui, sans-serif' },
   labelStyle: { color: "var(--c-ink)", fontWeight: 600 },
 };
 
