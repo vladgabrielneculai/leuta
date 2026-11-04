@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { rosette } from "@/lib/rosette";
 
 /**
  * O rozetă de ghioș (guilloche), ca pe bancnote: curbe hipotrohoide suprapuse, desenate cu linii foarte fine
  * într-un `canvas`. E pur decorativă și abia vizibilă (gri); se redesenează când se schimbă tema sau mărimea.
  */
-export function Guilloche({ className = "", rings = 5 }: { className?: string; rings?: number }) {
+export function Guilloche({ className = "", rings = 5, fine = false }: { className?: string; rings?: number; /** rozete dense, ca în animația de început */ fine?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -23,10 +24,20 @@ export function Guilloche({ className = "", rings = 5 }: { className?: string; r
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, r.width, r.height);
       ctx.strokeStyle = getComputedStyle(cv).color;
-      ctx.lineWidth = 0.45;
+      ctx.lineWidth = fine ? 0.5 : 0.45;
       const cx = r.width / 2;
       const cy = r.height / 2;
       const scale = Math.min(r.width, r.height) / 190;
+      if (fine) {
+        // Rozete închise, cu multe petale mici, una în alta (aceeași formulă ca sigla și animația de început).
+        const s = Math.min(r.width, r.height) / 2;
+        for (let k = 0; k < rings; k++) {
+          ctx.globalAlpha = 0.55 - k * 0.07;
+          ctx.stroke(new Path2D(rosette(cx, cy, s * (0.96 - k * 0.12), { lobes: 60 - k * 6, turns: 17 - k * 2, depth: 0.2 + k * 0.04, step: 0.012 })));
+        }
+        ctx.globalAlpha = 1;
+        return;
+      }
       for (let k = 0; k < rings; k++) {
         const R = (70 + k * 7) * scale;
         const rr = (21 + k * 1.3) * scale;
@@ -49,11 +60,15 @@ export function Guilloche({ className = "", rings = 5 }: { className?: string; r
     // Tema se schimbă prin atributul data-theme de pe <html> (vezi lib/theme.ts).
     const mo = new MutationObserver(draw);
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    // Pe site-ul de prezentare tema urmează sistemul (fără data-theme).
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", draw);
     return () => {
       ro.disconnect();
       mo.disconnect();
+      mq.removeEventListener("change", draw);
     };
-  }, [rings]);
+  }, [rings, fine]);
 
   return <canvas ref={ref} className={`pointer-events-none ${className}`} aria-hidden />;
 }
