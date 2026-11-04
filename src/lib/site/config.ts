@@ -7,7 +7,7 @@
  */
 export const SITE = {
   name: "Leuța",
-  tagline: "Bugetul tău, clar ca un bon.",
+  tagline: "Bugetul tău, ban cu ban.",
   description:
     "Leuța îți arată unde merg banii în fiecare lună: venituri, cheltuieli, credite și economii, pe telefon și pe calculator. Acces pe bază de invitație.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://leuta.ro",

@@ -782,7 +782,7 @@ export type YearTotals = {
   monthsWithData: number;
 };
 
-export type YearCategory = { id: number; name: string; kind: Kind; color: string; amount: number; compare: number };
+export type YearCategory = { id: number; name: string; kind: Kind; color: string; amount: number; compare: number; parent_id: number | null };
 
 export type YearReport = {
   year: string;
@@ -833,7 +833,7 @@ export async function buildYear(year: string, compareYear: string | null): Promi
       .all<EntryRow>(),
     loadRates(),
     loadLoans(),
-    db.prepare("SELECT id, name, kind, color FROM categories ORDER BY kind, name").all<{ id: number; name: string; kind: Kind; color: string }>(),
+    db.prepare("SELECT id, name, kind, color, parent_id FROM categories ORDER BY kind, name").all<{ id: number; name: string; kind: Kind; color: string; parent_id: number | null }>(),
   ]);
 
   const fxCache = new Map<string, number>();
@@ -863,12 +863,14 @@ export async function buildYear(year: string, compareYear: string | null): Promi
   };
   const now = byCat(year);
   const before = byCat(compareYear);
-  const view = (kinds: Kind[]) =>
-    cats
+  const view = (kinds: Kind[]) => {
+    const list = cats
       .filter((c) => kinds.includes(c.kind))
-      .map((c) => ({ ...c, amount: now.get(c.id) ?? 0, compare: before.get(c.id) ?? 0 }))
-      .filter((c) => Math.abs(c.amount) > 0.005 || Math.abs(c.compare) > 0.005)
-      .sort((a, b) => b.amount - a.amount);
+      .map((c) => ({ ...c, parent_id: c.parent_id ?? null, amount: now.get(c.id) ?? 0, compare: before.get(c.id) ?? 0 }));
+    const used = (c: { amount: number; compare: number }) => Math.abs(c.amount) > 0.005 || Math.abs(c.compare) > 0.005;
+    // O categorie-părinte rămâne în listă dacă vreo subcategorie a ei are sume (pagina le adună sub ea).
+    return list.filter((c) => used(c) || list.some((k) => k.parent_id === c.id && used(k))).sort((a, b) => b.amount - a.amount);
+  };
 
   const loanYears = loans.flatMap(({ sim }) => sim.rows.map((r) => r.month.slice(0, 4)));
   const years = [...new Set([...entries.map((e) => e.month.slice(0, 4)), ...loanYears.filter((y) => y <= currentMonth().slice(0, 4))])]

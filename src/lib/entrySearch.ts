@@ -13,7 +13,9 @@ export type SearchKind = (typeof KINDS)[number];
 export type EntryFilters = {
   q?: string;
   kind?: SearchKind;
+  /** categoria; o categorie-părinte le cuprinde și pe subcategoriile ei */
   categoryId?: number;
+  tagId?: number;
   from?: string; // YYYY-MM, inclusiv
   to?: string; // YYYY-MM, inclusiv
   min?: number;
@@ -48,6 +50,11 @@ export function parseFilters(p: URLSearchParams): EntryFilters {
   if (cat) {
     if (!/^\d+$/.test(cat)) throw new Error("Categorie necunoscută.");
     f.categoryId = Number(cat);
+  }
+  const tag = p.get("tag_id");
+  if (tag) {
+    if (!/^\d+$/.test(tag)) throw new Error("Etichetă necunoscută.");
+    f.tagId = Number(tag);
   }
   for (const k of ["from", "to"] as const) {
     const v = p.get(k);
@@ -84,8 +91,12 @@ export function filtersSql(f: EntryFilters): { where: string; params: unknown[] 
     params.push(f.kind);
   }
   if (f.categoryId !== undefined) {
-    parts.push("e.category_id = ?");
-    params.push(f.categoryId);
+    parts.push("(e.category_id = ? OR e.category_id IN (SELECT id FROM categories WHERE parent_id = ?))");
+    params.push(f.categoryId, f.categoryId);
+  }
+  if (f.tagId !== undefined) {
+    parts.push("EXISTS (SELECT 1 FROM entry_tags et WHERE et.entry_id = e.id AND et.tag_id = ?)");
+    params.push(f.tagId);
   }
   if (f.from) {
     parts.push("e.month >= ?");
@@ -103,7 +114,7 @@ export function filtersSql(f: EntryFilters): { where: string; params: unknown[] 
     parts.push("ABS(e.amount) <= ?");
     params.push(f.max);
   }
-  if (f.refunds) parts.push("e.amount < 0");
+  if (f.refunds) parts.push("e.amount < 0 AND e.kind <> 'saving'"); // retragerile din economii nu sunt retururi
   return { where: parts.length ? `WHERE ${parts.join(" AND ")}` : "", params };
 }
 
@@ -121,6 +132,10 @@ export type FoundEntry = {
   currency: string;
   recurring: number;
   created_at: string | null;
+  account_id?: number | null;
+  split_group?: string | null;
+  /** etichetele, separate prin virgulă (beta) */
+  tags?: string | null;
   ron: number; // suma în lei, la cursul BNR al lunii
 };
 
@@ -143,7 +158,7 @@ export function csvText(v: string) {
 
 /** CSV cu `;` și BOM UTF-8: Excel îl deschide direct, cu diacriticele corecte. */
 export function toCsv(rows: FoundEntry[]) {
-  const head = ["Data", "Luna", "Tip", "Categorie", "Descriere", "Sumă", "Monedă", "Sumă (lei)", "Se repetă lunar"];
+  const head = ["Data", "Luna", "Tip", "Categorie", "Descriere", "Sumă", "Monedă", "Sumă (lei)", "Se repetă lunar", "Etichete"];
   const lines = rows.map((r) =>
     [
       r.day ?? "",
@@ -155,6 +170,7 @@ export function toCsv(rows: FoundEntry[]) {
       r.currency,
       csvNumber(r.ron),
       r.recurring ? "da" : "nu",
+      csvText(r.tags ?? ""),
     ].join(";"),
   );
   return `﻿${[head.join(";"), ...lines].join("\r\n")}\r\n`;
@@ -170,4 +186,42 @@ export function totalsOf(rows: FoundEntry[]): SearchTotals {
     if (r.ron < 0) t.refunds += -r.ron;
   }
   return t;
+}
+
+/** Numele etichetelor curățate: fără „#”, fără spații în plus, fără dubluri (indiferent de majuscule). */
+export function cleanTagNames(raw: unknown): string[] {
+  if (!Array.isArray(raw)) throw new Error("Etichetele trebuie trimise ca listă.");
+  const out = new Map<string, string>();
+  for (const v of raw) {
+    const name = String(v ?? "").trim().replace(/^#+/, "").replace(/\s+/g, " ");
+    if (!name) continue;
+    if (name.length > 40) throw new Error("O etichetă poate avea cel mult 40 de caractere.");
+    if (!out.has(name.toLowerCase())) out.set(name.toLowerCase(), name);
+  }
+  if (out.size > 10) throw new Error("Cel mult 10 etichete pe o intrare.");
+  return [...out.values()];
+}
+
+export type SplitPart = { category_id: number; amount: number; description?: string };
+
+/**
+ * Părțile unei plăți împărțite pe categorii (beta): cel puțin două, fiecare cu categorie și sumă > 0, iar suma
+ * părților egală cu totalul (la ban). Aruncă mesaje pentru utilizator.
+ */
+export function checkSplit(total: unknown, parts: unknown): SplitPart[] {
+  const t = Number(total);
+  if (!Number.isFinite(t) || t <= 0) throw new Error("Scrie suma totală.");
+  if (!Array.isArray(parts) || parts.length < 2) throw new Error("Împarte plata pe cel puțin două categorii.");
+  if (parts.length > 10) throw new Error("Cel mult 10 categorii într-o plată.");
+  const out = parts.map((p) => {
+    const category_id = Number(p?.category_id);
+    const amount = Math.round(Number(p?.amount) * 100) / 100;
+    if (!Number.isInteger(category_id) || category_id <= 0) throw new Error("Alege categoria fiecărei părți.");
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error("Fiecare parte trebuie să aibă o sumă mai mare decât 0.");
+    return { category_id, amount, description: typeof p?.description === "string" ? p.description.trim() : undefined };
+  });
+  if (new Set(out.map((p) => p.category_id)).size !== out.length) throw new Error("Fiecare categorie apare o singură dată.");
+  const sum = Math.round(out.reduce((s, p) => s + p.amount, 0) * 100);
+  if (sum !== Math.round(t * 100)) throw new Error("Părțile trebuie să dea împreună suma totală.");
+  return out;
 }

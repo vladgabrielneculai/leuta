@@ -161,7 +161,7 @@ export default function ProfilePage() {
 
           <Panel title="Cont" summary="Parolă, 2FA, ieșire">
             <div className="flex flex-col gap-2">
-              <Link href="/setari#securitate" className="btn-ghost justify-start border border-line">🔐 Parolă, Face ID / 2FA și dispozitive</Link>
+              <Link href="/setari#securitate" className="btn-ghost justify-start border border-line">Parolă, Face ID / 2FA și dispozitive</Link>
               <button className="btn-danger justify-start border border-rosu/30" onClick={logout}>Ieșire din cont</button>
             </div>
           </Panel>

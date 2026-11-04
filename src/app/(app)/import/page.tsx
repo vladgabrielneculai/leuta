@@ -150,7 +150,6 @@ export default function ImportPage() {
               e.target.value = "";
             }}
           />
-          <div className="mb-1 text-[26px]" aria-hidden>🏦</div>
           <div className="text-[14px] font-semibold text-ink">
             {busy === "read" ? "Se citește extrasul…" : file ? `„${file.name}”: alege alt fișier` : "Apasă aici sau trage extrasul de la bancă"}
           </div>

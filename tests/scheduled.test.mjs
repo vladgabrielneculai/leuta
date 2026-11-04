@@ -111,3 +111,41 @@ test("cheia plății ignoră cifrele și semnele", () => {
   assert.equal(paymentKey("Spotify P0ABC123"), "spotify");
   assert.equal(priceIncrease(55, 55.5), null);
 });
+
+// ---------- Beta: trimestrial, bani de pus deoparte, mementouri ----------
+
+test("trimestrial: din 3 în 3 luni pornind de la luna din ciclu", async () => {
+  const { dueDate: due } = await import("../src/lib/scheduled.ts");
+  const q = { ...base, frequency: "quarterly", day: 15, month_of_year: 3 };
+  assert.deepEqual(["2026-03", "2026-04", "2026-06", "2026-09", "2026-12", "2027-01"].map((m) => due(q, m)), ["2026-03-15", null, "2026-06-15", "2026-09-15", "2026-12-15", null]);
+  // luna din ciclu poate fi și după luna curentă (11 → februarie, mai, august, noiembrie)
+  assert.equal(due({ ...q, month_of_year: 11 }, "2026-02"), "2026-02-15");
+});
+
+test("costul lunar: anual / 12, trimestrial / 3", async () => {
+  const { monthlyCost } = await import("../src/lib/scheduled.ts");
+  assert.equal(monthlyCost({ amount: 1200, frequency: "yearly" }), 100);
+  assert.equal(monthlyCost({ amount: 300, frequency: "quarterly" }), 100);
+  assert.equal(monthlyCost({ amount: 55, frequency: "monthly" }), 55);
+});
+
+test("de pus deoparte: suma lunară și cât ar trebui strâns până azi", async () => {
+  const { setAside } = await import("../src/lib/scheduled.ts");
+  // RCA 1200 lei pe 15 martie; azi 11 octombrie 2026 → următoarea plată în martie 2027, peste 5 luni
+  const rca = { ...base, name: "RCA", amount: 1200, frequency: "yearly", day: 15, month_of_year: 3, start_month: "2026-01" };
+  const a = setAside(rca, T);
+  assert.equal(a.monthly, 100);
+  assert.equal(a.next, "2027-03-15");
+  assert.equal(a.shouldHave, 700); // 7 luni din 12 au trecut din ciclu
+  assert.equal(setAside(base, T), null); // lunar: nimic de strâns
+  assert.equal(setAside({ ...rca, active: 0 }, T), null);
+});
+
+test("mementoul vine exact cu remind_days înainte de scadență", async () => {
+  const { remindersDue } = await import("../src/lib/scheduled.ts");
+  const chirie = { ...base, id: 7, name: "Chirie", day: 14, remind_days: 3 };
+  assert.deepEqual(remindersDue([chirie], T).map((r) => [r.schedule.id, r.date, r.days]), [[7, "2026-10-14", 3]]);
+  assert.equal(remindersDue([{ ...chirie, remind_days: 2 }], T).length, 0);
+  assert.equal(remindersDue([{ ...chirie, remind_days: null }], T).length, 0);
+  assert.equal(remindersDue([{ ...chirie, day: 11, remind_days: 0 }], T).length, 1); // în ziua scadenței
+});

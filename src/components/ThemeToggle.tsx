@@ -26,7 +26,7 @@ const originOf = (e: React.MouseEvent) => {
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 };
 
-/** Butonul ☀️/🌙 din bara aplicației: comută între zi și noapte (alegere explicită). */
+/** Butonul de temă din bara aplicației: comută între zi și noapte (alegere explicită). */
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -54,9 +54,9 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
 export function ThemeChooser() {
   const { pref } = useTheme();
   const opts: { v: ThemePref; label: string; hint: string }[] = [
-    { v: "auto", label: "🖥️ Auto", hint: "ca dispozitivul" },
-    { v: "light", label: "☀️ Zi", hint: "mereu deschisă" },
-    { v: "dark", label: "🌙 Noapte", hint: "mereu închisă" },
+    { v: "auto", label: "Auto", hint: "ca dispozitivul" },
+    { v: "light", label: "Zi", hint: "mereu deschisă" },
+    { v: "dark", label: "Noapte", hint: "mereu închisă" },
   ];
   return (
     <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Tema aplicației">

@@ -6,6 +6,7 @@ import { addMonths, lei, eur, monthLabel, parseAmount, type Currency, type Kind 
 import { activeTrip, type TripListItem } from "@/lib/trips";
 import { api, Modal, Skeleton, Toast, useApi, useApp, useIsMobile } from "./ui";
 import { TripExpenseForm } from "./Trips";
+import { lastCardId, rememberCard, useCards } from "./Cards";
 
 /**
  * Adăugarea rapidă, din butonul „+” al barei de jos (pe telefon): suma întâi, apoi categoria dintr-o atingere.
@@ -14,7 +15,7 @@ import { TripExpenseForm } from "./Trips";
  * varianta „Vacanță”: cheltuiala merge la vacanța în curs, în moneda ei, nu în bugetul lunar.
  */
 
-type Category = { id: number; name: string; kind: Kind; color: string };
+type Category = { id: number; name: string; kind: Kind; color: string; parent_id?: number | null };
 type Goal = { id: number; name: string };
 type Investment = { id: number; name: string };
 export type QuickEntry = {
@@ -23,12 +24,17 @@ export type QuickEntry = {
   category_id: number | null;
   goal_id: number | null;
   investment_id: number | null;
+  /** Cardul cu care s-a plătit (beta); lipsește pe intrările vechi. */
+  card_id?: number | null;
   description: string;
   amount: number;
   currency: Currency;
   recurring: number;
   month?: string;
   created_at?: string | null;
+  /** Contul pe care s-a făcut plata (beta). */
+  account_id?: number | null;
+  split_group?: string | null;
 };
 
 /** Ziua locală YYYY-MM-DD a unui moment. */
@@ -60,6 +66,8 @@ export async function restoreEntry(e: QuickEntry, cycle: PayCycle = CALENDAR_CYC
     category_id: e.category_id,
     goal_id: e.goal_id,
     investment_id: e.investment_id,
+    ...(e.card_id ? { card_id: e.card_id } : {}),
+    ...(e.account_id ? { account_id: e.account_id } : {}),
     description: e.description,
     amount: e.amount,
     currency: e.currency,
@@ -67,7 +75,18 @@ export async function restoreEntry(e: QuickEntry, cycle: PayCycle = CALENDAR_CYC
   });
 }
 
-type OpenArgs = { kind?: Kind; entry?: QuickEntry; /** deschide direct varianta pentru vacanța în curs */ trip?: boolean };
+type OpenArgs = {
+  kind?: Kind;
+  entry?: QuickEntry;
+  /** deschide direct varianta pentru vacanța în curs */
+  trip?: boolean;
+  /** destinația economiei, preselectată: „g:<id>” (obiectiv) sau „i:<id>” (investiție) */
+  dest?: string;
+  /** deschide direct ca retragere din economii */
+  withdraw?: boolean;
+  /** cât e disponibil în destinație (lei), ca retragerea să nu depășească soldul */
+  available?: number;
+};
 const QuickAddCtx = createContext<(args?: OpenArgs) => void>(() => undefined);
 
 /** Deschide fereastra de adăugare (opțional cu tipul ales) sau de editare a unei intrări. */
@@ -144,6 +163,15 @@ function tick() {
 /** Câte categorii apar pe telefon înainte de „Altele”: cele mai folosite, ca alegerea să fie dintr-o privire. */
 const TOP_CATEGORIES = 6;
 
+const LAST_ACCOUNT = "leuta:ultimul-cont";
+
+/** Categoriile principale în ordine, fiecare urmată de subcategoriile ei. */
+function orderByParent<T extends { id: number; parent_id?: number | null }>(list: T[]) {
+  const ids = new Set(list.map((c) => c.id));
+  const top = list.filter((c) => !c.parent_id || !ids.has(c.parent_id));
+  return top.flatMap((p) => [p, ...list.filter((c) => c.parent_id === p.id)]);
+}
+
 function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () => void; onDone: (msg: string, undo?: () => void) => void }) {
   const { month, bump, confirm, eurRate, beta, cycle } = useApp();
   const mobile = useIsMobile();
@@ -153,9 +181,11 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const startAmount = editing ? Math.abs(editing.amount) : 0;
   const [amount, setAmount] = useState(editing ? (Number.isInteger(startAmount) ? String(startAmount) : startAmount.toFixed(2).replace(".", ",")) : "");
   const [refund, setRefund] = useState(!!editing && editing.amount < 0);
+  // Retragerea din economii: tot o sumă negativă, dar la tipul „saving” (soldul obiectivului scade).
+  const [withdraw, setWithdraw] = useState(editing ? editing.kind === "saving" && editing.amount < 0 : !!args.withdraw);
   const [currency, setCurrency] = useState<Currency>(editing?.currency ?? "RON");
   const [categoryId, setCategoryId] = useState<number | null>(editing?.category_id ?? null);
-  const [dest, setDest] = useState(editing?.goal_id ? `g:${editing.goal_id}` : editing?.investment_id ? `i:${editing.investment_id}` : "");
+  const [dest, setDest] = useState(editing?.goal_id ? `g:${editing.goal_id}` : editing?.investment_id ? `i:${editing.investment_id}` : args.dest ?? "");
   const [description, setDescription] = useState(editing?.description ?? "");
   const [recurring, setRecurring] = useState(!!editing?.recurring);
   // Ziua tranzacției: o folosește importul extrasului ca să recunoască intrările trecute deja de mână.
@@ -170,7 +200,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   // Vacanța în curs (doar la adăugare): implicit cheltuiala merge acolo, cu comutator înapoi la luna curentă.
   const { data: trips, error: tripsError } = useApi<TripListItem[]>(editing ? null : "/api/trips");
   const trip = trips ? activeTrip(trips) : null;
-  const [forTrip, setForTrip] = useState(args.trip ?? !args.kind);
+  const [forTrip, setForTrip] = useState(args.trip ?? (!args.kind && !args.withdraw));
   const tripMode = !!trip && forTrip;
   // Deschisă explicit pentru vacanță: până se încarcă vacanțele nu arătăm formularul lunar.
   const waitingTrip = !!args.trip && !editing && !trips && !tripsError;
@@ -185,6 +215,67 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const { data: settings } = useApi<Record<string, string>>("/api/settings");
   const investments = settings?.enable_investments === "1" ? invs ?? [] : [];
 
+  // Cardul cu care plătești (beta, doar la cheltuieli). Fără alegere explicită: cardul intrării modificate sau,
+  // la una nouă, ultimul card folosit pe acest dispozitiv (dacă mai există).
+  const { data: cards } = useCards();
+  const [cardPick, setCardPick] = useState<number | null | undefined>(undefined);
+  const isExpense = kind === "variable" || kind === "fixed";
+  const showCards = beta && isExpense && !!cards && cards.length > 0;
+  const fallbackCard = editing ? editing.card_id ?? null : lastCardId();
+  const cardId = cardPick !== undefined ? cardPick : cards?.some((c) => c.id === fallbackCard) ? fallbackCard : null;
+  const pickedCard = isExpense && cardId ? cards?.find((c) => c.id === cardId) : undefined;
+
+  // Conturile (beta): pe ce cont s-a făcut plata. Ultimul cont ales se propune data viitoare.
+  const { data: accountsData } = useApi<{ accounts: { id: number; name: string; archived: number }[] }>(beta ? "/api/accounts" : null);
+  const accounts = (accountsData?.accounts ?? []).filter((a) => !a.archived || a.id === editing?.account_id);
+  const [accountId, setAccountId] = useState<number | null | undefined>(editing ? editing.account_id ?? null : undefined);
+  useEffect(() => {
+    if (accountId !== undefined || !accountsData) return;
+    let last: number | null = null;
+    try {
+      last = Number(localStorage.getItem(LAST_ACCOUNT)) || null;
+    } catch {}
+    setAccountId(accountsData.accounts.some((a) => a.id === last && !a.archived) ? last : null);
+  }, [accountsData, accountId]);
+  // „Plătit cu” (beta): un singur rând cu cardurile (fiecare cu contul lui) și conturile fără card.
+  // Cardul ales hotărăște contul; un card nelegat de un cont nu schimbă niciun sold.
+  const effectiveAccount = pickedCard ? pickedCard.account_id ?? null : accountId;
+  const cardAccounts = new Set((cards ?? []).map((c) => c.account_id).filter(Boolean));
+  const payOptions: { key: string; name: string; sub?: string; color?: string | null; card: number | null; account: number | null }[] = [
+    ...(isExpense && cards ? cards.map((c) => ({ key: `c:${c.id}`, name: c.name, sub: accounts.find((a) => a.id === c.account_id)?.name, color: c.color, card: c.id, account: c.account_id ?? null })) : []),
+    ...accounts.filter((a) => !isExpense || !cardAccounts.has(a.id)).map((a) => ({ key: `a:${a.id}`, name: a.name, card: null, account: a.id })),
+  ];
+  const payKey = pickedCard ? `c:${pickedCard.id}` : accountId ? `a:${accountId}` : "";
+  const pay = (o: { card: number | null; account: number | null }) => {
+    setCardPick(o.card);
+    setAccountId(o.account);
+    stayMonthly();
+  };
+
+  // Etichetele (beta): text liber, refolosite după nume.
+  const { data: allTags } = useApi<{ id: number; name: string }[]>(beta ? "/api/crud/tags" : null);
+  const { data: entryTags } = useApi<{ id: number; name: string }[]>(beta && editing ? `/api/entries/tags?entry_id=${editing.id}` : null);
+  const [tags, setTags] = useState<string[] | null>(editing ? null : []);
+  const [tagInput, setTagInput] = useState("");
+  useEffect(() => {
+    if (tags === null && entryTags) setTags(entryTags.map((t) => t.name));
+  }, [entryTags, tags]);
+  const addTag = (raw: string) => {
+    const name = raw.trim().replace(/^#+/, "");
+    if (!name) return;
+    setTags((prev) => ((prev ?? []).some((t) => t.toLowerCase() === name.toLowerCase()) ? prev : [...(prev ?? []), name]));
+    setTagInput("");
+  };
+  const tagSuggestions = (allTags ?? [])
+    .filter((t) => !(tags ?? []).some((x) => x.toLowerCase() === t.name.toLowerCase()) && t.name.toLowerCase().includes(tagInput.trim().toLowerCase()))
+    .slice(0, 6);
+
+  // Plata împărțită pe categorii (beta, doar la adăugarea unei cheltuieli).
+  const [split, setSplit] = useState(false);
+  const [parts, setParts] = useState<Record<number, string>>({});
+  const togglePart = (id: number) =>
+    setParts((prev) => (id in prev ? Object.fromEntries(Object.entries(prev).filter(([k]) => Number(k) !== id)) : { ...prev, [id]: "" }));
+
   // Pe telefon, categoriile sunt ordonate după cât de des le folosești (intrările din luna analizată și din cele două dinainte).
   // Tot de aici aflăm dacă folosești euro: dacă nu, alegerea monedei stă în „Detalii”.
   const m1 = addMonths(month, -1);
@@ -197,7 +288,8 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   for (const e of history) if (e.category_id) uses.set(e.category_id, (uses.get(e.category_id) ?? 0) + 1);
   const usesEur = history.some((e) => e.currency === "EUR");
 
-  const kindCats = (cats ?? []).filter((c) => c.kind === kind);
+  // Subcategoriile (beta) stau imediat după categoria lor.
+  const kindCats = orderByParent((cats ?? []).filter((c) => c.kind === kind));
   // Sortare stabilă: la egalitate rămâne ordinea alfabetică de pe server.
   const sortedCats = mobile ? [...kindCats].sort((a, b) => (uses.get(b.id) ?? 0) - (uses.get(a.id) ?? 0)) : kindCats;
   const [allCats, setAllCats] = useState(false);
@@ -213,6 +305,10 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   // Returul are sens doar la cheltuieli; o intrare deja salvată ca retur rămâne editabilă și în afara versiunii beta.
   const canRefund = (kind === "variable" || kind === "fixed") && (beta || refund);
   const value = parseAmount(amount);
+  const canSplit = beta && !editing && (kind === "variable" || kind === "fixed");
+  const splitOn = canSplit && split && !refund;
+  const partSum = Object.values(parts).reduce((sum, v) => sum + (parseAmount(v) || 0), 0);
+  const partLeft = Math.round((value - partSum) * 100) / 100;
 
   // Suma e primul lucru de completat: tastatura numerică apare imediat (doar la adăugare).
   useEffect(() => {
@@ -235,9 +331,21 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       amountRef.current?.focus();
       return;
     }
+    if (splitOn) return submitSplit();
     if (kind !== "saving" && !categoryId_) {
       setErr("Alege o categorie.");
       return;
+    }
+    const isWithdraw = kind === "saving" && withdraw;
+    // Soldul e cunoscut doar când fereastra e deschisă din Economii, pentru destinația preselectată.
+    if (isWithdraw && args.available !== undefined && dest_ === (args.dest ?? "")) {
+      const inRon = currency === "EUR" ? value * eurRate : value;
+      const alreadyOut = editing && editing.amount < 0 ? (editing.currency === "EUR" ? -editing.amount * eurRate : -editing.amount) : 0;
+      if (inRon > args.available + alreadyOut + 0.005) {
+        setErr(`Poți retrage cel mult ${lei(Math.max(0, args.available + alreadyOut))}.`);
+        amountRef.current?.focus();
+        return;
+      }
     }
     const catName = kind === "saving" ? null : kindCats.find((c) => c.id === categoryId_)?.name;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -254,23 +362,81 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       goal_id: kind === "saving" && dest_.startsWith("g:") ? Number(dest_.slice(2)) : null,
       investment_id: kind === "saving" && dest_.startsWith("i:") ? Number(dest_.slice(2)) : null,
       description: description.trim(),
-      amount: canRefund && refund ? -value : value,
+      amount: (canRefund && refund) || isWithdraw ? -value : value,
+      // Doar pe beta trimitem cardul; la venituri și economii nu are sens.
+      ...(beta && cards ? { card_id: isExpense ? cardId : null } : {}),
       currency,
-      recurring: recurring ? 1 : 0,
+      recurring: recurring && !isWithdraw ? 1 : 0,
+      // Contul se trimite doar când lista conturilor s-a încărcat, ca să nu ștergem din greșeală legătura existentă.
+      ...(accountsData && effectiveAccount !== undefined ? { account_id: effectiveAccount } : {}),
     };
+    if (accountsData && accountId && !pickedCard) {
+      try {
+        localStorage.setItem(LAST_ACCOUNT, String(accountId));
+      } catch {}
+    }
     setBusy(true);
     try {
       if (editing) {
         await api("/api/crud/entries", "PUT", { id: editing.id, ...payload });
+        await saveTags([editing.id]);
         onDone("Modificare salvată");
         if (mobile) tick();
       } else {
-        await api("/api/crud/entries", "POST", payload);
+        const row = await api<{ id: number }>("/api/crud/entries", "POST", payload);
+        await saveTags([row.id]);
+        if (showCards) rememberCard(cardId);
         const what = catName ?? (kind === "saving" ? "Economii" : "Intrare");
         const sum = currency === "EUR" ? eur(value) : lei(value);
         if (mobile) tick();
-        onDone(canRefund && refund ? `Retur ${what}: ${sum} scăzut din ${monthLabel(targetMonth)}` : `${what}: ${sum} trecut în ${monthLabel(targetMonth)}`);
+        onDone(
+          isWithdraw
+            ? `Retragere din ${dest_ ? [...(goals ?? []).map((g) => [`g:${g.id}`, g.name]), ...investments.map((i) => [`i:${i.id}`, i.name])].find(([v]) => v === dest_)?.[1] ?? "economii" : "economii generale"}: ${sum} în ${monthLabel(targetMonth)}`
+            : canRefund && refund
+              ? `Retur ${what}: ${sum} scăzut din ${monthLabel(targetMonth)}`
+              : `${what}: ${sum} trecut în ${monthLabel(targetMonth)}`,
+        );
       }
+      bump();
+      onClose();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Etichetele (beta) se salvează după intrare; dacă nu s-au încărcat încă (la modificare), nu se ating. */
+  const saveTags = async (ids: number[]) => {
+    if (!beta || tags === null) return;
+    const pending = tagInput.trim() ? [...tags, tagInput.trim()] : tags;
+    if (!editing && pending.length === 0) return;
+    await api("/api/entries/tags", "PUT", { entry_ids: ids, tags: pending });
+  };
+
+  const submitSplit = async () => {
+    const list = Object.entries(parts)
+      .map(([id, v]) => ({ category_id: Number(id), amount: parseAmount(v) || 0 }))
+      .filter((p) => p.amount > 0);
+    if (list.length < 2) return setErr("Alege cel puțin două categorii și scrie suma fiecăreia.");
+    if (Math.abs(partLeft) >= 0.005) return setErr(partLeft > 0 ? `Mai ai de împărțit ${lei(partLeft)}.` : `Părțile depășesc totalul cu ${lei(-partLeft)}.`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return setErr("Alege data.");
+    setBusy(true);
+    try {
+      const res = await api<{ entries: { id: number }[] }>("/api/entries/split", "POST", {
+        month: targetMonth,
+        created_at: date,
+        kind,
+        description: description.trim(),
+        currency,
+        amount: value,
+        parts: list,
+        ...(accountsData && effectiveAccount !== undefined ? { account_id: effectiveAccount } : {}),
+        ...(beta && cards ? { card_id: cardId } : {}),
+      });
+      await saveTags(res.entries.map((e) => e.id));
+      if (mobile) tick();
+      onDone(`Plată împărțită pe ${list.length} categorii: ${currency === "EUR" ? eur(value) : lei(value)}`);
       bump();
       onClose();
     } catch (e) {
@@ -284,7 +450,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     if (!editing) return;
     const name = editing.description || kindCats.find((c) => c.id === editing.category_id)?.name || "această intrare";
     // Pe telefon nu mai cerem confirmarea: ștergem imediat și oferim „Anulează” în mesajul de jos.
-    if (!mobile && !(await confirm({ title: "Ștergere intrare", message: `Sigur dorești să ștergi „${name}” (${lei(editing.amount)})?`, confirmText: "Șterge", danger: true }))) return;
+    if (!mobile && !(await confirm({ title: "Ștergere intrare", message: `Sigur dorești să ștergi „${name}” (${editing.currency === "EUR" ? eur(editing.amount) : lei(editing.amount)})?`, confirmText: "Șterge", danger: true }))) return;
     try {
       await api(`/api/crud/entries?id=${editing.id}`, "DELETE");
       bump();
@@ -315,7 +481,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
         <div className="mb-4 grid grid-cols-2 gap-1 rounded-md border border-line bg-paper p-1" role="radiogroup" aria-label="Unde se trece">
           {[
             { on: false, label: `Bugetul lunii`, hint: monthLabel(month).replace(/^./, (c) => c.toUpperCase()) },
-            { on: true, label: `🧳 Vacanță`, hint: trip.name },
+            { on: true, label: `Vacanță`, hint: trip.name },
           ].map((o) => (
             <button
               key={o.label}
@@ -372,6 +538,32 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
             ))}
           </div>
 
+          {kind === "saving" && (
+            <div className="grid grid-cols-2 gap-1 rounded-md border border-line bg-paper p-1" role="radiogroup" aria-label="Direcția banilor">
+              {[
+                { on: false, label: "Depun", hint: "pun bani deoparte" },
+                { on: true, label: "Retrag", hint: "scot bani din economii" },
+              ].map((o) => (
+                <button
+                  key={o.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={withdraw === o.on}
+                  onClick={() => {
+                    setWithdraw(o.on);
+                    setErr(null);
+                  }}
+                  className={`flex min-h-[40px] flex-col items-center justify-center rounded-[4px] px-2 text-[13px] font-medium leading-tight transition-colors ${
+                    withdraw === o.on ? "bg-sheet text-ink shadow-[0_1px_2px_rgb(var(--shadow)/0.15)]" : "text-ink-soft"
+                  }`}
+                >
+                  {o.label}
+                  <span className="mt-0.5 text-[11px] font-normal text-ink-faint">{o.hint}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <div>
             <div className="flex items-stretch gap-2">
               <input
@@ -409,9 +601,31 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
             {currency === "EUR" && value > 0 && <p className="mt-1 text-right text-[12px] text-ink-faint num">≈ {lei(value * eurRate)}</p>}
           </div>
 
+          {payOptions.length > 0 && (
+            <div>
+              <span className="label">{kind === "income" ? "În contul" : kind === "saving" ? "Din contul" : "Plătit cu"}</span>
+              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={kind === "income" ? "În contul" : "Plătit cu"}>
+                {[{ key: "", name: "Nespecificat", card: null, account: null } as (typeof payOptions)[number], ...payOptions].map((o) => (
+                  <button
+                    key={o.key || "none"}
+                    type="button"
+                    role="radio"
+                    aria-checked={payKey === o.key}
+                    className={`${chip(payKey === o.key)} min-h-[36px]! py-1! text-[13px]!`}
+                    onClick={() => pay(o)}
+                  >
+                    {o.color ? <span className="h-2 w-3.5 shrink-0 rounded-[2px]" style={{ background: o.color }} aria-hidden /> : null}
+                    {o.name}
+                    {o.sub ? <span className="text-[11.5px] opacity-60">· {o.sub}</span> : null}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <span className="label">
-              {kind === "saving" ? "Unde merg banii" : "Categoria"}
+              {kind === "saving" ? (withdraw ? "De unde retragi" : "Unde merg banii") : "Categoria"}
               {compact && !editing && <span className="ml-1.5 font-normal text-ink-faint">· atinge ca să salvezi</span>}
             </span>
             {kind === "saving" ? (
@@ -438,25 +652,30 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
               <p className="text-[13px] text-ink-soft">Nu ai categorii pentru acest tip. Le poți adăuga din Setări.</p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {shownCats.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={chip(categoryId === c.id)}
-                    aria-pressed={categoryId === c.id}
-                    disabled={busy}
-                    onClick={() => {
-                      stayMonthly();
-                      setCategoryId(c.id);
-                      setErr(null);
-                      // Pe telefon, cu suma scrisă și detaliile strânse, atingerea categoriei salvează direct.
-                      if (compact && !editing && value > 0) submit({ categoryId: c.id });
-                    }}
-                  >
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: c.color }} aria-hidden />
-                    {c.name}
-                  </button>
-                ))}
+                {shownCats.map((c) => {
+                  const on = splitOn ? c.id in parts : categoryId === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={chip(on)}
+                      aria-pressed={on}
+                      disabled={busy}
+                      onClick={() => {
+                        stayMonthly();
+                        setErr(null);
+                        if (splitOn) return togglePart(c.id);
+                        setCategoryId(c.id);
+                        // Pe telefon, cu suma scrisă și detaliile strânse, atingerea categoriei salvează direct.
+                        if (compact && !editing && value > 0) submit({ categoryId: c.id });
+                      }}
+                    >
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-xs" style={{ background: c.color }} aria-hidden />
+                      {c.parent_id ? <span className="text-[12px] opacity-60" aria-hidden>↳</span> : null}
+                      {c.name}
+                    </button>
+                  );
+                })}
                 {hiddenCats > 0 && (
                   <button type="button" className={`${chip(false)} border-dashed text-ink-soft`} onClick={() => setAllCats(true)}>
                     Altele ({hiddenCats})…
@@ -480,7 +699,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
                 {[
                   date === dayOf(new Date()) ? "azi" : date.split("-").reverse().join("."),
                   description.trim() || "fără descriere",
-                  recurring ? "lunar" : null,
+                  recurring && !(kind === "saving" && withdraw) ? "lunar" : null,
                   refund && canRefund ? "retur" : null,
                 ]
                   .filter(Boolean)
@@ -518,6 +737,81 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
               onChange={(e) => setDescription(e.target.value)}
               aria-label="Descriere"
             />
+
+            {beta && tags !== null && (
+              <div>
+                <span className="label">Etichete (opțional)</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {tags.map((t) => (
+                    <button key={t} type="button" className="rounded-full border border-albastru/40 bg-albastru-tint px-2.5 py-1 text-[13px] text-albastru" onClick={() => setTags(tags.filter((x) => x !== t))} aria-label={`Scoate eticheta ${t}`}>
+                      #{t} ×
+                    </button>
+                  ))}
+                  <input
+                    className="field min-w-[8rem] flex-1 py-1.5!"
+                    placeholder="ex. vacanță, cadou"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === ",") {
+                        e.preventDefault();
+                        addTag(tagInput.replace(/,$/, ""));
+                      }
+                    }}
+                    aria-label="Etichetă nouă"
+                  />
+                </div>
+                {tagSuggestions.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {tagSuggestions.map((t) => (
+                      <button key={t.id} type="button" className="rounded-full border border-line px-2 py-0.5 text-[12.5px] text-ink-soft" onClick={() => addTag(t.name)}>
+                        + #{t.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {canSplit && !refund && (
+              <div>
+                <label className="flex min-h-[36px] items-center gap-2.5 text-[14px] text-ink-soft">
+                  <input
+                    type="checkbox"
+                    className="h-[18px] w-[18px] shrink-0"
+                    checked={split}
+                    onChange={(e) => {
+                      setSplit(e.target.checked);
+                      setParts(e.target.checked && categoryId ? { [categoryId]: amount } : {});
+                    }}
+                  />
+                  Împarte pe mai multe categorii (un singur bon)
+                </label>
+                {splitOn && (
+                  <div className="mt-2 flex flex-col gap-2 rounded-md border border-line bg-paper p-3">
+                    {Object.keys(parts).length === 0 && <p className="text-[13px] text-ink-faint">Atinge categoriile de mai sus și scrie suma fiecăreia.</p>}
+                    {Object.entries(parts).map(([id, v]) => (
+                      <label key={id} className="flex items-center gap-2 text-[14px]">
+                        <span className="min-w-0 flex-1 truncate">{kindCats.find((c) => c.id === Number(id))?.name}</span>
+                        <input
+                          className="field num w-28"
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          value={v}
+                          onChange={(e) => setParts({ ...parts, [id]: e.target.value.replace(/[^\d.,]/g, "") })}
+                          aria-label={`Suma pentru ${kindCats.find((c) => c.id === Number(id))?.name}`}
+                        />
+                      </label>
+                    ))}
+                    {Object.keys(parts).length > 0 && (
+                      <p className={`text-right text-[12.5px] ${Math.abs(partLeft) < 0.005 ? "text-leu" : "text-ink-soft"}`}>
+                        {Math.abs(partLeft) < 0.005 ? "Împărțit complet ✓" : partLeft > 0 ? `Mai ai de împărțit ${lei(partLeft)}` : `Peste total cu ${lei(-partLeft)}`}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
   
             {canRefund && (
               <label className="-mt-1 flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Scade din cheltuielile categoriei, nu se adună la venituri">
@@ -526,10 +820,16 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
               </label>
             )}
   
-            <label className="flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Se poate copia în luna următoare">
-              <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
-              <span>Se repetă lunar</span>
-            </label>
+            {kind === "saving" && withdraw ? (
+              <p className="-mt-1 text-[12px] text-ink-faint">
+                Suma iese din economii și devine disponibilă în bugetul lunii. Istoricul depunerilor rămâne neschimbat.
+              </p>
+            ) : (
+              <label className="flex min-h-[40px] items-center gap-2.5 text-[14px] text-ink-soft" title="Se poate copia în luna următoare">
+                <input type="checkbox" className="h-[18px] w-[18px] shrink-0" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
+                <span>Se repetă lunar</span>
+              </label>
+            )}
             </>
           )}
 
@@ -543,7 +843,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
               </button>
             )}
             <button type="submit" className="btn-primary flex-1 py-3 text-[15px]" disabled={busy}>
-              {busy ? "Se salvează…" : editing ? "Salvează" : "Adaugă"}
+              {busy ? "Se salvează…" : editing ? "Salvează" : kind === "saving" && withdraw ? "Retrage" : "Adaugă"}
             </button>
           </div>
         </form>

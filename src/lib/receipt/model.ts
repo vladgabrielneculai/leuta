@@ -85,7 +85,7 @@ export async function buildReceipt(month: string, username = ""): Promise<Receip
   const toLine = (r: Row): ReceiptLine => {
     const label =
       r.kind === "saving"
-        ? r.investment ?? r.goal ?? "Economii generale"
+        ? `${r.amount < 0 ? "Retragere din " : ""}${r.investment ?? r.goal ?? "Economii generale"}`
         : r.category ?? "Fără categorie";
     const note = r.description && r.description.trim().toLowerCase() !== label.toLowerCase() ? r.description.trim() : undefined;
     return r.currency === "EUR"
