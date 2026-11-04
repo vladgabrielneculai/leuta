@@ -21,7 +21,7 @@ const ORDER = FINANCIAL_TABLES;
 // coloană → tabelul părinte al cărui id îl referă
 const FKS: Record<string, Record<string, string>> = {
   categories: { parent_id: "categories" },
-  entries: { category_id: "categories", goal_id: "goals", investment_id: "investments", account_id: "accounts" },
+  entries: { category_id: "categories", goal_id: "goals", investment_id: "investments", card_id: "cards", account_id: "accounts" },
   transfers: { from_account_id: "accounts", to_account_id: "accounts" },
   entry_tags: { entry_id: "entries", tag_id: "tags" },
   scheduled_entries: { category_id: "categories" },
@@ -34,7 +34,7 @@ const FKS: Record<string, Record<string, string>> = {
 };
 
 const HAS_ID = new Set([
-  "categories", "goals", "investments", "loans", "accounts", "scheduled_entries", "entries", "loan_prepayments", "loan_schedules",
+  "categories", "cards", "goals", "investments", "loans", "accounts", "scheduled_entries", "entries", "loan_prepayments", "loan_schedules",
   "planned_purchases", "trips", "transfers", "tags", "debts",
 ]);
 

@@ -128,7 +128,7 @@ export default function TripPage() {
 
   return (
     <>
-      <Link href="/vacante" className="mb-2 inline-block text-[13px] text-ink-soft hover:text-albastru">‹ Toate vacanțele</Link>
+      <Link href="/vacante" className="mb-2 hidden text-[13px] lg:inline-block text-ink-soft hover:text-albastru">‹ Toate vacanțele</Link>
       <PageHeader
         title={trip.name}
         intro={

@@ -9,6 +9,7 @@ import { api, Bar, chartTooltipStyle, CollapsiblePanels, downloadFile, PageHeade
 import { Leader } from "@/components/receipt";
 import { useQuickAdd } from "@/components/QuickAdd";
 import ForecastCard from "@/components/ForecastCard";
+import { EntryFeed } from "@/components/EntryFeed";
 
 type Category = { id: number; name: string; kind: Kind; bucket: string; color: string };
 type Goal = { id: number; name: string; type: string };
@@ -195,6 +196,9 @@ export default function MonthPage() {
   const { month, bump, eurRate, beta } = useApp();
   const [kind, setKind] = useTab<Kind>("luna", "variable", KIND_ORDER);
   const [toast, setToast] = useState<string | null>(null);
+  // Pe telefon: o singură listă pe zile, filtrată cu cipurile de sus (implicit toate intrările).
+  const [filter, setFilter] = useState<Kind | "all">("all");
+  const quickAdd = useQuickAdd();
   const { data: entries, reload } = useApi<Entry[]>(`/api/crud/entries?month=${month}`);
   const { data: cats } = useApi<Category[]>("/api/crud/categories");
   const { data: goals } = useApi<Goal[]>("/api/crud/goals");
@@ -304,7 +308,70 @@ export default function MonthPage() {
             <p className="text-ink-soft">Se încarcă…</p>
           ) : (
             <>
-              {/* Câte o secțiune odată: dalele arată totalul fiecăreia, iar lista de dedesubt e scurtă. */}
+              {/* Telefon: cipuri de filtrare (cu totalul fiecărui tip) și lista intrărilor pe zile. */}
+              <div className="flex flex-col gap-3 lg:hidden">
+                <div role="radiogroup" aria-label="Ce intrări arăt" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5 scrollbar-none" data-tour="luna-tabs">
+                  {(["all", ...KIND_ORDER] as const).map((k) => {
+                    const on = filter === k;
+                    const sum = k === "all" ? null : entries.filter((e) => e.kind === k).reduce((a, e) => a + (e.currency === "EUR" ? e.amount * rate : e.amount), 0);
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setFilter(k)}
+                        className={`flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] transition-colors ${
+                          on ? "border-ink bg-ink text-sheet" : "border-line bg-sheet text-ink-soft"
+                        }`}
+                      >
+                        {k !== "all" && <span className="h-2 w-2 rounded-full" style={{ background: KIND_INFO[k].color }} aria-hidden />}
+                        {k === "all" ? "Toate" : KIND_SHORT[k]}
+                        {sum !== null && sum !== 0 && <span className={`num ${on ? "text-sheet/75" : "text-ink-faint"}`}>{Math.round(sum).toLocaleString("ro-RO")}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                {filter === "variable" && entries.some((e) => e.kind === "variable") && (
+                  <div className="panel p-3">
+                    <CategoryPie
+                      entries={entries.filter((e) => e.kind === "variable")}
+                      catMap={new Map(cats.map((c) => [c.id, c]))}
+                      rate={rate}
+                      total={entries.filter((e) => e.kind === "variable").reduce((a, e) => a + (e.currency === "EUR" ? e.amount * rate : e.amount), 0)}
+                    />
+                  </div>
+                )}
+                <div data-tour="luna-section">
+                  <EntryFeed
+                    entries={filter === "all" ? entries : entries.filter((e) => e.kind === filter)}
+                    cats={cats}
+                    goals={goals}
+                    invs={investmentsEnabled ? invs : []}
+                    rate={rate}
+                    onChanged={() => {
+                      reload();
+                      reloadSummary();
+                    }}
+                    empty={
+                      <p className="rounded-md border border-dashed border-line-strong px-4 py-5 text-center text-[13.5px] text-ink-soft">
+                        {filter === "all" ? "Nicio intrare în această lună." : KIND_INFO[filter].help}
+                      </p>
+                    }
+                  />
+                </div>
+                {filter !== "all" && (
+                  <button
+                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-md border border-dashed border-line-strong text-[14px] font-medium text-ink-soft active:bg-paper"
+                    onClick={() => quickAdd({ kind: filter })}
+                  >
+                    <span className="text-[18px] leading-none" aria-hidden>+</span> Adaugă la {KIND_LABEL[filter].toLowerCase()}
+                  </button>
+                )}
+              </div>
+
+              {/* Ecran mare: câte o secțiune odată; dalele arată totalul fiecăreia, iar lista de dedesubt e scurtă. */}
+              <div className="hidden flex-col gap-3 lg:flex">
               <div role="tablist" aria-label="Secțiunile lunii" className="grid grid-cols-4 gap-1.5 sm:gap-2" data-tour="luna-tabs">
                 {KIND_ORDER.map((k) => {
                   const on = k === kind;
@@ -346,6 +413,7 @@ export default function MonthPage() {
                 goals={goals}
                 invs={investmentsEnabled ? invs : []}
               />
+              </div>
             </>
           )}
         </div>

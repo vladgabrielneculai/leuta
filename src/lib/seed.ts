@@ -11,6 +11,7 @@ export async function clearAllFinancialData(dbArg?: DbInterface): Promise<void> 
       DELETE FROM accounts;
       DELETE FROM tags;
       DELETE FROM debts;
+      DELETE FROM cards;
       DELETE FROM import_rules;
       DELETE FROM scheduled_entries;
       DELETE FROM loan_prepayments;

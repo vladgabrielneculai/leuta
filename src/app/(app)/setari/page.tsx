@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BUCKET_LABEL, KIND_LABEL, type Bucket, type Kind } from "@/lib/util";
-import { api, downloadFile, Field, PageHeader, Panel, Tabs, Toast, TrashIcon, useApi, useApp, useTab } from "@/components/ui";
+import { api, downloadFile, Field, PageHeader, Panel, SectionsNav, Tabs, Toast, TrashIcon, useApi, useApp, useTab } from "@/components/ui";
 import AccountSecurity from "@/components/AccountSecurity";
 import SecurityCenter from "@/components/SecurityCenter";
 import NotificationSettings from "@/components/NotificationSettings";
 import { ThemeChooser } from "@/components/ThemeToggle";
 import DatabaseManager from "@/components/DatabaseManager";
 import { useTourReplay } from "@/components/Tour";
+import { CardsPanel } from "@/components/Cards";
 
 type Category = { id: number; name: string; kind: Kind; bucket: Bucket; color: string; parent_id?: number | null };
 const PALETTE = ["#3D7A4E", "#5E9A6C", "#2E5C8A", "#4A7BA8", "#27496D", "#6A4E99", "#8A6BB8", "#B5456A", "#C9657F", "#DB8BA4", "#C99A1E", "#8A989C"];
@@ -120,11 +121,11 @@ function orderByParent(list: Category[]) {
 }
 
 const SETTINGS_TABS = [
-  { key: "general", label: "General" },
-  { key: "calcule", label: "Calcule" },
-  { key: "notificari", label: "Notificări", short: "Alerte" },
-  { key: "securitate", label: "Securitate" },
-  { key: "date", label: "Date" },
+  { key: "general", label: "General", hint: "Categorii, temă și tutorial" },
+  { key: "calcule", label: "Calcule", hint: "Fondul de urgență, randament, inflație" },
+  { key: "notificari", label: "Notificări", short: "Alerte", hint: "Telegram și e-mail" },
+  { key: "securitate", label: "Securitate", hint: "Parolă, Face ID, 2FA și dispozitive" },
+  { key: "date", label: "Date", hint: "Copie de siguranță și restaurare" },
 ] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
 
@@ -234,7 +235,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Setări" intro="Categoriile, aspectul, notificările, securitatea și parametrii calculelor." />
 
-      <Tabs tabs={SETTINGS_TABS} value={tab} onChange={setTab} className="mb-5" label="Secțiunile setărilor" data-tour="setari-tabs" />
+      <SectionsNav tabs={SETTINGS_TABS} value={tab} onChange={setTab} label="Secțiunile setărilor" backLabel="Toate setările" data-tour="setari-tabs">
 
       {tab === "general" && (
         <div className="grid gap-4 lg:gap-6 xl:grid-cols-[1.4fr_1fr] xl:items-start">
@@ -303,6 +304,8 @@ export default function SettingsPage() {
         </Panel>
 
           <div className="flex flex-col gap-4 lg:gap-6">
+          {beta && <CardsPanel onToast={setToast} />}
+
           <Panel title="Aspect" summary="Temă de zi, de noapte sau automată">
             <p className="mb-3 text-[13px] text-ink-soft">
               Tema de zi sau de noapte. „Auto” o schimbă singură după setarea telefonului sau a calculatorului. Alegerea se
@@ -486,6 +489,7 @@ export default function SettingsPage() {
 
         </div>
       )}
+      </SectionsNav>
       <Toast message={toast} onDone={() => setToast(null)} />
     </>
   );
