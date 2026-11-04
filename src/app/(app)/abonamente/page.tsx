@@ -15,7 +15,12 @@ const money = (n: number, currency: string) => (currency === "EUR" ? `${n.toFixe
 
 function when(s: { frequency: string; day: number; month_of_year: number | null }) {
   const day = s.day === 31 ? "ultima zi" : `pe ${s.day}`;
-  return s.frequency === "yearly" ? `anual, ${s.day} ${MONTHS[(s.month_of_year ?? 1) - 1]}` : `lunar, ${day}`;
+  if (s.frequency === "yearly") return `anual, ${s.day} ${MONTHS[(s.month_of_year ?? 1) - 1]}`;
+  if (s.frequency === "quarterly") {
+    const first = ((((s.month_of_year ?? 1) - 1) % 3) + 3) % 3; // prima lună din an a ciclului
+    return `trimestrial, ${day} (${[0, 3, 6, 9].map((k) => MONTHS[first + k].slice(0, 3)).join(", ")})`;
+  }
+  return `lunar, ${day}`;
 }
 
 function relDays(days: number) {
@@ -23,13 +28,15 @@ function relDays(days: number) {
 }
 
 type Draft = {
-  id?: number; name: string; category_id: string; amount: string; currency: "RON" | "EUR"; frequency: "monthly" | "yearly";
+  id?: number; name: string; category_id: string; amount: string; currency: "RON" | "EUR"; frequency: "monthly" | "quarterly" | "yearly";
   day: string; month_of_year: string; start_month: string; end_month: string; is_subscription: boolean;
+  /** zile înainte de scadență pentru memento; gol = fără */
+  remind_days: string;
 };
 
 const emptyDraft = (month: string): Draft => ({
   name: "", category_id: "", amount: "", currency: "RON", frequency: "monthly", day: "1", month_of_year: String(Number(month.slice(5, 7))),
-  start_month: month, end_month: "", is_subscription: true,
+  start_month: month, end_month: "", is_subscription: true, remind_days: "",
 });
 
 /**
@@ -72,6 +79,7 @@ export default function AbonamentePage() {
         day: Number(draft.day),
         month_of_year: Number(draft.month_of_year),
         end_month: draft.end_month || null,
+        remind_days: draft.remind_days === "" ? null : Number(draft.remind_days),
       };
       const res = await api<{ created: number }>("/api/scheduled", draft.id ? "PUT" : "POST", body);
       setDraft(null);
@@ -144,6 +152,10 @@ export default function AbonamentePage() {
   const active = data?.schedules.filter((s) => s.active) ?? [];
   const subs = active.filter((s) => s.is_subscription && s.currency === "RON");
   const monthlySubs = subs.reduce((t, s) => t + s.monthly, 0);
+  // Plățile rare (trimestriale, anuale): cât pui deoparte lunar ca să fie banii pregătiți la scadență.
+  const rare = active.filter((s) => s.aside && s.currency === "RON" && s.kind !== "income");
+  const asideMonthly = rare.reduce((t, s) => t + (s.aside?.monthly ?? 0), 0);
+  const asideNow = rare.reduce((t, s) => t + (s.aside?.shouldHave ?? 0), 0);
   const detectedMonthly = (data?.detected ?? []).filter((d) => d.currency === "RON").reduce((t, d) => t + (d.frequency === "yearly" ? d.amount / 12 : d.amount), 0);
 
   return (
@@ -164,6 +176,11 @@ export default function AbonamentePage() {
         <Stat label="Detectate, neprogramate" accent="var(--c-galben)" hint="pe lună">
           <span className="font-display text-[22px] font-bold tabular-nums">{lei(detectedMonthly)}</span>
         </Stat>
+        {rare.length > 0 && (
+          <Stat label="De pus deoparte / lună" accent="var(--c-leu)" hint={`pentru ${rare.length === 1 ? "o plată rară" : `${rare.length} plăți rare`}; până azi: ${lei(asideNow)}`}>
+            <span className="font-display text-[22px] font-bold tabular-nums">{lei(asideMonthly)}</span>
+          </Stat>
+        )}
       </section>
 
       {!!data?.alerts.length && (
@@ -205,6 +222,8 @@ export default function AbonamentePage() {
                     {s.category ?? <span className="text-rosu">categorie ștearsă</span>} · {when(s)}
                     {s.next && <> · următoarea: {fmtDate(s.next)}</>}
                     {s.end_month && <> · până în {monthLabel(s.end_month)}</>}
+                    {s.remind_days !== null && s.remind_days !== undefined && <> · memento cu {s.remind_days === 0 ? "ziua scadenței" : `${s.remind_days} zile înainte`}</>}
+                    {s.aside && s.active ? <> · pune deoparte {money(s.aside.monthly, s.currency)}/lună</> : null}
                   </div>
                 </div>
                 <div className={`mr-auto text-[14px] font-semibold tabular-nums sm:mr-0 ${s.kind === "income" ? "text-leu" : "text-ink"}`}>
@@ -222,6 +241,7 @@ export default function AbonamentePage() {
                         currency: s.currency === "EUR" ? "EUR" : "RON", frequency: s.frequency, day: String(s.day),
                         month_of_year: String(s.month_of_year ?? 1), start_month: s.start_month, end_month: s.end_month ?? "",
                         is_subscription: !!s.is_subscription,
+                        remind_days: s.remind_days === null || s.remind_days === undefined ? "" : String(s.remind_days),
                       });
                     }}
                   >
@@ -358,6 +378,7 @@ function ScheduleForm({
         <Field label="Cât de des">
           <select className="field" value={draft.frequency} onChange={(e) => set({ frequency: e.target.value as Draft["frequency"] })}>
             <option value="monthly">Lunar</option>
+            <option value="quarterly">Trimestrial</option>
             <option value="yearly">Anual</option>
           </select>
         </Field>
@@ -365,8 +386,8 @@ function ScheduleForm({
           <input className="field" inputMode="numeric" value={draft.day} onChange={(e) => set({ day: e.target.value.replace(/\D/g, "").slice(0, 2) })} />
         </Field>
       </div>
-      {draft.frequency === "yearly" && (
-        <Field label="Luna plății">
+      {draft.frequency !== "monthly" && (
+        <Field label={draft.frequency === "yearly" ? "Luna plății" : "O lună în care vine plata"} hint={draft.frequency === "quarterly" ? "Apoi din 3 în 3 luni" : undefined}>
           <select className="field" value={draft.month_of_year} onChange={(e) => set({ month_of_year: e.target.value })}>
             {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </select>
@@ -380,6 +401,13 @@ function ScheduleForm({
           <input className="field" type="month" value={draft.end_month} onChange={(e) => set({ end_month: e.target.value })} />
         </Field>
       </div>
+      <Field label="Memento înainte de scadență" hint="Pe Telegram sau email, după setările notificărilor">
+        <select className="field" value={draft.remind_days} onChange={(e) => set({ remind_days: e.target.value })}>
+          <option value="">Fără memento</option>
+          <option value="0">În ziua scadenței</option>
+          {[1, 2, 3, 5, 7, 14].map((n) => <option key={n} value={n}>Cu {n} {n === 1 ? "zi" : "zile"} înainte</option>)}
+        </select>
+      </Field>
       <label className="flex items-center gap-2 text-[13px]">
         <input type="checkbox" checked={draft.is_subscription} onChange={(e) => set({ is_subscription: e.target.checked })} />
         E un abonament (intră la costul abonamentelor și primești alertă înainte de reînnoire)

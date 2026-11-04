@@ -9,15 +9,16 @@ import { Empty, Field, Money, PageHeader, Panel, Skeleton, Stat, STAT_STRIP, use
 type Category = { id: number; name: string; kind: Kind; color: string };
 type Result = { rows: FoundEntry[]; truncated: boolean; totals: SearchTotals };
 
-type Filters = { q: string; kind: "" | Kind; category_id: string; from: string; to: string; min: string; max: string; refunds: boolean };
+type Filters = { q: string; kind: "" | Kind; category_id: string; tag_id: string; from: string; to: string; min: string; max: string; refunds: boolean };
 
-const EMPTY: Filters = { q: "", kind: "", category_id: "", from: "", to: "", min: "", max: "", refunds: false };
+const EMPTY: Filters = { q: "", kind: "", category_id: "", tag_id: "", from: "", to: "", min: "", max: "", refunds: false };
 
 function query(f: Filters) {
   const p = new URLSearchParams();
   if (f.q.trim()) p.set("q", f.q.trim());
   if (f.kind) p.set("kind", f.kind);
   if (f.category_id) p.set("category_id", f.category_id);
+  if (f.tag_id) p.set("tag_id", f.tag_id);
   if (f.from) p.set("from", f.from);
   if (f.to) p.set("to", f.to);
   if (f.min.trim()) p.set("min", f.min.trim());
@@ -43,6 +44,7 @@ export default function SearchPage() {
   }, [f]);
 
   const { data: cats } = useApi<Category[]>("/api/crud/categories");
+  const { data: tags } = useApi<{ id: number; name: string }[]>("/api/crud/tags");
   const { data, error, loading } = useApi<Result>(`/api/entries/search?${qs}`, [qs]);
   const catMap = useMemo(() => new Map((cats ?? []).map((c) => [c.id, c])), [cats]);
   const kindCats = (cats ?? []).filter((c) => !f.kind || c.kind === f.kind);
@@ -102,6 +104,14 @@ export default function SearchPage() {
                 ))}
               </select>
             </Field>
+            {(tags?.length ?? 0) > 0 && (
+              <Field label="Etichetă">
+                <select className="field" value={f.tag_id} onChange={(e) => set({ tag_id: e.target.value })}>
+                  <option value="">Toate</option>
+                  {tags!.map((t) => <option key={t.id} value={t.id}>#{t.name}</option>)}
+                </select>
+              </Field>
+            )}
             <Field label="De la luna">
               <input className="field" type="month" value={f.from} onChange={(e) => set({ from: e.target.value })} />
             </Field>
@@ -175,7 +185,13 @@ export default function SearchPage() {
                               {e.description && <span className="ml-2 text-[12.5px] text-ink-faint">{e.description}</span>}
                             </span>
                             <span className="block text-[12px] text-ink-faint">
-                              {[e.day ? fmtDay(e.day) : monthLabel(e.month), KIND_LABEL[e.kind], e.amount < 0 ? (e.kind === "saving" ? "retragere" : "retur") : ""].filter(Boolean).join(" · ")}
+                              {[
+                                e.day ? fmtDay(e.day) : monthLabel(e.month),
+                                KIND_LABEL[e.kind],
+                                e.amount < 0 ? (e.kind === "saving" ? "retragere" : "retur") : "",
+                                e.split_group ? "plată împărțită" : "",
+                                e.tags ? e.tags.split(", ").map((x) => `#${x}`).join(" ") : "",
+                              ].filter(Boolean).join(" · ")}
                             </span>
                           </span>
                           <span className={`num shrink-0 text-right text-[14px] font-medium ${e.amount < 0 ? (e.kind === "saving" ? "text-rosu" : "text-leu") : ""}`}>

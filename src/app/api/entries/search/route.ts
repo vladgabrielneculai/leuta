@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
       db
         .prepare(
           `SELECT e.id, e.month, e.kind, e.category_id, e.goal_id, e.investment_id, e.description, e.amount, e.currency,
-                  e.recurring, e.created_at, c.name AS category,
+                  e.recurring, e.created_at, e.account_id, e.split_group, c.name AS category,
+                  (SELECT string_agg(t.name, ', ' ORDER BY lower(t.name)) FROM entry_tags et JOIN tags t ON t.id = et.tag_id WHERE et.entry_id = e.id) AS tags,
                   to_char(e.created_at AT TIME ZONE 'Europe/Bucharest', 'YYYY-MM-DD') AS day
            FROM entries e LEFT JOIN categories c ON c.id = e.category_id
            ${where}

@@ -1,9 +1,10 @@
 import type { DbInterface } from "./db";
+import { ACCOUNT_KINDS, checkTransfer } from "./accounts";
 
 export const TABLES: Record<string, { columns: string[]; filters: string[]; order: string }> = {
-  categories: { columns: ["name", "kind", "bucket", "color"], filters: ["kind"], order: "kind, name" },
+  categories: { columns: ["name", "kind", "bucket", "color", "parent_id"], filters: ["kind"], order: "kind, name" },
   entries: {
-    columns: ["month", "kind", "category_id", "goal_id", "investment_id", "card_id", "description", "amount", "currency", "recurring", "created_at"],
+    columns: ["month", "kind", "category_id", "goal_id", "investment_id", "card_id", "description", "amount", "currency", "recurring", "created_at", "account_id", "split_group"],
     filters: ["month", "kind", "goal_id", "investment_id"],
     order: "id",
   },
@@ -48,6 +49,15 @@ export const TABLES: Record<string, { columns: string[]; filters: string[]; orde
     order: "start_date DESC, id DESC",
   },
   trip_funds: { columns: ["trip_id", "label", "amount", "currency", "rate_ron"], filters: ["trip_id"], order: "id" },
+  // Beta: conturi, transferuri, etichete, carduri de credit / descoperit.
+  accounts: { columns: ["name", "kind", "currency", "opening_balance", "opening_date", "archived"], filters: [], order: "archived, id" },
+  transfers: { columns: ["from_account_id", "to_account_id", "amount", "to_amount", "date", "note"], filters: [], order: "date DESC, id DESC" },
+  tags: { columns: ["name", "color"], filters: [], order: "lower(name)" },
+  debts: {
+    columns: ["name", "kind", "credit_limit", "balance", "balance_date", "rate", "min_payment_pct", "min_payment_amount", "due_day", "active"],
+    filters: [],
+    order: "active DESC, id",
+  },
   trip_expenses: {
     columns: ["trip_id", "date", "category", "description", "amount", "currency"],
     filters: ["trip_id"],
@@ -90,6 +100,55 @@ export const VALIDATE: Record<string, (data: Record<string, unknown>, isNew: boo
     }
     if (!isIsoDay(d.created_at)) throw new Error("Alege data tranzacției.");
     d.created_at = `${d.created_at} 12:00 Europe/Bucharest`;
+  },
+  accounts(d, isNew) {
+    if (isNew || "name" in d) {
+      d.name = String(d.name ?? "").trim();
+      if (!d.name) throw new Error("Dă un nume contului.");
+    }
+    if ((isNew || "kind" in d) && !ACCOUNT_KINDS.some((k) => k.kind === d.kind)) throw new Error("Alege tipul contului.");
+    if (isNew || "currency" in d) d.currency = currencyCode(d.currency ?? "RON");
+    if (isNew || "opening_balance" in d) {
+      const b = Number(d.opening_balance ?? 0);
+      if (!Number.isFinite(b)) throw new Error("Soldul de pornire trebuie să fie un număr.");
+      d.opening_balance = b; // poate fi negativ (descoperit de cont)
+    }
+    if ((isNew || "opening_date" in d) && !isIsoDay(d.opening_date)) throw new Error("Alege data soldului de pornire.");
+  },
+  transfers(d, isNew, current) {
+    const merged = { ...current, ...d } as { from_account_id: unknown; to_account_id: unknown; amount: unknown; to_amount?: unknown };
+    if (isNew || ["from_account_id", "to_account_id", "amount", "to_amount"].some((k) => k in d)) {
+      Object.assign(d, Object.fromEntries(Object.entries(checkTransfer(merged)).filter(([k]) => isNew || k in d)));
+    }
+    if ((isNew || "date" in d) && !isIsoDay(d.date)) throw new Error("Alege data transferului.");
+    if ("note" in d) d.note = String(d.note ?? "").trim();
+  },
+  tags(d, isNew) {
+    if (isNew || "name" in d) {
+      d.name = String(d.name ?? "").trim().replace(/^#/, "");
+      if (!d.name) throw new Error("Dă un nume etichetei.");
+      if (String(d.name).length > 40) throw new Error("Eticheta e prea lungă.");
+    }
+  },
+  debts(d, isNew) {
+    if (isNew || "name" in d) {
+      d.name = String(d.name ?? "").trim();
+      if (!d.name) throw new Error("Dă un nume cardului.");
+    }
+    if ((isNew || "kind" in d) && !["card", "overdraft"].includes(String(d.kind))) throw new Error("Alege tipul: card sau descoperit.");
+    for (const [k, what] of [["credit_limit", "Limita"], ["balance", "Soldul"], ["rate", "Dobânda"], ["min_payment_pct", "Plata minimă"], ["min_payment_amount", "Plata minimă"]] as const) {
+      if (!(k in d)) continue;
+      const n = Number(d[k] ?? 0);
+      if (!Number.isFinite(n) || n < 0) throw new Error(`${what} nu poate fi negativă.`);
+      if (k === "min_payment_pct" && n > 100) throw new Error("Plata minimă e un procent între 0 și 100.");
+      d[k] = n;
+    }
+    if ("due_day" in d) {
+      if (d.due_day === null || d.due_day === "") d.due_day = null;
+      else if (!Number.isInteger(Number(d.due_day)) || Number(d.due_day) < 1 || Number(d.due_day) > 31) throw new Error("Ziua scadenței e între 1 și 31.");
+      else d.due_day = Number(d.due_day);
+    }
+    if ("balance_date" in d && d.balance_date && !isIsoDay(d.balance_date)) throw new Error("Data soldului nu e validă.");
   },
   cards(d, isNew) {
     if (isNew || "name" in d) {
@@ -149,13 +208,14 @@ export function updateRow(db: DbInterface, table: string, id: unknown, data: Rec
 
 /** Tabelele cu datele financiare ale unui cont, în ordinea cheilor străine (părinții înaintea copiilor). */
 export const FINANCIAL_TABLES = [
-  "categories", "cards", "goals", "investments", "loans", "scheduled_entries", "entries",
+  "categories", "cards", "goals", "investments", "loans", "accounts", "scheduled_entries", "entries",
   "investment_values", "loan_prepayments", "loan_schedules", "planned_purchases", "import_rules",
-  "trips", "trip_funds", "trip_expenses",
+  "trips", "trip_funds", "trip_expenses", "transfers", "tags", "entry_tags", "debts",
 ] as const;
 
 /** Tabelele vizibile în exploratorul bazei de date (Setări, doar administrator). */
 export const DB_TABLES = [
   "entries", "loans", "loan_prepayments", "loan_schedules", "categories", "cards", "goals",
-  "investments", "investment_values", "planned_purchases", "trips", "trip_funds", "trip_expenses", "user_settings", "fx_rates", "fx_rates_currency", "inflation_rates",
+  "investments", "investment_values", "planned_purchases", "trips", "trip_funds", "trip_expenses",
+  "accounts", "transfers", "tags", "debts", "user_settings", "fx_rates", "fx_rates_currency", "inflation_rates",
 ];
