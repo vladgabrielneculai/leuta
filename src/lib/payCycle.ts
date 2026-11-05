@@ -152,7 +152,7 @@ export function rangeLabel(month: string, c: PayCycle) {
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
-export type EntryDate = { id: number; month: string; date: string | null; recurring: number; scheduled?: boolean };
+export type EntryDate = { id: number; month: string; date: string | null; recurring: number };
 export type Move = { id: number; from: string; to: string };
 
 /**
@@ -160,14 +160,14 @@ export type Move = { id: number; from: string; to: string };
  * sau altă zi de salariu). Se mută doar intrările care stau exact în luna în care le punea vechiul mod după
  * data lor, deci au fost puse automat. Rămân pe loc:
  *  - intrările trecute intenționat în altă lună;
- *  - cele recurente („lunar”), care țin de luna pentru care sunt (chiria lunii, nu ziua plății);
- *  - cele create din programări (au deja luna scadenței).
+ *  - cele recurente („lunar”), care țin de luna pentru care sunt (chiria lunii, nu ziua plății).
+ * Intrările create din programări se mută și ele: data lor e ziua scadenței.
  * Mutarea e reversibilă: înapoi, de la noul mod la cel vechi, aceleași intrări se întorc unde erau.
  */
 export function resortMoves(rows: EntryDate[], from: PayCycle, to: PayCycle): Move[] {
   const out: Move[] = [];
   for (const r of rows) {
-    if (!r.date || r.recurring || r.scheduled) continue;
+    if (!r.date || r.recurring) continue;
     if (budgetMonthOf(r.date, from) !== r.month) continue;
     const target = budgetMonthOf(r.date, to);
     if (target !== r.month) out.push({ id: r.id, from: r.month, to: target });

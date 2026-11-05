@@ -94,21 +94,25 @@ const rows = [
   { id: 1, month: "2026-11", date: "2026-11-03", recurring: 0 }, // înainte de salariu → octombrie
   { id: 2, month: "2026-11", date: "2026-11-10", recurring: 0 }, // după salariu, rămâne
   { id: 3, month: "2026-11", date: "2026-11-02", recurring: 1 }, // recurentă („lunar”): rămâne în luna ei
-  { id: 4, month: "2026-11", date: "2026-11-01", recurring: 0, scheduled: true }, // din programare: rămâne
+  { id: 4, month: "2026-11", date: "2026-11-01", recurring: 0 }, // din programare, scadentă pe 1: trece în octombrie
   { id: 5, month: "2026-10", date: "2026-11-02", recurring: 0 }, // trecută intenționat în altă lună: rămâne
   { id: 6, month: "2026-12", date: "2026-12-04", recurring: 0 }, // salariul vine vineri 4 dec: rămâne în decembrie
   { id: 7, month: "2026-11", date: null, recurring: 0 }, // fără dată: rămâne
 ];
 
 test("reorganizarea intrărilor vechi la pornire", () => {
-  assert.deepEqual(resortMoves(rows, CALENDAR_CYCLE, C5), [{ id: 1, from: "2026-11", to: "2026-10" }]);
+  assert.deepEqual(resortMoves(rows, CALENDAR_CYCLE, C5), [
+    { id: 1, from: "2026-11", to: "2026-10" },
+    { id: 4, from: "2026-11", to: "2026-10" },
+  ]);
 });
 
 test("reorganizarea e reversibilă la oprire", () => {
   // Intrarea 5 (2 noiembrie, în octombrie) stă acum exact unde o pune luna de buget, deci revine și ea în noiembrie.
-  const after = rows.map((r) => (r.id === 1 ? { ...r, month: "2026-10" } : r));
+  const after = rows.map((r) => (r.id === 1 || r.id === 4 ? { ...r, month: "2026-10" } : r));
   assert.deepEqual(resortMoves(after, C5, CALENDAR_CYCLE), [
     { id: 1, from: "2026-10", to: "2026-11" },
+    { id: 4, from: "2026-10", to: "2026-11" },
     { id: 5, from: "2026-10", to: "2026-11" },
   ]);
 });
