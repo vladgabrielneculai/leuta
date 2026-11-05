@@ -383,7 +383,12 @@ function simulateFromSchedule(loan: Loan, schedule: ScheduleRow[], opts: SimOpti
 
     if (prepayment > 0) {
       balance -= prepayment;
-      if (balance > 0.005) {
+      // Graficul a fost actualizat după plată (ex. situația la zi din aplicația băncii): soldul ratei
+      // următoare include deja plata anticipată, deci rata și dobânda rămân exact cele ale băncii.
+      const nextBank = byIdx.get(i + 1);
+      const bankIncludesPrepayment =
+        !diverged && !!nextBank && balance > 0.005 && Math.abs(nextBank.balance_start - balance) <= 1;
+      if (balance > 0.005 && !bankIncludesPrepayment) {
         if (!diverged) {
           // De aici graficul băncii nu mai e valabil; referința e rata obișnuită din luna următoare.
           diverged = true;

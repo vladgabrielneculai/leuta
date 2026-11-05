@@ -132,14 +132,14 @@ export default function LoanScheduleManager({
   };
 
   /** Salvează graficul (și, opțional, datele creditului) — de aici înainte e sursa calculelor. */
-  const saveSchedule = async (entries: ScheduleRow[], source: string, loanPatch: Partial<Loan> = {}) => {
+  const saveSchedule = async (entries: ScheduleRow[], source: string, loanPatch: Partial<Loan> = {}, keepBefore = false) => {
     setSaveError(null);
     setBusy(true);
     try {
       const clean = entries.map(({ installment_nr, month, balance_start, principal, interest, fee, payment, balance_end, is_paid }) => ({
         installment_nr, month, balance_start, principal, interest, fee, payment, balance_end, is_paid,
       }));
-      await api("/api/loan-schedule", "POST", { loanId: loan.id, entries: clean, loanPatch, source });
+      await api("/api/loan-schedule", "POST", { loanId: loan.id, entries: clean, loanPatch, source, keepBefore });
       setModalOpen(false);
       onUpdated();
     } catch (err) {
@@ -165,7 +165,7 @@ export default function LoanScheduleManager({
       insurance_monthly: draft.next_fees,
       // Durata creditului: până la maturitate (numărul ratei = indexul lunii de la acordare + 1).
       term_months: lastRow ? Math.max(1, lastRow.installment_nr) : loan.term_months,
-    });
+    }, true);
   };
 
   const handleImportText = async () => {
