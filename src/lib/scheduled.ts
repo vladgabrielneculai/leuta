@@ -60,6 +60,24 @@ export function dueDate(s: Pick<Schedule, "frequency" | "day" | "month_of_year">
   return `${month}-${String(day).padStart(2, "0")}`;
 }
 
+/**
+ * Scadențele unei programări între două zile (inclusiv), peste mai multe luni calendaristice: o lună de buget
+ * de la salariu la salariu (ex. 5 oct – 4 nov) poate cuprinde scadențe din două luni.
+ */
+export function duesBetween(
+  s: Pick<Schedule, "frequency" | "day" | "month_of_year" | "start_month" | "end_month">,
+  from: string,
+  to: string,
+): { month: string; date: string }[] {
+  const out: { month: string; date: string }[] = [];
+  for (let m = from.slice(0, 7); m <= to.slice(0, 7); m = addMonth(m, 1)) {
+    if (m < s.start_month || (s.end_month && m > s.end_month)) continue;
+    const date = dueDate(s, m);
+    if (date && date >= from && date <= to) out.push({ month: m, date });
+  }
+  return out;
+}
+
 /** Lunile pentru care trebuie create acum intrări: scadența a venit și nu s-a creat încă (cel mult 24 de luni în urmă). */
 export function dueMonths(s: Schedule, t: Today): { month: string; date: string }[] {
   if (!s.active) return [];

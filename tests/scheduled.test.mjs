@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  detectSubscriptions, dueDate, dueMonths, nextDue, paymentKey, priceIncrease, today,
+  detectSubscriptions, dueDate, duesBetween, dueMonths, nextDue, paymentKey, priceIncrease, today,
 } from "../src/lib/scheduled.ts";
 
 const T = { date: "2026-10-11", month: "2026-10", day: 11 };
@@ -148,4 +148,15 @@ test("mementoul vine exact cu remind_days înainte de scadență", async () => {
   assert.equal(remindersDue([{ ...chirie, remind_days: 2 }], T).length, 0);
   assert.equal(remindersDue([{ ...chirie, remind_days: null }], T).length, 0);
   assert.equal(remindersDue([{ ...chirie, day: 11, remind_days: 0 }], T).length, 1); // în ziua scadenței
+});
+
+test("scadențele dintr-o lună de buget care trece peste două luni calendaristice", () => {
+  // salariul pe 5, plata pe 4: luna de buget decembrie (4 dec – 4 ian) cuprinde două scadențe
+  const s = { ...base, day: 4, start_month: "2026-01" };
+  assert.deepEqual(duesBetween(s, "2026-12-04", "2027-01-04"), [
+    { month: "2026-12", date: "2026-12-04" },
+    { month: "2027-01", date: "2027-01-04" },
+  ]);
+  assert.deepEqual(duesBetween(s, "2026-11-05", "2026-12-03"), []); // noiembrie: nicio scadență
+  assert.deepEqual(duesBetween({ ...s, end_month: "2026-12" }, "2026-12-04", "2027-01-04"), [{ month: "2026-12", date: "2026-12-04" }]);
 });

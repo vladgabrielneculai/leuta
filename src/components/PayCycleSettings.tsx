@@ -132,8 +132,9 @@ export default function PayCycleSettings() {
           )}
 
           <p className="text-[12px] text-ink-faint">
-            Intrările marcate „lunar” (chiria, abonamentele copiate lună de lună), cele din programări și ratele creditelor rămân în
-            luna pentru care sunt. Sărbătorile legale nu mută ziua salariului; dacă îl primești în altă zi, schimbă data intrării.
+            Plățile programate intră în luna salariului din care se plătesc, după ziua scadenței. Intrările marcate „lunar” (chiria,
+            abonamentele copiate lună de lună) și ratele creditelor rămân în luna pentru care sunt. Sărbătorile legale nu mută ziua
+            salariului; dacă îl primești în altă zi, schimbă data intrării.
           </p>
         </div>
       )}
