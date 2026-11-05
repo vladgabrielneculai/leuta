@@ -37,7 +37,7 @@ type AppCtx = {
   confirm: (opts: string | ConfirmOptions) => Promise<boolean>;
   version: number;
   bump: () => void;
-  /** Versiunea beta: funcționalitățile noi apar doar aici (vezi lib/beta.ts). Shell o află din /api/auth/status. */
+  /** Versiunea beta (beta-app.leuta.ro): afișează eticheta „Beta”. Shell o află din /api/auth/status. */
   beta: boolean;
   setBeta: (b: boolean) => void;
 };

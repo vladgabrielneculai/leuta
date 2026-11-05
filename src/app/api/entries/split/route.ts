@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { isBetaDeployment } from "@/lib/beta";
 import { insertRow, VALIDATE } from "@/lib/crud";
 import { getDb } from "@/lib/db";
 import { checkSplit } from "@/lib/entrySearch";
@@ -9,13 +8,12 @@ import { errorResponse } from "@/lib/http";
 export const dynamic = "force-dynamic";
 
 /**
- * O plată împărțită pe mai multe categorii (beta), ca un singur bon: 200 mâncare + 80 casă.
+ * O plată împărțită pe mai multe categorii, ca un singur bon: 200 mâncare + 80 casă.
  * Corp: câmpurile unei intrări (month, kind, created_at, description, currency, account_id) + `amount` total +
  * `parts: [{ category_id, amount }]`. Se creează câte o intrare pe categorie, toate cu același `split_group`,
  * într-o singură tranzacție. Fiecare parte rămâne o intrare obișnuită (se modifică sau se șterge separat).
  */
 export async function POST(req: NextRequest) {
-  if (!isBetaDeployment()) return NextResponse.json({ error: "Pagina nu există." }, { status: 404 });
   try {
     const body = await req.json();
     if (!["variable", "fixed"].includes(body.kind)) throw new Error("Doar cheltuielile se pot împărți pe categorii.");

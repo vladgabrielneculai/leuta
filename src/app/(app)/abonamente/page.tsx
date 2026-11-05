@@ -40,7 +40,7 @@ const emptyDraft = (month: string): Draft => ({
 });
 
 /**
- * Abonamente și tranzacții programate (beta): plățile care se repetă intră singure în buget în ziua scadenței,
+ * Abonamente și tranzacții programate: plățile care se repetă intră singure în buget în ziua scadenței,
  * iar abonamentele se găsesc automat în intrările existente.
  */
 export default function AbonamentePage() {
@@ -53,9 +53,6 @@ export default function AbonamentePage() {
   const [error, setError] = useState<string | null>(null);
   const [convert, setConvert] = useState<Record<number, { on: boolean; day: string; sub: boolean }>>({});
 
-  if (ov.error && /nu există/i.test(ov.error)) {
-    return <Empty title="Pagina nu există">Abonamentele și programările sunt disponibile doar în versiunea beta.</Empty>;
-  }
   const data = ov.data;
   const thisMonth = (data?.today ?? new Date().toISOString()).slice(0, 7);
 

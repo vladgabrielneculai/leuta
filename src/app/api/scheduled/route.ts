@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
-import { betaOnly } from "@/lib/importServer";
 import { addMonth, today } from "@/lib/scheduled";
 import { assertCategory, materializeDue, overview, parseScheduleInput } from "@/lib/scheduledServer";
 
@@ -9,8 +8,6 @@ export const dynamic = "force-dynamic";
 
 /** Programările, abonamentele detectate, alertele și intrările recurente care pot deveni programări. */
 export async function GET() {
-  const blocked = betaOnly();
-  if (blocked) return blocked;
   try {
     await materializeDue(true);
     return NextResponse.json(await overview());
@@ -20,8 +17,6 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const blocked = betaOnly();
-  if (blocked) return blocked;
   try {
     const s = parseScheduleInput(await req.json());
     await assertCategory(s.category_id);
@@ -41,8 +36,6 @@ export async function POST(req: NextRequest) {
 
 /** Modificarea nu atinge intrările deja create; se aplică de la următoarea scadență. */
 export async function PUT(req: NextRequest) {
-  const blocked = betaOnly();
-  if (blocked) return blocked;
   try {
     const body = await req.json();
     const id = Number(body.id);
@@ -75,8 +68,6 @@ export async function PUT(req: NextRequest) {
 
 /** Intrările create deja rămân în buget; doar legătura cu programarea dispare. */
 export async function DELETE(req: NextRequest) {
-  const blocked = betaOnly();
-  if (blocked) return blocked;
   try {
     const id = Number(req.nextUrl.searchParams.get("id"));
     if (!Number.isInteger(id)) return NextResponse.json({ error: "Programare invalidă." }, { status: 400 });

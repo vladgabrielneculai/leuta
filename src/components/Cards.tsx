@@ -4,11 +4,11 @@ import { useState } from "react";
 import { api, Field, Panel, TrashIcon, useApi, useApp } from "./ui";
 
 /**
- * Cardurile cu care plătești (beta): o listă proprie, din Setări. La adăugarea unei cheltuieli alegi cardul
+ * Cardurile cu care plătești: o listă proprie, din Setări. La adăugarea unei cheltuieli alegi cardul
  * (fereastra de adăugare rapidă ține minte ultimul ales, pe dispozitivul curent).
  */
 
-/** `account_id` (beta): contul din care plătește cardul; cheltuielile cu cardul schimbă soldul lui. */
+/** `account_id`: contul din care plătește cardul; cheltuielile cu cardul schimbă soldul lui. */
 export type PayCard = { id: number; name: string; kind: "bank" | "meal"; color: string; account_id?: number | null };
 
 type AccountOption = { id: number; name: string; archived: number };
@@ -36,10 +36,9 @@ export function rememberCard(id: number | null) {
   } catch {}
 }
 
-/** Cardurile contului; doar pe beta (în producție nu se cer deloc). */
+/** Cardurile contului. */
 export function useCards() {
-  const { beta } = useApp();
-  return useApi<PayCard[]>(beta ? "/api/crud/cards" : null);
+  return useApi<PayCard[]>("/api/crud/cards");
 }
 
 function CardRow({ c, all, accounts, onChanged, onError }: { c: PayCard; all: PayCard[]; accounts: AccountOption[]; onChanged: (msg: string) => void; onError: (msg: string) => void }) {
@@ -124,9 +123,8 @@ function CardRow({ c, all, accounts, onChanged, onError }: { c: PayCard; all: Pa
 export function CardsPanel({ onToast }: { onToast: (msg: string) => void }) {
   const { bump } = useApp();
   const { data: cards, reload } = useCards();
-  const { beta } = useApp();
-  // Conturile (beta): fiecare card bancar poate fi legat de contul din care plătește.
-  const { data: accountsData } = useApi<{ accounts: AccountOption[] }>(beta ? "/api/accounts" : null);
+  // Conturile: fiecare card bancar poate fi legat de contul din care plătește.
+  const { data: accountsData } = useApi<{ accounts: AccountOption[] }>("/api/accounts");
   const accounts = accountsData?.accounts ?? [];
   const [name, setName] = useState("");
   const [kind, setKind] = useState<PayCard["kind"]>("bank");

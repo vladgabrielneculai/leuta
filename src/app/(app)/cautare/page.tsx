@@ -30,7 +30,7 @@ function query(f: Filters) {
 const fmtDay = (d: string) => d.split("-").reverse().join(".");
 
 /**
- * Căutare în toate intrările, din toate lunile (beta): după text, tip, categorie, perioadă și sumă.
+ * Căutare în toate intrările, din toate lunile: după text, tip, categorie, perioadă și sumă.
  * Rezultatele se pot descărca în CSV (se deschide direct în Excel) și se pot modifica dintr-o atingere.
  */
 export default function SearchPage() {
@@ -50,9 +50,6 @@ export default function SearchPage() {
   const catMap = useMemo(() => new Map((cats ?? []).map((c) => [c.id, c])), [cats]);
   const kindCats = (cats ?? []).filter((c) => !f.kind || c.kind === f.kind);
 
-  if (error && /nu există/i.test(error)) {
-    return <Empty title="Pagina nu există">Căutarea în toate intrările este disponibilă doar în versiunea beta.</Empty>;
-  }
 
   const set = (patch: Partial<Filters>) => setF((prev) => ({ ...prev, ...patch }));
   const now = nowMonth;

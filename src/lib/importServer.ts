@@ -1,17 +1,10 @@
 import readXlsxFile from "read-excel-file/node";
-import { NextResponse } from "next/server";
-import { isBetaDeployment } from "./beta";
 import { getDb, getSetting, setSetting } from "./db";
 import { suggestCategory, type ImportCategory, type ImportRule } from "./importRules";
 import {
   decodeText, matchExisting, parseCsv, parseStatement, tableFromCells,
   type ExistingEntry, type Mapping, type Table, type Transaction,
 } from "./statementImport";
-
-/** Importul extraselor e încă în beta: în producție rutele nu există. */
-export function betaOnly(): NextResponse | null {
-  return isBetaDeployment() ? null : NextResponse.json({ error: "Pagina nu există." }, { status: 404 });
-}
 
 export async function readStatementFile(file: File): Promise<Table> {
   const name = file.name.toLowerCase();

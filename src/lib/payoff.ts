@@ -1,5 +1,5 @@
 /**
- * Ordinea în care merită rambursate datoriile (beta): „bulgărele de zăpadă” (cea mai mică datorie întâi)
+ * Ordinea în care merită rambursate datoriile: „bulgărele de zăpadă” (cea mai mică datorie întâi)
  * față de „avalanșă” (cea mai scumpă dobândă întâi) și față de plata doar a ratelor.
  *
  * Model simplificat, lună de lună, la rata dobânzii de azi:

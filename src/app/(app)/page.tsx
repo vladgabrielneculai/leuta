@@ -16,7 +16,7 @@ import { Guilloche, MicroText } from "@/components/Guilloche";
 import type { QuickEntry } from "@/components/QuickAdd";
 import { Bar, chartTooltipStyle, Delta, Empty, LEVEL_STYLE, Money, PageHeader, Panel, Ring, Skeleton, Stat, STAT_STRIP, Tabs, useApi, useApp, useTab } from "@/components/ui";
 
-type S = Summary & { fxError: string | null; beta?: boolean };
+type S = Summary & { fxError: string | null };
 
 const kLei = (v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `${Math.round(v)}`);
 
@@ -255,7 +255,7 @@ export default function Dashboard() {
 
   return (
     <>
-      {s.beta && month === nowMonth && <ScheduledAlerts />}
+      {month === nowMonth && <ScheduledAlerts />}
       {s.fxError && (
         <p className="mb-4 rounded-md bg-galben-tint px-3 py-2 text-[13px]">
           Cursul BNR nu a putut fi actualizat ({s.fxError}). Sumele în euro folosesc ultimul curs salvat.

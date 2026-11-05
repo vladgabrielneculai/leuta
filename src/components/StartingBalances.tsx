@@ -22,7 +22,7 @@ export function signedAmount(raw: string) {
 }
 
 /**
- * Soldurile de azi, pentru mai multe conturi deodată (beta): în Conturi, când nu ai încă niciunul, și în ghidul
+ * Soldurile de azi, pentru mai multe conturi deodată: în Conturi, când nu ai încă niciunul, și în ghidul
  * de început. Rândurile lăsate goale nu se salvează.
  */
 export default function StartingBalances({ onSaved, intro = true }: { onSaved: () => void; intro?: boolean }) {
