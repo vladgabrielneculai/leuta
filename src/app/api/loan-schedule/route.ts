@@ -53,13 +53,16 @@ function loanFields(data: Record<string, unknown> | undefined) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { entries, loanPatch, createLoan, source } = body as {
+    const { loanPatch, createLoan, source, keepBefore } = body as {
       loanId?: number;
       entries: Omit<ScheduleEntry, "id" | "loan_id">[];
       loanPatch?: Record<string, unknown>;
       createLoan?: Record<string, unknown>;
       source?: string;
+      /** Păstrează ratele existente dinaintea primei luni noi (actualizarea situației la zi). */
+      keepBefore?: boolean;
     };
+    let entries = body.entries as Omit<ScheduleEntry, "id" | "loan_id">[];
     let loanId = Number(body.loanId) || 0;
 
     if ((!loanId && !createLoan) || !Array.isArray(entries) || entries.length === 0) return jsonError("Date invalide");
@@ -75,6 +78,15 @@ export async function POST(req: NextRequest) {
         loanId = (await insertRow(tx, "loans", data)).lastInsertRowid;
       } else if (!(await updateRow(tx, "loans", loanId, loanFields({ ...loanPatch, ...flags }))).changes) {
         return true; // creditul nu există sau e al altui cont
+      }
+
+      if (keepBefore && !createLoan) {
+        // Ratele deja trecute rămân cele din graficul băncii; restul se înlocuiește cu graficul nou.
+        const first = entries.reduce((m, e) => (e.month < m ? e.month : m), entries[0].month);
+        const older = await tx
+          .prepare("SELECT * FROM loan_schedules WHERE loan_id = ? AND month < ? ORDER BY month, installment_nr")
+          .all<ScheduleEntry>(loanId, first);
+        entries = [...older, ...[...entries].sort((a, b) => a.month.localeCompare(b.month))];
       }
 
       await tx.prepare("DELETE FROM loan_schedules WHERE loan_id = ?").run(loanId);
