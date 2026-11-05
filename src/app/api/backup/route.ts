@@ -47,9 +47,9 @@ export async function GET() {
   dump.user_settings = await db.prepare("SELECT key, value FROM user_settings").all();
   for (const t of ORDER) {
     const rows = await db.prepare(`SELECT * FROM ${t}`).all<Record<string, unknown>>();
-    // Proprietarul nu face parte din backup. Nici legătura intrare → programare: versiunea din producție nu o
+    // Proprietarul nu face parte din backup. Nici legătura intrare → programare (cu scadența ei): versiunea din producție nu o
     // cunoaște, iar la restaurare programarea își știe oricum ultima lună creată (`last_month`).
-    dump[t] = rows.map(({ user_id: _owner, scheduled_id: _schedule, ...rest }) => rest);
+    dump[t] = rows.map(({ user_id: _owner, scheduled_id: _schedule, due_date: _due, ...rest }) => rest);
   }
   const stamp = new Date().toISOString().slice(0, 10);
   return new NextResponse(JSON.stringify({ version: 2, exported: new Date().toISOString(), data: dump }, null, 2), {

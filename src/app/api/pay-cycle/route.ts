@@ -19,14 +19,15 @@ export const dynamic = "force-dynamic";
 const SORTED_KEY = "budget_cycle_sorted";
 
 async function entryDates(db: DbInterface): Promise<EntryDate[]> {
-  // SELECT e.*: coloana scheduled_id există doar odată cu programările; fără ea, nicio intrare nu e din programare.
+  // Intrările din programări au ca dată ziua scadenței (due_date), restul ziua tranzacției.
   const rows = await db
     .prepare(
-      `SELECT e.*, to_char(e.created_at AT TIME ZONE 'Europe/Bucharest', 'YYYY-MM-DD') AS day
-       FROM entries e WHERE e.recurring = 0 AND e.created_at IS NOT NULL`,
+      `SELECT e.id, e.month, e.recurring,
+              COALESCE(to_char(e.due_date, 'YYYY-MM-DD'), to_char(e.created_at AT TIME ZONE 'Europe/Bucharest', 'YYYY-MM-DD')) AS day
+       FROM entries e WHERE e.recurring = 0 AND (e.created_at IS NOT NULL OR e.due_date IS NOT NULL)`,
     )
-    .all<{ id: number; month: string; day: string | null; recurring: number; scheduled_id?: number | null }>();
-  return rows.map((r) => ({ id: r.id, month: r.month, date: r.day, recurring: r.recurring, scheduled: r.scheduled_id != null }));
+    .all<{ id: number; month: string; day: string | null; recurring: number }>();
+  return rows.map((r) => ({ id: r.id, month: r.month, date: r.day, recurring: r.recurring }));
 }
 
 async function pendingMoves(db: DbInterface, cycle: PayCycle): Promise<Move[]> {

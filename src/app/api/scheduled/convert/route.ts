@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
 import { betaOnly } from "@/lib/importServer";
-import { addMonth } from "@/lib/scheduled";
+import { addMonth, dueDate } from "@/lib/scheduled";
 import { materializeDue } from "@/lib/scheduledServer";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +41,9 @@ export async function POST(req: NextRequest) {
              VALUES (?, ?, ?, ?, 'monthly', ?, ?, ?, ?)`,
           )
           .run(e.description || "Plată lunară", e.category_id, e.amount, e.currency, it.day, addMonth(e.month, 1), e.month, it.subscription ? 1 : 0);
-        await tx.prepare("UPDATE entries SET scheduled_id = ?, recurring = 0 WHERE id = ?").run(s.lastInsertRowid, e.id);
+        // Intrarea transformată ține locul scadenței din luna ei (programarea începe din luna următoare).
+        const due = dueDate({ frequency: "monthly", day: it.day, month_of_year: null }, e.month);
+        await tx.prepare("UPDATE entries SET scheduled_id = ?, recurring = 0, due_date = ?::date WHERE id = ?").run(s.lastInsertRowid, due, e.id);
         await tx
           .prepare("UPDATE entries SET recurring = 0 WHERE recurring = 1 AND scheduled_id IS NULL AND category_id = ? AND description = ?")
           .run(e.category_id, e.description);

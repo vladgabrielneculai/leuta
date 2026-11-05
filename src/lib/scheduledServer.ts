@@ -1,4 +1,6 @@
 import { isBetaDeployment } from "./beta";
+import { budgetMonthOf, CALENDAR_CYCLE } from "./payCycle";
+import { loadPayCycle } from "./profileServer";
 import { currentUserId, getDb, getSetting, setSetting } from "./db";
 import {
   daysBetween, detectSubscriptions, dueMonths, monthlyCost, nextDue, paymentKey, priceIncrease, setAside, today,
@@ -36,6 +38,9 @@ export async function materializeDue(force = false): Promise<number> {
        WHERE s.active = 1 AND (s.last_month IS NULL OR s.last_month < ?)`,
     )
     .all<Schedule & { kind: string }>(t.month);
+  // Cu luna de la salariu, plata intră în luna salariului din care se plătește; `last_month` rămâne luna
+  // calendaristică a scadenței, iar dublarea se evită după data scadenței (`due_date`).
+  const cycle = schedules.length ? await loadPayCycle() : null;
   let created = 0;
   for (const s of schedules) {
     const due = dueMonths(s, t);
@@ -44,11 +49,11 @@ export async function materializeDue(force = false): Promise<number> {
       for (const d of due) {
         const res = await tx
           .prepare(
-            `INSERT INTO entries (month, kind, category_id, description, amount, currency, recurring, created_at, scheduled_id)
-             VALUES (?, ?, ?, ?, ?, ?, 0, (?::date + time '09:00') AT TIME ZONE 'Europe/Bucharest', ?)
-             ON CONFLICT (user_id, scheduled_id, month) WHERE scheduled_id IS NOT NULL DO NOTHING`,
+            `INSERT INTO entries (month, kind, category_id, description, amount, currency, recurring, created_at, scheduled_id, due_date)
+             VALUES (?, ?, ?, ?, ?, ?, 0, (?::date + time '09:00') AT TIME ZONE 'Europe/Bucharest', ?, ?::date)
+             ON CONFLICT (user_id, scheduled_id, due_date) WHERE scheduled_id IS NOT NULL DO NOTHING`,
           )
-          .run(d.month, s.kind, s.category_id, s.name, s.amount, s.currency, d.date, s.id);
+          .run(budgetMonthOf(d.date, cycle ?? CALENDAR_CYCLE), s.kind, s.category_id, s.name, s.amount, s.currency, d.date, s.id, d.date);
         created += res.changes;
       }
       await tx.prepare("UPDATE scheduled_entries SET last_month = ? WHERE id = ?").run(due[due.length - 1].month, s.id);
