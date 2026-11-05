@@ -114,7 +114,7 @@ function CategoryRow({
 
 const kinds: Kind[] = ["income", "fixed", "variable", "saving"];
 
-/** Categoriile principale în ordine, fiecare urmată de subcategoriile ei (beta). */
+/** Categoriile principale în ordine, fiecare urmată de subcategoriile ei. */
 function orderByParent(list: Category[]) {
   const ids = new Set(list.map((c) => c.id));
   const top = list.filter((c) => !c.parent_id || !ids.has(c.parent_id));
@@ -143,7 +143,6 @@ export default function SettingsPage() {
     inflationError,
     refreshInflation,
     confirm,
-    beta,
   } = useApp();
   const { data: cats, reload } = useApi<Category[]>("/api/crud/categories");
   const { data: settings } = useApi<Record<string, string>>("/api/settings");
@@ -272,7 +271,7 @@ export default function SettingsPage() {
                       c={c}
                       allCats={cats}
                       parents={
-                        beta && !cats.some((x) => x.parent_id === c.id)
+                        !cats.some((x) => x.parent_id === c.id)
                           ? cats.filter((x) => x.kind === k && !x.parent_id && x.id !== c.id)
                           : undefined
                       }
@@ -305,7 +304,7 @@ export default function SettingsPage() {
         </Panel>
 
           <div className="flex flex-col gap-4 lg:gap-6">
-          {beta && <CardsPanel onToast={setToast} />}
+          <CardsPanel onToast={setToast} />
 
           <Panel title="Aspect" summary="Temă de zi, de noapte sau automată">
             <p className="mb-3 text-[13px] text-ink-soft">

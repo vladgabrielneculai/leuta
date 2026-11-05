@@ -13,7 +13,7 @@ type BnplDraft = { name: string; total: string; n: string; start: string; day: s
 const num = (s: string) => parseAmount(s) || 0;
 
 /**
- * Carduri de credit, descoperit de cont și cumpărături în rate (beta), pe pagina Credite.
+ * Carduri de credit, descoperit de cont și cumpărături în rate, pe pagina Credite.
  * Ratele (BNPL) sunt programări cu lună de sfârșit: intră singure în buget lună de lună.
  */
 export default function CardDebts({

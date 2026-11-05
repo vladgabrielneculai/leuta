@@ -20,7 +20,7 @@ function Change({ now, before, invert = false }: { now: number; before: number |
 }
 
 /**
- * Subcategoriile (beta) se adună la categoria-părinte: rândul părintelui arată totalul, iar subcategoriile apar
+ * Subcategoriile se adună la categoria-părinte: rândul părintelui arată totalul, iar subcategoriile apar
  * dedesubt, cu „↳”. Un părinte fără intrări proprii apare tot, dacă are subcategorii cu sume.
  */
 function groupByParent(rows: YearCategory[], all: YearCategory[]) {
@@ -78,7 +78,7 @@ function CategoryTable({ rows: flat, compareYear, year, invert }: { rows: YearCa
 }
 
 /**
- * Anul în cifre (beta): venituri, cheltuieli și economii lună de lună, pe categorii, comparate cu alt an.
+ * Anul în cifre: venituri, cheltuieli și economii lună de lună, pe categorii, comparate cu alt an.
  * Calculele sunt aceleași ca pe Panou (inclusiv ratele creditelor), doar adunate pe 12 luni.
  */
 export default function YearPage() {
@@ -88,9 +88,6 @@ export default function YearPage() {
   const compareParam = compare === "auto" ? "" : `&compare=${compare}`;
   const { data: r, error } = useApi<YearReport>(`/api/year?year=${year}${compareParam}`, [year, compare]);
 
-  if (error && /nu există/i.test(error)) {
-    return <Empty title="Pagina nu există">Raportul anual este disponibil doar în versiunea beta.</Empty>;
-  }
 
   const step = (n: number) => {
     setYear(String(Number(year) + n));

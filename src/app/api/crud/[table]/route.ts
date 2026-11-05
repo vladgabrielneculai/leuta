@@ -38,7 +38,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ table: 
   try {
     const { table } = await context.params;
     const c = cfg(table);
-    if (table === "entries") await materializeQuietly(); // programările scadente (beta)
+    if (table === "entries") await materializeQuietly(); // programările scadente
     const filters = c.filters.filter((f) => req.nextUrl.searchParams.has(f));
     const where = filters.length ? `WHERE ${filters.map((f) => `${f} = ?`).join(" AND ")}` : "";
     const vals = filters.map((f) => req.nextUrl.searchParams.get(f));

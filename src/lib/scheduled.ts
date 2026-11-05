@@ -1,5 +1,5 @@
 /**
- * Tranzacții programate și abonamente (beta). Logica e aici, fără bază de date, ca să poată fi testată direct.
+ * Tranzacții programate și abonamente. Logica e aici, fără bază de date, ca să poată fi testată direct.
  *
  * - O programare („Netflix, 55 lei, pe 3 ale lunii” / „RCA, anual, 15 martie”) creează intrarea în buget în
  *   ziua scadenței. Ziua 31 devine ultima zi a lunilor mai scurte.
@@ -27,7 +27,7 @@ export type Schedule = {
   last_month: string | null;
   is_subscription: number;
   active: number;
-  /** cu câte zile înainte de scadență vine mementoul (beta); null = fără */
+  /** cu câte zile înainte de scadență vine mementoul; null = fără */
   remind_days?: number | null;
 };
 

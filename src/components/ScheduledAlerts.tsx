@@ -8,7 +8,7 @@ import { useApi } from "./ui";
 const fmtDate = (d: string) => d.split("-").reverse().join(".");
 const money = (n: number, currency: string) => (currency === "EUR" ? `${n.toFixed(2).replace(".", ",")} €` : lei(n));
 
-/** Pe panou (beta): abonamentele care se reînnoiesc în următoarele zile și cele care s-au scumpit. */
+/** Pe panou: abonamentele care se reînnoiesc în următoarele zile și cele care s-au scumpit. */
 export function ScheduledAlerts() {
   const { data } = useApi<{ alerts: Alert[] }>("/api/scheduled");
   const alerts = data?.alerts ?? [];

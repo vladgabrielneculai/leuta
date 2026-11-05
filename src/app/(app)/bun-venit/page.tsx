@@ -42,8 +42,7 @@ export default function OnboardingPage() {
   // Pasul „obiective”
   const [fundSaved, setFundSaved] = useState("");
   const [trackInvestments, setTrackInvestments] = useState(false);
-  // Rezumat (beta): soldurile de azi ale conturilor, ca punct de pornire.
-  const { beta } = useApp();
+  // Rezumat: soldurile de azi ale conturilor, ca punct de pornire.
   const [balancesSaved, setBalancesSaved] = useState(false);
 
   useEffect(() => {
@@ -244,7 +243,7 @@ export default function OnboardingPage() {
                   <li>Bugetul „Recomandat pentru tine” ține cont de obiectivele tale.</li>
                 </ul>
               </div>
-              {beta && (
+              {(
                 <div className="rounded-md border border-line bg-sheet p-4 sm:p-5">
                   <p className="text-[15px] font-semibold">Cât ai azi în conturi? <span className="font-normal text-ink-soft">(opțional)</span></p>
                   {balancesSaved ? (

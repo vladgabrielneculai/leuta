@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ACCOUNT_KINDS, type AccountBalance, type AccountKind, type Transfer } from "@/lib/accounts";
 import { eur, lei, parseAmount } from "@/lib/util";
 import StartingBalances, { signedAmount, todayRo } from "@/components/StartingBalances";
-import { api, Empty, Field, Modal, Money, PageHeader, Panel, Skeleton, Stat, STAT_STRIP, Toast, useApi, useApp } from "@/components/ui";
+import { api, Field, Modal, Money, PageHeader, Panel, Skeleton, Stat, STAT_STRIP, Toast, useApi, useApp } from "@/components/ui";
 
 type Overview = { accounts: AccountBalance[]; total: number; transfers: Transfer[]; eurRate: number };
 
@@ -16,7 +16,7 @@ const money = (n: number, c: string) => (c === "EUR" ? eur(n) : lei(n));
 const kindLabel = (k: string) => ACCOUNT_KINDS.find((x) => x.kind === k)?.label ?? k;
 
 /**
- * Conturile (beta): numerar, cont curent, economii, card, fiecare cu soldul lui, și transferurile dintre ele.
+ * Conturile: numerar, cont curent, economii, card, fiecare cu soldul lui, și transferurile dintre ele.
  * Transferul mută bani între conturile tale: nu e cheltuială și nu schimbă bugetul lunii.
  */
 export default function AccountsPage() {
@@ -27,7 +27,6 @@ export default function AccountsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  if (error && /nu există/i.test(error)) return <Empty title="Pagina nu există">Conturile sunt disponibile doar în versiunea beta.</Empty>;
 
   const done = (msg: string) => {
     reload();

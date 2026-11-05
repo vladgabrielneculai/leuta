@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { balances, totalRon, type Account, type AccountEntry, type Transfer } from "@/lib/accounts";
-import { isBetaDeployment } from "@/lib/beta";
 import { insertRow, VALIDATE } from "@/lib/crud";
 import { getDb } from "@/lib/db";
 import { loadRates, rateForMonthFrom } from "@/lib/fx";
@@ -9,11 +8,9 @@ import { currentMonth } from "@/lib/util";
 
 export const dynamic = "force-dynamic";
 
-const notFound = () => NextResponse.json({ error: "Pagina nu există." }, { status: 404 });
 
-/** Conturile cu soldul de azi, totalul în lei și ultimele transferuri (beta). */
+/** Conturile cu soldul de azi, totalul în lei și ultimele transferuri. */
 export async function GET() {
-  if (!isBetaDeployment()) return notFound();
   try {
     const db = await getDb();
     const [accounts, entries, transfers, rates] = await Promise.all([
@@ -52,7 +49,6 @@ export async function GET() {
  * singură tranzacție. Corp: { date: "YYYY-MM-DD", accounts: [{ name, kind, currency, opening_balance }] }.
  */
 export async function POST(req: NextRequest) {
-  if (!isBetaDeployment()) return notFound();
   try {
     const body = (await req.json()) as { date?: string; accounts?: Record<string, unknown>[] };
     const rows = (Array.isArray(body.accounts) ? body.accounts : []).filter((a) => String(a?.name ?? "").trim());

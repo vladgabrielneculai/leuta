@@ -16,7 +16,7 @@ import { api, Bar, chartTooltipStyle, Empty, Modal, Money, PageHeader, Panel, Sk
 import { loanFieldsFromSchedule, loanNameFromMeta } from "@/lib/loanImport";
 
 export default function LoansPage() {
-  const { month, bump, beta } = useApp();
+  const { month, bump } = useApp();
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -24,8 +24,8 @@ export default function LoansPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const { data: s } = useApi<Summary>(`/api/summary?month=${month}`);
   // Beta: carduri / descoperit și cumpărăturile în rate (programări cu lună de sfârșit).
-  const { data: debts, reload: reloadDebts } = useApi<CardDebt[]>(beta ? "/api/crud/debts" : null);
-  const { data: sched, reload: reloadSched } = useApi<{ schedules: ScheduleView[] }>(beta ? "/api/scheduled" : null);
+  const { data: debts, reload: reloadDebts } = useApi<CardDebt[]>("/api/crud/debts");
+  const { data: sched, reload: reloadSched } = useApi<{ schedules: ScheduleView[] }>("/api/scheduled");
   const cardDebts = (debts ?? []).filter((d) => d.active && d.balance > 0);
   const bnpl = (sched?.schedules ?? [])
     .filter((x) => x.active && x.end_month && x.kind !== "income" && x.currency === "RON")
@@ -172,9 +172,9 @@ export default function LoansPage() {
         </>
       )}
 
-      {beta && s && <CardDebts debts={debts ?? []} installments={sched?.schedules ?? []} reload={() => { reloadDebts(); reloadSched(); }} />}
+      {s && <CardDebts debts={debts ?? []} installments={sched?.schedules ?? []} reload={() => { reloadDebts(); reloadSched(); }} />}
 
-      {beta && s && active.length + extraDebts.length > 0 && (
+      {s && active.length + extraDebts.length > 0 && (
         <PayoffPlanner
           month={month}
           debts={[

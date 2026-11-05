@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isBetaDeployment } from "@/lib/beta";
 import { getDb } from "@/lib/db";
 import { cleanTagNames } from "@/lib/entrySearch";
 import { errorResponse, jsonError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
-const notFound = () => NextResponse.json({ error: "Pagina nu există." }, { status: 404 });
 
-/** Etichetele unei intrări (beta): `?entry_id=12`. */
+/** Etichetele unei intrări: `?entry_id=12`. */
 export async function GET(req: NextRequest) {
-  if (!isBetaDeployment()) return notFound();
   const id = req.nextUrl.searchParams.get("entry_id");
   if (!id || !/^\d+$/.test(id)) return jsonError("Lipsește intrarea.");
   try {
@@ -29,7 +26,6 @@ export async function GET(req: NextRequest) {
  * entry_tags verifică faptul că intrările și etichetele sunt ale tale.
  */
 export async function PUT(req: NextRequest) {
-  if (!isBetaDeployment()) return notFound();
   try {
     const body = await req.json();
     const ids: number[] = (Array.isArray(body.entry_ids) ? body.entry_ids : [body.entry_id]).map(Number);

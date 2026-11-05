@@ -10,7 +10,7 @@ type Response = Forecast & { month: string; end: string; fromPayday: boolean; up
 const fmtDay = (d: string) => d.slice(8, 10) + "." + d.slice(5, 7);
 
 /**
- * Estimarea la sfârșitul lunii curente (beta), în Luna curentă: cât rămâne, din ce mai vine și din ritmul
+ * Estimarea la sfârșitul lunii curente, în Luna curentă: cât rămâne, din ce mai vine și din ritmul
  * obișnuit al cheltuielilor. `version` reîncarcă estimarea după fiecare intrare (prin useApi).
  */
 export default function ForecastCard() {

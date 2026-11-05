@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
-import { betaOnly } from "@/lib/importServer";
 import { addMonth, dueDate } from "@/lib/scheduled";
 import { materializeDue } from "@/lib/scheduledServer";
 
@@ -14,8 +13,6 @@ type Item = { entryId: number; day: number; subscription?: boolean };
  * care se leagă de programare). Seria nu mai e „recurentă”, ca butonul de copiere să n-o dubleze.
  */
 export async function POST(req: NextRequest) {
-  const blocked = betaOnly();
-  if (blocked) return blocked;
   try {
     const items = ((await req.json()).items ?? []) as Item[];
     if (!Array.isArray(items) || !items.length || items.length > 100) {

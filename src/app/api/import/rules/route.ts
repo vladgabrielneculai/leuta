@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
-import { betaOnly } from "@/lib/importServer";
 
 export const dynamic = "force-dynamic";
 
 /** Regulile de categorisire învățate la import („kaufland” → Alimente). */
 export async function GET() {
-  const blocked = betaOnly();
-  if (blocked) return blocked;
   try {
     const rows = await (await getDb())
       .prepare(
@@ -23,8 +20,6 @@ export async function GET() {
 }
 
 export async function DELETE(req: NextRequest) {
-  const blocked = betaOnly();
-  if (blocked) return blocked;
   try {
     const id = Number(req.nextUrl.searchParams.get("id"));
     if (!Number.isInteger(id)) return NextResponse.json({ error: "Regulă invalidă." }, { status: 400 });

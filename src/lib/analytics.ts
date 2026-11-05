@@ -767,7 +767,7 @@ function buildSuggestions(ctx: {
   return out.sort((a, b) => order[a.level] - order[b.level]);
 }
 
-// ---------- Raportul anual (beta) ----------
+// ---------- Raportul anual ----------
 
 export type YearTotals = {
   income: number;

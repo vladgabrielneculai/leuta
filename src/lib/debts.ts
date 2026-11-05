@@ -1,5 +1,5 @@
 /**
- * Carduri de credit, descoperit de cont și cumpărături în rate (beta). Fără bază de date, ca să poată fi testat.
+ * Carduri de credit, descoperit de cont și cumpărături în rate. Fără bază de date, ca să poată fi testat.
  *
  * - Card / descoperit: plata minimă = max(minimul în lei, procentul din sold), dar nu mai mult decât soldul;
  *   dobânda pe lună = sold × dobânda anuală / 12.
