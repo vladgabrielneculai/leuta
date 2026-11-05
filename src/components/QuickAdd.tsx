@@ -24,7 +24,7 @@ export type QuickEntry = {
   category_id: number | null;
   goal_id: number | null;
   investment_id: number | null;
-  /** Cardul cu care s-a plătit (beta); lipsește pe intrările vechi. */
+  /** Cardul cu care s-a plătit; lipsește pe intrările vechi. */
   card_id?: number | null;
   description: string;
   amount: number;
@@ -32,7 +32,7 @@ export type QuickEntry = {
   recurring: number;
   month?: string;
   created_at?: string | null;
-  /** Contul pe care s-a făcut plata (beta). */
+  /** Contul pe care s-a făcut plata. */
   account_id?: number | null;
   split_group?: string | null;
 };
@@ -173,7 +173,7 @@ function orderByParent<T extends { id: number; parent_id?: number | null }>(list
 }
 
 function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () => void; onDone: (msg: string, undo?: () => void) => void }) {
-  const { month, bump, confirm, eurRate, beta, cycle } = useApp();
+  const { month, bump, confirm, eurRate, cycle } = useApp();
   const mobile = useIsMobile();
   const editing = args.entry;
   const [kind, setKind] = useState<Kind>(editing?.kind ?? args.kind ?? "variable");
@@ -215,18 +215,18 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const { data: settings } = useApi<Record<string, string>>("/api/settings");
   const investments = settings?.enable_investments === "1" ? invs ?? [] : [];
 
-  // Cardul cu care plătești (beta, doar la cheltuieli). Fără alegere explicită: cardul intrării modificate sau,
+  // Cardul cu care plătești (doar la cheltuieli). Fără alegere explicită: cardul intrării modificate sau,
   // la una nouă, ultimul card folosit pe acest dispozitiv (dacă mai există).
   const { data: cards } = useCards();
   const [cardPick, setCardPick] = useState<number | null | undefined>(undefined);
   const isExpense = kind === "variable" || kind === "fixed";
-  const showCards = beta && isExpense && !!cards && cards.length > 0;
+  const showCards = isExpense && !!cards && cards.length > 0;
   const fallbackCard = editing ? editing.card_id ?? null : lastCardId();
   const cardId = cardPick !== undefined ? cardPick : cards?.some((c) => c.id === fallbackCard) ? fallbackCard : null;
   const pickedCard = isExpense && cardId ? cards?.find((c) => c.id === cardId) : undefined;
 
-  // Conturile (beta): pe ce cont s-a făcut plata. Ultimul cont ales se propune data viitoare.
-  const { data: accountsData } = useApi<{ accounts: { id: number; name: string; archived: number }[] }>(beta ? "/api/accounts" : null);
+  // Conturile: pe ce cont s-a făcut plata. Ultimul cont ales se propune data viitoare.
+  const { data: accountsData } = useApi<{ accounts: { id: number; name: string; archived: number }[] }>("/api/accounts");
   const accounts = (accountsData?.accounts ?? []).filter((a) => !a.archived || a.id === editing?.account_id);
   const [accountId, setAccountId] = useState<number | null | undefined>(editing ? editing.account_id ?? null : undefined);
   useEffect(() => {
@@ -237,7 +237,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     } catch {}
     setAccountId(accountsData.accounts.some((a) => a.id === last && !a.archived) ? last : null);
   }, [accountsData, accountId]);
-  // „Plătit cu” (beta): un singur rând cu cardurile (fiecare cu contul lui) și conturile fără card.
+  // „Plătit cu”: un singur rând cu cardurile (fiecare cu contul lui) și conturile fără card.
   // Cardul ales hotărăște contul; un card nelegat de un cont nu schimbă niciun sold.
   const effectiveAccount = pickedCard ? pickedCard.account_id ?? null : accountId;
   const cardAccounts = new Set((cards ?? []).map((c) => c.account_id).filter(Boolean));
@@ -252,9 +252,9 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     stayMonthly();
   };
 
-  // Etichetele (beta): text liber, refolosite după nume.
-  const { data: allTags } = useApi<{ id: number; name: string }[]>(beta ? "/api/crud/tags" : null);
-  const { data: entryTags } = useApi<{ id: number; name: string }[]>(beta && editing ? `/api/entries/tags?entry_id=${editing.id}` : null);
+  // Etichetele: text liber, refolosite după nume.
+  const { data: allTags } = useApi<{ id: number; name: string }[]>("/api/crud/tags");
+  const { data: entryTags } = useApi<{ id: number; name: string }[]>(editing ? `/api/entries/tags?entry_id=${editing.id}` : null);
   const [tags, setTags] = useState<string[] | null>(editing ? null : []);
   const [tagInput, setTagInput] = useState("");
   useEffect(() => {
@@ -270,7 +270,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     .filter((t) => !(tags ?? []).some((x) => x.toLowerCase() === t.name.toLowerCase()) && t.name.toLowerCase().includes(tagInput.trim().toLowerCase()))
     .slice(0, 6);
 
-  // Plata împărțită pe categorii (beta, doar la adăugarea unei cheltuieli).
+  // Plata împărțită pe categorii (doar la adăugarea unei cheltuieli).
   const [split, setSplit] = useState(false);
   const [parts, setParts] = useState<Record<number, string>>({});
   const togglePart = (id: number) =>
@@ -288,7 +288,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   for (const e of history) if (e.category_id) uses.set(e.category_id, (uses.get(e.category_id) ?? 0) + 1);
   const usesEur = history.some((e) => e.currency === "EUR");
 
-  // Subcategoriile (beta) stau imediat după categoria lor.
+  // Subcategoriile stau imediat după categoria lor.
   const kindCats = orderByParent((cats ?? []).filter((c) => c.kind === kind));
   // Sortare stabilă: la egalitate rămâne ordinea alfabetică de pe server.
   const sortedCats = mobile ? [...kindCats].sort((a, b) => (uses.get(b.id) ?? 0) - (uses.get(a.id) ?? 0)) : kindCats;
@@ -302,10 +302,10 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
   const [detailsOpen, setDetailsOpen] = useState(!!editing);
   const compact = mobile && !detailsOpen;
   const showCurrency = !mobile || usesEur || currency === "EUR" || detailsOpen;
-  // Returul are sens doar la cheltuieli; o intrare deja salvată ca retur rămâne editabilă și în afara versiunii beta.
-  const canRefund = (kind === "variable" || kind === "fixed") && (beta || refund);
+  // Returul are sens doar la cheltuieli.
+  const canRefund = kind === "variable" || kind === "fixed";
   const value = parseAmount(amount);
-  const canSplit = beta && !editing && (kind === "variable" || kind === "fixed");
+  const canSplit = !editing && (kind === "variable" || kind === "fixed");
   const splitOn = canSplit && split && !refund;
   const partSum = Object.values(parts).reduce((sum, v) => sum + (parseAmount(v) || 0), 0);
   const partLeft = Math.round((value - partSum) * 100) / 100;
@@ -363,8 +363,8 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
       investment_id: kind === "saving" && dest_.startsWith("i:") ? Number(dest_.slice(2)) : null,
       description: description.trim(),
       amount: (canRefund && refund) || isWithdraw ? -value : value,
-      // Doar pe beta trimitem cardul; la venituri și economii nu are sens.
-      ...(beta && cards ? { card_id: isExpense ? cardId : null } : {}),
+      // Cardul: la venituri și economii nu are sens.
+      ...(cards ? { card_id: isExpense ? cardId : null } : {}),
       currency,
       recurring: recurring && !isWithdraw ? 1 : 0,
       // Contul se trimite doar când lista conturilor s-a încărcat, ca să nu ștergem din greșeală legătura existentă.
@@ -406,9 +406,9 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
     }
   };
 
-  /** Etichetele (beta) se salvează după intrare; dacă nu s-au încărcat încă (la modificare), nu se ating. */
+  /** Etichetele se salvează după intrare; dacă nu s-au încărcat încă (la modificare), nu se ating. */
   const saveTags = async (ids: number[]) => {
-    if (!beta || tags === null) return;
+    if (tags === null) return;
     const pending = tagInput.trim() ? [...tags, tagInput.trim()] : tags;
     if (!editing && pending.length === 0) return;
     await api("/api/entries/tags", "PUT", { entry_ids: ids, tags: pending });
@@ -432,7 +432,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
         amount: value,
         parts: list,
         ...(accountsData && effectiveAccount !== undefined ? { account_id: effectiveAccount } : {}),
-        ...(beta && cards ? { card_id: cardId } : {}),
+        ...(cards ? { card_id: cardId } : {}),
       });
       await saveTags(res.entries.map((e) => e.id));
       if (mobile) tick();
@@ -738,7 +738,7 @@ function QuickAddSheet({ args, onClose, onDone }: { args: OpenArgs; onClose: () 
               aria-label="Descriere"
             />
 
-            {beta && tags !== null && (
+            {tags !== null && (
               <div>
                 <span className="label">Etichete (opțional)</span>
                 <div className="flex flex-wrap items-center gap-1.5">

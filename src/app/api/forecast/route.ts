@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { buildSummary } from "@/lib/analytics";
-import { isBetaDeployment } from "@/lib/beta";
 import { getDb } from "@/lib/db";
 import { forecast } from "@/lib/forecast";
 import { errorResponse } from "@/lib/http";
@@ -12,13 +11,12 @@ import { materializeQuietly } from "@/lib/scheduledServer";
 export const dynamic = "force-dynamic";
 
 /**
- * Estimarea pentru luna curentă (beta). Celelalte luni sunt fie încheiate, fie încă goale: n-au estimare.
+ * Estimarea pentru luna curentă. Celelalte luni sunt fie încheiate, fie încă goale: n-au estimare.
  * Cu luna de la salariu, luna curentă e luna de buget, iar „finalul” e ziua dinaintea salariului următor.
  * Plățile programate intră în luna de buget a scadenței, deci se numără cele cu scadența după azi și până la
  * finalul lunii de buget, chiar dacă trec în luna calendaristică următoare.
  */
 export async function GET() {
-  if (!isBetaDeployment()) return NextResponse.json({ error: "Pagina nu există." }, { status: 404 });
   try {
     await materializeQuietly(); // plățile scadente până azi devin intrări înainte de calcul
     const cycle = await loadPayCycle();

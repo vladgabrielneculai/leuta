@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse, MAX_UPLOAD_BYTES } from "@/lib/http";
-import { betaOnly, parseUpload, preview } from "@/lib/importServer";
+import { parseUpload, preview } from "@/lib/importServer";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +9,6 @@ export const dynamic = "force-dynamic";
  * Dacă antetul nu e recunoscut, cere alegerea coloanelor (o dată pe format; alegerea se reține).
  */
 export async function POST(req: NextRequest) {
-  const blocked = betaOnly();
-  if (blocked) return blocked;
   try {
     const form = await req.formData();
     const file = form.get("file");

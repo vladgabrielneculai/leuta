@@ -243,7 +243,7 @@ export default function Shell({ children }: { children: ReactNode }) {
     );
   }
 
-  const groups = navGroups(beta, !!user?.isAdmin);
+  const groups = navGroups(!!user?.isAdmin);
   const nav = (
     <nav className="flex flex-col gap-4" aria-label="Navigare principală" data-tour="nav">
       {groups.map((g) => (

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { errorResponse } from "@/lib/http";
 import { learnPattern } from "@/lib/importRules";
-import { betaOnly } from "@/lib/importServer";
 import { budgetMonthOf } from "@/lib/payCycle";
 import { loadPayCycle } from "@/lib/profileServer";
 
@@ -27,8 +26,6 @@ function valid(r: Row) {
  * reține categoriile alese ca reguli pentru importurile următoare. Tranzacțiile deja importate se sar.
  */
 export async function POST(req: NextRequest) {
-  const blocked = betaOnly();
-  if (blocked) return blocked;
   try {
     const body = (await req.json()) as { rows?: Row[] };
     const rows = Array.isArray(body.rows) ? body.rows : [];

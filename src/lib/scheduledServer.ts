@@ -1,4 +1,3 @@
-import { isBetaDeployment } from "./beta";
 import { budgetMonthOf, CALENDAR_CYCLE } from "./payCycle";
 import { loadPayCycle } from "./profileServer";
 import { currentUserId, getDb, getSetting, setSetting } from "./db";
@@ -18,12 +17,11 @@ declare global {
 }
 
 /**
- * Creează intrările programărilor ajunse la scadență. Pe beta nu rulează cron-ul Vercel (doar în producție),
+ * Creează intrările programărilor ajunse la scadență. Nu există un cron pentru ele,
  * așa că le creăm când utilizatorul deschide aplicația: panoul, luna sau pagina programărilor.
  * `force` = imediat după o modificare; altfel cel mult o dată pe minut pentru fiecare utilizator.
  */
 export async function materializeDue(force = false): Promise<number> {
-  if (!isBetaDeployment()) return 0;
   const uid = await currentUserId();
   if (!uid) return 0;
   const runs = (global.__scheduledRun ??= new Map());

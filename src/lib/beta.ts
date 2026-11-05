@@ -2,9 +2,6 @@
  * Versiunea beta (beta-app.leuta.ro) rulează pe aceeași bază de date ca producția, deci conturile sunt aceleași.
  * Accesul se limitează din variabila de mediu `BETA_USERS` (nume de utilizator separate prin virgulă), setată
  * doar pe mediul de beta din Vercel. Fără ea (producția, local) nu există nicio restricție.
- *
- * Funcționalitățile noi se ascund tot după `isBetaDeployment()`, ca să nu apară în producție nici dacă
- * ramura `staging` ajunge pe `main` înainte de lansarea lor.
  */
 
 function betaUsers(): Set<string> | null {

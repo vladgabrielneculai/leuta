@@ -29,8 +29,8 @@ export const NAV_DAILY: NavItem[] = [
   { href: "/", label: "Panou", color: "var(--c-albastru)", icon: ICON.home },
   { href: "/luna", label: "Luna curentă", color: "var(--c-leu)", icon: ICON.month },
 ];
-// Funcționalități noi, vizibile doar pe versiunea beta (după „Luna curentă”).
-export const BETA_NAV: NavItem[] = [
+// Uneltele pentru tranzacții, după „Luna curentă”.
+export const NAV_TOOLS: NavItem[] = [
   { href: "/import", label: "Import extras", color: "var(--c-mov)", icon: ICON.import, hint: "Tranzacțiile din extrasul băncii" },
   { href: "/abonamente", label: "Abonamente", color: "var(--c-galben)", icon: ICON.repeat, hint: "Plățile care se repetă" },
   { href: "/conturi", label: "Conturi", color: "var(--c-leu)", icon: ICON.wallet, hint: "Soldurile și transferurile" },
@@ -55,16 +55,16 @@ export const ADMIN_NAV: NavItem = { href: "/admin", label: "Administrare", color
  * Meniul e împărțit în trei grupuri mici în loc de o listă lungă: ce folosești zilnic,
  * instrumentele de planificare și contul. Grupurile se citesc mai ușor decât 8–11 intrări la rând.
  */
-export function navGroups(beta: boolean, admin: boolean): { title: string | null; items: NavItem[] }[] {
+export function navGroups(admin: boolean): { title: string | null; items: NavItem[] }[] {
   return [
-    { title: null, items: [...NAV_DAILY, ...(beta ? BETA_NAV : [])] },
+    { title: null, items: [...NAV_DAILY, ...NAV_TOOLS] },
     { title: "Planificare", items: NAV_PLAN },
     { title: "Cont", items: [...NAV_ACCOUNT, ...(admin ? [ADMIN_NAV] : [])] },
   ];
 }
 
-/** Pe telefon: paginile din hub-ul „Planuri” (inclusiv uneltele beta) și din „Eu”. */
-export const PLAN_HREFS = ["/planuri", ...[...NAV_PLAN, ...BETA_NAV].map((n) => n.href)];
+/** Pe telefon: paginile din hub-ul „Planuri” (inclusiv uneltele) și din „Eu”. */
+export const PLAN_HREFS = ["/planuri", ...[...NAV_PLAN, ...NAV_TOOLS].map((n) => n.href)];
 export const ACCOUNT_HREFS = ["/eu", ...[...NAV_ACCOUNT, ADMIN_NAV].map((n) => n.href)];
 
 /** Dacă `path` e pagina `href` sau o subpagină a ei („/” se potrivește doar cu el însuși). */
@@ -92,7 +92,7 @@ export function parentOf(path: string): { href: string; label: string } | null {
 export function sectionLabel(path: string): string | null {
   if (path === "/planuri") return "Planuri";
   if (path === "/eu") return "Eu";
-  const all = [...NAV_DAILY, ...BETA_NAV, ...NAV_PLAN, ...NAV_ACCOUNT, ADMIN_NAV];
+  const all = [...NAV_DAILY, ...NAV_TOOLS, ...NAV_PLAN, ...NAV_ACCOUNT, ADMIN_NAV];
   return all.find((n) => n.href !== "/" && within(path, n.href))?.label ?? null;
 }
 

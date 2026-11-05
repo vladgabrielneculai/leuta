@@ -195,7 +195,7 @@ export async function dueAlerts(now: LocalNow, ignoreWindow = false): Promise<Al
 }
 
 /**
- * Facturile și plățile programate cu memento (beta, `scheduled_entries.remind_days`): un mesaj în ziua aleasă
+ * Facturile și plățile programate cu memento (`scheduled_entries.remind_days`): un mesaj în ziua aleasă
  * dinaintea scadenței. Merg pe canalele „Scadențe” (loan_due), ca ratele.
  */
 export async function billReminders(now: LocalNow): Promise<Alert[]> {

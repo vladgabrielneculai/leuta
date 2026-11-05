@@ -1,5 +1,5 @@
 /**
- * Conturi și transferuri (beta). Logica e aici, fără bază de date, ca să poată fi testată direct.
+ * Conturi și transferuri. Logica e aici, fără bază de date, ca să poată fi testată direct.
  *
  * Soldul unui cont = soldul de pornire + ce s-a întâmplat pe el de la data de pornire (inclusiv):
  * - venituri: +; cheltuieli, costuri fixe și economii: − (un retur, sumă negativă, adaugă înapoi);

@@ -1,5 +1,5 @@
 /**
- * Estimarea la sfârșitul lunii (beta): cât îți rămâne pe 31, din ce știm azi.
+ * Estimarea la sfârșitul lunii: cât îți rămâne pe 31, din ce știm azi.
  * - intrările de până azi (venituri, cheltuieli, economii) și ratele creditelor pe toată luna;
  * - plățile și veniturile programate care mai vin luna aceasta;
  * - cheltuielile variabile: luna se încheie la media ta lunară din ultimele luni cu date (sau la cât ai cheltuit

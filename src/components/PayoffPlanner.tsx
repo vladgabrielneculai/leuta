@@ -18,7 +18,7 @@ const duration = (months: number) => {
 };
 
 /**
- * Strategia de rambursare (beta): cu o sumă în plus pe lună, în ce ordine închizi datoriile și cât economisești.
+ * Strategia de rambursare: cu o sumă în plus pe lună, în ce ordine închizi datoriile și cât economisești.
  * `month` = luna selectată; luna 1 a simulării este luna următoare.
  */
 export default function PayoffPlanner({ debts, month }: { debts: Debt[]; month: string }) {

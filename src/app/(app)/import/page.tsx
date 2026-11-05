@@ -7,7 +7,7 @@ import type { PreviewRow } from "@/lib/importServer";
 import type { Mapping } from "@/lib/statementImport";
 import { KIND_LABEL, lei, type Kind } from "@/lib/util";
 import { budgetMonthOf } from "@/lib/payCycle";
-import { api, Empty, Field, PageHeader, Panel, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
+import { api, Field, PageHeader, Panel, Toast, TrashIcon, useApi, useApp } from "@/components/ui";
 
 type NeedsMapping = { status: "needs-mapping"; signature: string; header: number; headers: string[]; sample: string[][]; guess: Partial<Mapping> };
 type Parsed = { status: "ok"; bank: string; filename: string; rows: PreviewRow[]; categories: ImportCategory[] };
@@ -18,7 +18,7 @@ const fmtDate = (d: string) => d.split("-").reverse().join(".");
 const SUPPORTED = new Set(["RON", "EUR"]);
 
 /**
- * Importul extraselor de cont (beta): încarci CSV-ul sau Excel-ul din aplicația băncii, verifici categoriile
+ * Importul extraselor de cont: încarci CSV-ul sau Excel-ul din aplicația băncii, verifici categoriile
  * propuse și confirmi. Categoriile corectate devin reguli pentru importurile următoare.
  */
 export default function ImportPage() {
@@ -117,9 +117,6 @@ export default function ImportPage() {
     rules.reload();
   };
 
-  if (rules.error && /nu există/i.test(rules.error)) {
-    return <Empty title="Pagina nu există">Importul extraselor e disponibil doar în versiunea beta.</Empty>;
-  }
 
   return (
     <div className="flex flex-col gap-6">

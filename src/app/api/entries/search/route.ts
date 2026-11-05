@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { filtersSql, parseFilters, toCsv, totalsOf, type FoundEntry } from "@/lib/entrySearch";
 import { loadRates, rateForMonthFrom } from "@/lib/fx";
-import { isBetaDeployment } from "@/lib/beta";
 import { errorResponse } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -11,11 +10,10 @@ export const dynamic = "force-dynamic";
 const PAGE_LIMIT = 300;
 
 /**
- * Căutare în toate intrările contului (beta). `?format=csv` descarcă aceleași rezultate ca fișier CSV.
+ * Căutare în toate intrările contului. `?format=csv` descarcă aceleași rezultate ca fișier CSV.
  * Rândurile sunt filtrate pe utilizator de Postgres (RLS), ca peste tot în aplicație.
  */
 export async function GET(req: NextRequest) {
-  if (!isBetaDeployment()) return NextResponse.json({ error: "Pagina nu există." }, { status: 404 });
   try {
     const filters = parseFilters(req.nextUrl.searchParams);
     const { where, params } = filtersSql(filters);

@@ -75,7 +75,7 @@ const PILON3_DEDUCTIBLE_EUR = 400;
 const isPilon2 = (i: InvestmentView) => i.type === "Pilon II" && i.contributed === 0;
 
 /**
- * Pensiile (beta): cât din plafonul de deducere al Pilonului III ai folosit anul acesta și ce înseamnă Pilonul II.
+ * Pensiile: cât din plafonul de deducere al Pilonului III ai folosit anul acesta și ce înseamnă Pilonul II.
  * Apare doar dacă ai o investiție de tip „Pilon III” sau „Pilon II”.
  */
 function PensionCard({ investments, month, eurRate }: { investments: InvestmentView[]; month: string; eurRate: number }) {
@@ -144,7 +144,7 @@ export default function SavingsPage() {
     setToast(msg);
   };
 
-  const { inflationRate, confirm, beta, eurRate } = useApp();
+  const { inflationRate, confirm, eurRate } = useApp();
   const invested = s?.investments.reduce((a, i) => a + i.value, 0) ?? 0;
   const contributed = s?.investments.reduce((a, i) => a + i.contributed, 0) ?? 0;
   const avgInvest = s ? s.trend.slice(-3).reduce((a, t) => a + t.investments, 0) / 3 : 0;
@@ -385,7 +385,7 @@ export default function SavingsPage() {
             </>
           )}
 
-          {beta && <PensionCard investments={s.investments} month={month} eurRate={s.fx.rate || eurRate} />}
+          <PensionCard investments={s.investments} month={month} eurRate={s.fx.rate || eurRate} />
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[260px_1fr]">
             <div className="flex flex-col gap-3">
@@ -498,7 +498,7 @@ export default function SavingsPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Tip">
                 <select className="field" value={inv.type} onChange={(e) => setInv({ ...inv, type: e.target.value })}>
-                  {["ETF", "Acțiuni", "Fond mutual", "Depozit", "Titluri de stat", "Pilon III", ...(beta || inv.type === "Pilon II" ? ["Pilon II"] : []), "Crypto", "Altele"].map((t) => <option key={t}>{t}</option>)}
+                  {["ETF", "Acțiuni", "Fond mutual", "Depozit", "Titluri de stat", "Pilon III", "Pilon II", "Crypto", "Altele"].map((t) => <option key={t}>{t}</option>)}
                 </select>
               </Field>
               <Field label="Randament anual așteptat (%)">

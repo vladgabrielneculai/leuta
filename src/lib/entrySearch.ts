@@ -1,5 +1,5 @@
 /**
- * Căutarea în toate intrările (beta) și exportul lor în CSV. Logica e aici, fără bază de date, ca să poată fi
+ * Căutarea în toate intrările și exportul lor în CSV. Logica e aici, fără bază de date, ca să poată fi
  * testată direct: filtrele din URL devin o condiție SQL cu parametri, iar rândurile găsite devin un fișier CSV.
  *
  * - Textul se caută în descriere și în numele categoriei, fără diferență între majuscule și minuscule.
@@ -134,7 +134,7 @@ export type FoundEntry = {
   created_at: string | null;
   account_id?: number | null;
   split_group?: string | null;
-  /** etichetele, separate prin virgulă (beta) */
+  /** etichetele, separate prin virgulă */
   tags?: string | null;
   ron: number; // suma în lei, la cursul BNR al lunii
 };
@@ -205,7 +205,7 @@ export function cleanTagNames(raw: unknown): string[] {
 export type SplitPart = { category_id: number; amount: number; description?: string };
 
 /**
- * Părțile unei plăți împărțite pe categorii (beta): cel puțin două, fiecare cu categorie și sumă > 0, iar suma
+ * Părțile unei plăți împărțite pe categorii: cel puțin două, fiecare cu categorie și sumă > 0, iar suma
  * părților egală cu totalul (la ban). Aruncă mesaje pentru utilizator.
  */
 export function checkSplit(total: unknown, parts: unknown): SplitPart[] {
